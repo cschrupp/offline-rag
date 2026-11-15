@@ -109,14 +109,15 @@ should not override the current disposition here.
   deferred; native Windows remains a separate spike.
 - [x] **Slice 18C — Universal Workstation Distribution & Release Optimization**
   — COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`.
-- [ ] **Slice 18D — Product Metrics Audit & Explainability** — DESIGN HUMAN
-  ACCEPTED / IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW. Catalog, evidence v3 and product metric
-  audit candidate; see `docs/slice18d_metrics_audit.md` and
-  `docs/evidence/slice18d_metrics/IMPLEMENTATION_RESULT.md`.
-- [ ] **Slice 18E — Canonical Documentation & Portfolio Narrative** — PLANNED /
+- [x] **Slice 18D — Product Metrics Audit & Explainability** — COMPLETE / HUMAN
+  ACCEPTED / PROMOTED at `8591aacc1810ba7265014c55a4d9327f7f755a02`.
+- [ ] **Slice 18E — Storage Location & Data Root Selection** — SCOPE HUMAN
+  ACCEPTED / DESIGN AUTHORIZED / IMPLEMENTATION NOT AUTHORIZED. See
+  `docs/slice18e_storage_location_design.md`.
+- [ ] **Slice 18F — Canonical Documentation & Portfolio Narrative** — PLANNED /
   NOT AUTHORIZED. Produce coherent public documentation from accepted behavior
   and audited metric semantics.
-- [ ] **Slice 18F — Public Release & Demo Assembly** — PLANNED / NOT
+- [ ] **Slice 18G — Public Release & Demo Assembly** — PLANNED / NOT
   AUTHORIZED. Assemble release artifacts, demo workflow/media, and final
   evidence-backed public claims.
 - [ ] **Milestone 7 closeout** — NOT AUTHORIZED.
@@ -3368,9 +3369,9 @@ the CPU release image only. The bounded CPU/CUDA public container split and
 universal workstation distribution are complete / Human accepted / promoted
 under 18C at `c296e21afa740aa8fa7199d88ffda68c59d1be03`.
 
-**Slice 18 — Portfolio Release Program:** **18A–18C COMPLETE / HUMAN
-ACCEPTED / PROMOTED; 18D DESIGN HUMAN ACCEPTED / IMPLEMENTATION COMPLETE /
-INDEPENDENT REVIEW PENDING; 18E–18F PLANNED / NOT AUTHORIZED**
+**Slice 18 — Portfolio Release Program:** **18A–18D COMPLETE / HUMAN
+ACCEPTED / PROMOTED; 18E SCOPE HUMAN ACCEPTED / DESIGN AUTHORIZED /
+IMPLEMENTATION NOT AUTHORIZED; 18F–18G PLANNED / NOT AUTHORIZED**
 - Slice 18A delivered the reviewed six-record, two-route evidence reconciliation
   and presentation implementation.
 - Slice 18B covers the Linux x86-64 and Windows 11 + WSL2 CPU workstation
@@ -3379,11 +3380,13 @@ INDEPENDENT REVIEW PENDING; 18E–18F PLANNED / NOT AUTHORIZED**
   deferred and are not represented as passed.
 - Slice 18C implements one CPU-first universal workstation package with optional
   explicit transactional CUDA enablement, plus immutable CPU/CUDA containers.
-- Slice 18D audits user-visible metric correctness, provenance, and
-  explainability.
-- Slice 18E reconciles canonical public documentation using accepted behavior
+- Slice 18D audited user-visible metric correctness, provenance, and
+  explainability; it is promoted at `8591aacc1810ba7265014c55a4d9327f7f755a02`.
+- Slice 18E designs user selection of the durable data root through Settings;
+  implementation is not authorized.
+- Slice 18F reconciles canonical public documentation using accepted behavior
   and audited metric semantics.
-- Slice 18F assembles the public release, demo workflow/media, and final
+- Slice 18G assembles the public release, demo workflow/media, and final
   evidence-backed claims.
 - The canonical planning definition is
   [`docs/slice18_release_plan.md`](docs/slice18_release_plan.md).
@@ -3420,11 +3423,12 @@ Later M7 checklist:
 - [x] Workstation Distribution (Slice 18B — **COMPLETE / HUMAN ACCEPTED /
   PROMOTED** at evidence head `f5eda171925b791f94589637eb690a0de125aefb`;
   systemd-user and WSL distro lifecycle remain deferred)
-- [ ] Slice 18C — Universal Workstation Distribution & Release Optimization
+- [x] Slice 18C — Universal Workstation Distribution & Release Optimization
   (**COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`**)
-- [ ] Slice 18D — Product Metrics Audit & Explainability (**IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`**)
-- [ ] Slice 18E — Canonical Documentation & Portfolio Narrative (**PLANNED / NOT AUTHORIZED**)
-- [ ] Slice 18F — Public Release & Demo Assembly (**PLANNED / NOT AUTHORIZED**)
+- [x] Slice 18D — Product Metrics Audit & Explainability (**COMPLETE / HUMAN ACCEPTED / PROMOTED at `8591aacc1810ba7265014c55a4d9327f7f755a02`**)
+- [ ] Slice 18E — Storage Location & Data Root Selection (**SCOPE HUMAN ACCEPTED / DESIGN AUTHORIZED / IMPLEMENTATION NOT AUTHORIZED**)
+- [ ] Slice 18F — Canonical Documentation & Portfolio Narrative (**PLANNED / NOT AUTHORIZED**)
+- [ ] Slice 18G — Public Release & Demo Assembly (**PLANNED / NOT AUTHORIZED**)
 - [ ] Milestone 7 closeout (**NOT AUTHORIZED**)
 - [ ] Broader container image-size optimization ([issue #1](https://github.com/cschrupp/offline-rag/issues/1) — **DEFERRED**); 18C plans lean immutable CPU/CUDA containers and a universal CPU-first workstation package.
 
@@ -3445,9 +3449,10 @@ COMPLETE / ACCEPTED / SEALED** at `9c178ffb033cde41849379fc914f321697ff8691`; **
 Slice 17 is **COMPLETE / HUMAN ACCEPTED / PROMOTED**. Slice 18A is **COMPLETE /
 HUMAN ACCEPTED / PROMOTED**. Slice 18B Revision 2 is **COMPLETE / HUMAN
 ACCEPTED / PROMOTED**. Real-host systemd-user and WSL distro lifecycle
-validation remain deferred. Slice 18C is **COMPLETE / HUMAN ACCEPTED / PROMOTED** at `c296e21a`. Slice 18D implementation is
-**COMPLETE / INDEPENDENT REVIEW PENDING** at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`; 18E/18F are **PLANNED / NOT AUTHORIZED**;
-Milestone 7 closeout remains **NOT AUTHORIZED**. See
+validation remain deferred. Slice 18C is **COMPLETE / HUMAN ACCEPTED / PROMOTED** at `c296e21a`. Slice 18D is **COMPLETE / HUMAN ACCEPTED / PROMOTED** at
+`8591aacc1810ba7265014c55a4d9327f7f755a02`. Slice 18E scope is Human accepted
+and design authorized, with implementation not authorized; 18F/18G remain
+**PLANNED / NOT AUTHORIZED**. Milestone 7 closeout remains **NOT AUTHORIZED**. See
 [`docs/slice18_release_plan.md`](docs/slice18_release_plan.md) for the canonical
 Slice 18 plan.
 Performance optimization,

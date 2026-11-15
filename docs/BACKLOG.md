@@ -44,9 +44,10 @@ Slice 18A — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8431c134
 Slice 18B — REVISION 2 COMPLETE / HUMAN ACCEPTED / PROMOTED at f5eda171;
              REAL-HOST SYSTEMD-USER / WSL LIFECYCLE DEFERRED
 Slice 18C — COMPLETE / HUMAN ACCEPTED / PROMOTED at c296e21a
-Slice 18D — DESIGN HUMAN ACCEPTED / IMPLEMENTATION COMPLETE / READY FOR INDEPENDENT REVIEW
-Slice 18E — PLANNED / NOT AUTHORIZED
+Slice 18D — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8591aacc1810ba7265014c55a4d9327f7f755a02
+Slice 18E — SCOPE HUMAN ACCEPTED / DESIGN AUTHORIZED / IMPLEMENTATION NOT AUTHORIZED
 Slice 18F — PLANNED / NOT AUTHORIZED
+Slice 18G — PLANNED / NOT AUTHORIZED
 Milestone 7 closeout — NOT AUTHORIZED
 Additional Gold Lab games — DEFERRED BEYOND CURRENT BETA
 ```
@@ -111,9 +112,10 @@ and its linked sanitized `RUN_002_EVIDENCE_INDEX.md`.
        deferred
     -> Slice 18C Universal Workstation Distribution & Release Optimization —
        COMPLETE / HUMAN ACCEPTED / PROMOTED at c296e21afa740aa8fa7199d88ffda68c59d1be03
-    -> Slice 18D Product Metrics Audit & Explainability — DESIGN HUMAN ACCEPTED / IMPLEMENTATION COMPLETE / TECHNICAL CORRECTIVE 8f9a7ef10aceabbef05a29deb7482561ec29ee12 / EVIDENCE HEAD e42bc97d540bca129eab6d2c693e563bf7d4afa9 / INDEPENDENT REVIEW PENDING
-    -> Slice 18E Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
-    -> Slice 18F Public Release & Demo Assembly — PLANNED / NOT AUTHORIZED
+    -> Slice 18D Product Metrics Audit & Explainability — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8591aacc1810ba7265014c55a4d9327f7f755a02
+    -> Slice 18E Storage Location & Data Root Selection — SCOPE HUMAN ACCEPTED / DESIGN AUTHORIZED / IMPLEMENTATION NOT AUTHORIZED
+    -> Slice 18F Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
+    -> Slice 18G Public Release & Demo Assembly — PLANNED / NOT AUTHORIZED
     -> Milestone 7 closeout — NOT AUTHORIZED
 ```
 
@@ -711,17 +713,22 @@ CPU/CUDA packaging wording; this tranche does not automatically close it.
 ### REL-02 — Portfolio release / public claims package
 
 **Priority:** downstream\
-**Status:** Slice 18A–18C COMPLETE / HUMAN ACCEPTED / PROMOTED. Slice 18D DESIGN HUMAN ACCEPTED / IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at evidence head `e42bc97d540bca129eab6d2c693e563bf7d4afa9` (duration corrective `8f9a7ef10aceabbef05a29deb7482561ec29ee12`). Slices 18E–18F
-are PLANNED / NOT AUTHORIZED. Milestone 7 closeout is NOT AUTHORIZED. Real-host
+**Status:** Slice 18A–18D COMPLETE / HUMAN ACCEPTED / PROMOTED; 18D is at
+`8591aacc1810ba7265014c55a4d9327f7f755a02`. Slice 18E scope is Human accepted
+and design authorized; implementation is not authorized. Slices 18F–18G are
+PLANNED / NOT AUTHORIZED. Milestone 7 closeout is NOT AUTHORIZED. Real-host
 systemd-user and WSL lifecycle checks remain deferred.
 
 The remaining work is separated into:
 
 - **18C:** COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`.
-- **18D:** audit metric correctness, provenance, and explainability.
-- **18E:** reconcile canonical public documentation from accepted behavior and
+- **18D:** COMPLETE / HUMAN ACCEPTED / PROMOTED; audited metric correctness,
+  provenance, and explainability.
+- **18E:** design workstation data-root selection. Implementation is not
+  authorized.
+- **18F:** reconcile canonical public documentation from accepted behavior and
   audited metric semantics.
-- **18F:** assemble the GitHub release/demo and final public claims.
+- **18G:** assemble the GitHub release/demo and final public claims.
 
 The 18B real-host systemd-user and WSL lifecycle checks remain deferred from
 18B. See [`docs/slice18_release_plan.md`](slice18_release_plan.md) for scope and
@@ -738,7 +745,7 @@ the sanitized bounded qualification is
 `5a793766bb4ecd88278cd0bf3a892572ec30f67a`. See
 [`REL03_P0_LIVE_SMOKE.md`](evidence/rel03_p0_live_smoke/REL03_P0_LIVE_SMOKE.md).
 This does not claim hosted deployment or authorize deployment work under
-Slices 18C–18F.
+Slices 18C–18G.
 
 Provide an explicitly operator-enabled hosted Seneca demonstration profile for
 portfolio/job-search use while preserving the canonical local, strict-offline
@@ -857,11 +864,13 @@ Real-host systemd-user / WSL lifecycle — DEFERRED_REAL_HOST_VALIDATION
         ->
 18C — Universal Workstation Distribution & Release Optimization — COMPLETE / HUMAN ACCEPTED / PROMOTED at c296e21a
         ->
-18D — Product Metrics Audit & Explainability — DESIGN HUMAN ACCEPTED / IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at e42bc97d540bca129eab6d2c693e563bf7d4afa9
+18D — Product Metrics Audit & Explainability — COMPLETE / HUMAN ACCEPTED / PROMOTED at 8591aacc1810ba7265014c55a4d9327f7f755a02
         ->
-18E — Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
+18E — Storage Location & Data Root Selection — SCOPE HUMAN ACCEPTED / DESIGN AUTHORIZED / IMPLEMENTATION NOT AUTHORIZED
         ->
-18F — Public Release & Demo Assembly — PLANNED / NOT AUTHORIZED
+18F — Canonical Documentation & Portfolio Narrative — PLANNED / NOT AUTHORIZED
+        ->
+18G — Public Release & Demo Assembly — PLANNED / NOT AUTHORIZED
         ->
 Milestone 7 closeout — NOT AUTHORIZED
         ->
@@ -870,8 +879,8 @@ End-to-end beta QA → release blockers → Human beta acceptance → RELEASE
 
 Slice 17, REL-01, Slice 18A, and Slice 18B Revision 2 are complete, Human
 accepted, and promoted. Slice 18B's real-host systemd-user and WSL lifecycle
-validation remain deferred. Slice 18C is complete / Human accepted / promoted at `c296e21a`; Slice 18D is design Human accepted / implementation complete / independent review pending at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`; Slices
-18E–18F are planned but unauthorized, and Milestone 7 closeout remains
+validation remain deferred. Slice 18C is complete / Human accepted / promoted at `c296e21a`; Slice 18D is complete / Human accepted / promoted at `8591aacc1810ba7265014c55a4d9327f7f755a02`. Slice 18E scope is Human accepted and design authorized, with implementation not authorized; Slices
+18F–18G are planned but unauthorized, and Milestone 7 closeout remains
 unauthorized. See
 [`docs/slice18_release_plan.md`](slice18_release_plan.md) for the canonical
 planning definition.

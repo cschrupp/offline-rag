@@ -4,6 +4,11 @@ Authority: detailed design Human accepted; implementation authorized as one
 18D-A–E tranche on `implementation/slice18d-metrics-audit`, from
 `c296e21afa740aa8fa7199d88ffda68c59d1be03`.
 
+**Current disposition:** COMPLETE / HUMAN ACCEPTED / PROMOTED at
+`8591aacc1810ba7265014c55a4d9327f7f755a02`. The authority statement above
+records the original implementation authorization; this current disposition
+records the later closeout.
+
 The canonical semantic catalog is `eval/presentation/indicator_catalog_v1.json`.
 Its ID hashes canonical JSON excluding `catalog_id`. A definition is identified
 by `(definition_id, definition_revision)` under that immutable catalog identity.
@@ -51,5 +56,7 @@ historical evidence remains untouched during escalation; unrelated work continue
 
 Qualification uses deterministic catalog/export/UI tests and static checks only.
 All performance observations remain descriptive and population/configuration
-specific. No SLO, benchmark, model/security campaign, 18E/18F work, promotion or
-Milestone 7 closeout is authorized by this implementation.
+specific. No SLO, benchmark, model/security campaign, or Milestone 7 closeout
+was authorized by this implementation. Later Slice 18E design is tracked in
+`docs/slice18e_storage_location_design.md`; its implementation and Slices
+18F–18G remain outside the 18D authority.

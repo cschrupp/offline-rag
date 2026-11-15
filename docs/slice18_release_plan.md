@@ -12,12 +12,16 @@ slice remains subject to its own authorization and review.
   PROMOTED.
 - **18C — Universal Workstation Distribution & Release Optimization:**
   COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`.
-- **18D — Product Metrics Audit and Explainability:** DESIGN HUMAN ACCEPTED /
-  IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`; see `slice18d_metrics_audit.md`
-  and `docs/evidence/slice18d_metrics/IMPLEMENTATION_RESULT.md`.
-- **18E — Canonical Documentation and Portfolio Narrative:** PLANNED /
+- **18D — Product Metrics Audit and Explainability:** COMPLETE / HUMAN
+  ACCEPTED / PROMOTED at `8591aacc1810ba7265014c55a4d9327f7f755a02`; see
+  `slice18d_metrics_audit.md` and
+  `docs/evidence/slice18d_metrics/IMPLEMENTATION_RESULT.md`.
+- **18E — Storage Location and Data Root Selection:** SCOPE HUMAN ACCEPTED /
+  DESIGN AUTHORIZED / IMPLEMENTATION NOT AUTHORIZED; see
+  `slice18e_storage_location_design.md`.
+- **18F — Canonical Documentation and Portfolio Narrative:** PLANNED /
   NOT AUTHORIZED.
-- **18F — Public Release and Demo Assembly:** PLANNED / NOT AUTHORIZED.
+- **18G — Public Release and Demo Assembly:** PLANNED / NOT AUTHORIZED.
 - **Milestone 7 closeout:** NOT AUTHORIZED.
 
 Slice 18B's deferred real-host checks remain:
@@ -25,8 +29,8 @@ Slice 18B's deferred real-host checks remain:
 - `SYSTEMD_USER_RUNTIME = DEFERRED_REAL_HOST_VALIDATION`
 - `WSL_DISTRO_LIFECYCLE = DEFERRED_REAL_HOST_VALIDATION`
 
-They are not implementation gates for Slices 18C–18F unless later evidence or
-authority explicitly makes them so.
+They are not implementation gates for the remaining Slices 18E–18G unless
+later evidence or authority explicitly makes them so.
 
 ## 18C — Universal Workstation Distribution & Release Optimization
 
@@ -191,14 +195,31 @@ For every displayed number, a reviewer should be able to ask, “Where did this
 value come from, what exactly does it mean, and how do you know it is correct?”
 Seneca's implementation and documentation should provide a precise answer.
 
-## 18E — Canonical Documentation and Portfolio Narrative
+## 18E — Storage Location and Data Root Selection
+
+**Status:** Scope Human accepted / design authorized / implementation not
+authorized. The proposed contract and current-repository seam audit are in
+[`slice18e_storage_location_design.md`](slice18e_storage_location_design.md).
+
+The objective is to productize the existing `OFFLINE_RAG_DATA_DIR` seam in
+Settings for supported workstation installations. A selected root applies
+only on next start. Saving a new root must not hot-switch runtime state or move,
+copy, merge, or delete data. Workstation persistence remains in the existing
+installation-level `workstation.env`; container storage remains
+deployment-controlled and read-only in Settings. Models-root changes and
+automatic data migration are excluded.
+
+Implementation requires separate Human authorization after design review.
+
+## 18F — Canonical Documentation and Portfolio Narrative
 
 ### Objective
 
 Make public repository documentation pristine, internally consistent,
 technically accurate, and understandable to a competent external reviewer
-without project history. 18E follows 18D so final documentation uses audited
-metric definitions rather than unstable semantics.
+without project history. 18F follows the 18D metric audit and the 18E storage
+design/implementation so final documentation describes settled behavior rather
+than unstable semantics.
 
 Canonical documentation should clearly answer:
 
@@ -229,7 +250,7 @@ navigation. Create or reconcile a canonical metric glossary from the accepted
 18D audit. Do not introduce unsupported performance, quality, security, or
 privacy claims.
 
-## 18F — Public Release and Demo Assembly
+## 18G — Public Release and Demo Assembly
 
 ### Objective
 
@@ -274,7 +295,7 @@ claims, broken links, and obsolete setup instructions.
 3. **No unsupported public claim.** Every public quality, performance,
    privacy, security, or architecture claim maps to accepted evidence or is
    explicitly labeled as design/limitation rather than observed fact.
-4. **No unnecessary product redesign.** Slices 18C–18F are release/product
+4. **No unnecessary product redesign.** Slices 18C–18G are release/product
    work. Do not reopen retrieval algorithms, Gold truth, reranker science,
    generation semantics, recovery, LangGraph, NeMo, `base.yaml` scientific
    promotion, publication-grade 9G, BETA-CONV-02, or other settled behavior
@@ -298,12 +319,16 @@ claims, broken links, and obsolete setup instructions.
     immutable CPU/CUDA containers
         ↓
 18D Product Metrics Audit and Explainability
-    every user-visible metric correct and defensible
+    COMPLETE / HUMAN ACCEPTED / PROMOTED
         ↓
-18E Canonical Documentation and Portfolio Narrative
+18E Storage Location and Data Root Selection
+    SCOPE HUMAN ACCEPTED / DESIGN AUTHORIZED /
+    IMPLEMENTATION NOT AUTHORIZED
+        ↓
+18F Canonical Documentation and Portfolio Narrative
     coherent, external-facing documentation
         ↓
-18F Public Release and Demo Assembly
+18G Public Release and Demo Assembly
     release / demo / final evidence-backed claims
         ↓
 Milestone 7 closeout (NOT AUTHORIZED)
@@ -318,9 +343,9 @@ RELEASE
 ```
 
 Slice 18C is **COMPLETE / HUMAN ACCEPTED / PROMOTED** at
-`c296e21afa740aa8fa7199d88ffda68c59d1be03`. Slice 18D implementation is
-**COMPLETE / INDEPENDENT REVIEW PENDING** at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`.
-This does not authorize promotion, registry publication, GitHub Release
-publication, cloud deployment, or work on Slices 18E–18F. Slices 18E–18F and
-Milestone 7 closeout remain
-**PLANNED / NOT AUTHORIZED**.
+`c296e21afa740aa8fa7199d88ffda68c59d1be03`. Slice 18D is **COMPLETE / HUMAN
+ACCEPTED / PROMOTED** at `8591aacc1810ba7265014c55a4d9327f7f755a02`. Slice 18E
+scope is Human accepted and design work is authorized; its implementation is
+not authorized. This does not authorize implementation under 18E, work on
+18F–18G, registry publication, GitHub Release publication, cloud deployment,
+or Milestone 7 closeout.
