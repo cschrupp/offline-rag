@@ -132,7 +132,7 @@ export function EngineeringSummaryPage() {
             </p>
             <div className="engineering-table-wrap">
               <table>
-                <caption>Slice 14C development comparison</caption>
+                <caption>Recorded development retrieval comparison</caption>
                 <thead>
                   <tr><th scope="col">Measure</th><th scope="col">Hybrid</th><th scope="col">Hybrid + reranker</th></tr>
                 </thead>
@@ -169,7 +169,7 @@ export function EngineeringSummaryPage() {
               winner. Semantic and lexical retrieval remain complementary
               candidate sources under the technical-document rationale.
             </p>
-            <p className="muted"><strong>How measured.</strong> The primary comparison is the frozen Slice 14C development population. Dense values come from a separate Slice 9H-P pilot.</p>
+            <p className="muted"><strong>How measured.</strong> The primary comparison comes from the accepted development retrieval population. Dense values come from a separate small retrieval pilot.</p>
             <EvidenceLink evidenceId={summary.evidence.retrievalId} />
             <EvidenceLink evidenceId={summary.evidence.pilotId}>Inspect dense pilot</EvidenceLink>
           </Card>
@@ -211,7 +211,7 @@ export function EngineeringSummaryPage() {
             <h3>Historical release-image optimization</h3>
             <div className="engineering-table-wrap">
               <table>
-                <caption>REL-01 historical packaging comparison</caption>
+                <caption>Historical release-image optimization</caption>
                 <thead><tr><th scope="col">Image</th><th scope="col">Recorded size</th></tr></thead>
                 <tbody>
                   <tr><th scope="row">Original packaging</th><td><EvidenceMetric metric={summary.images.original} /></td></tr>
@@ -220,11 +220,11 @@ export function EngineeringSummaryPage() {
                 </tbody>
               </table>
             </div>
-            <p className="muted">The current Slice 18C CPU image was measured separately at <EvidenceMetric metric={summary.images.current} />. The older REL-01 image is not the current image.</p>
+            <p className="muted">The current CPU image was measured separately at <EvidenceMetric metric={summary.images.current} />. The earlier optimized image is from a separate historical qualification, not the current image.</p>
             <details>
               <summary>Recorded end-to-end performance</summary>
               <p>In the recorded population ({summary.levelC.populationLabel}), median end-to-end generation-path latency was <EvidenceMetric metric={summary.levelC.endToEndP50} />. The generation-only p50 was <EvidenceMetric metric={summary.levelC.generationP50} /> in that same recorded population.</p>
-              <p className="muted">This is descriptive evidence from one recorded machine/model configuration, not a release latency target. The 14C retrieval p50 above comes from a different population and measures a different part of the path.</p>
+              <p className="muted">This is descriptive evidence from one recorded machine/model configuration, not a release latency target. The retrieval p50 above comes from a different population and measures a different part of the path.</p>
               <EvidenceLink evidenceId="performance.slice14-level-c" />
             </details>
             <p className="muted"><strong>How measured.</strong> Current runtime profiles and limits come from accepted product qualification/policy; historical image sizes and latency values retain their original populations.</p>

@@ -160,6 +160,7 @@ describe("18D-R semantic evidence projection", () => {
     const visibleText = summary.textContent ?? "";
     expect(visibleText).not.toMatch(/engmanifest_|indicatorcatalog_|perfrun_|perfsuite_/i);
     expect(visibleText).not.toMatch(/[0-9a-f]{40,}/i);
+    expect(visibleText).not.toMatch(/\b(?:Slice\s+\d|REL-\d|BETA-CONV|L[56])\b/i);
     expect(container.textContent).toContain("The Summary is the explanation; Evidence is the audit trail.");
     mock.restore();
   });

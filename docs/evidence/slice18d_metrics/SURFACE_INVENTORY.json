@@ -6600,7 +6600,7 @@
       "audit_disposition": "AUDITED_KEEP",
       "clearance": "cleared",
       "locations": [],
-      "source_sha256": "5453e10d9f63dd98d1753398ea6e7d203699d35f82e454067788efcf2a1394c5",
+      "source_sha256": "7008b9bfd49765518d4a73c7a5cbbf3437e3bb1859f4e34b7a238c49d17dfb24",
       "notes": "Portfolio presentation selects facts by evidence, fact, variant, prompt, and metric identities. It displays no independent scientific calculation or live telemetry."
     }
   ]
