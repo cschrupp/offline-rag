@@ -141,7 +141,7 @@ status passages remain historical.
 
 ```yaml
 implementation: COMPLETE
-candidate: 3577047f9507f67ca4b86f4b958b2893b6b0278e
+candidate: 111348d6f1c51fc3aba41ec03074a65cb7061241
 automated_qualification: PASS
 H1_presentation: PENDING
 H2_fresh_reviewer: PENDING
