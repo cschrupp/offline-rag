@@ -146,7 +146,9 @@ describe("16E presentation tokens and architecture", () => {
     const portability = screen.getByTestId("runtime-portability-flow");
     expect(portability.textContent ?? "").toMatch(/Installation capability/);
     expect(portability.textContent ?? "").toMatch(/AUTO resolver/);
-    expect(portability.textContent ?? "").toMatch(/CPU release → cpu_onnx_fp32_v1.* OR CUDA-capable install → cuda_fp16_v1/);
+    expect(portability.textContent ?? "").toMatch(/CPU and CUDA container distributions/);
+    expect(portability.textContent ?? "").toMatch(/CPU container or workstation → cpu_onnx_fp32_v1.* OR CUDA container or CUDA-enabled workstation → cuda_fp16_v1/);
+    expect(portability.textContent ?? "").toMatch(/earlier host\/profile-scoped CUDA runtime qualification did not itself create a release artifact/);
     expect(portability.querySelectorAll(".engineering-arch-card")).toHaveLength(4);
     const deployment = screen.getByTestId("deployment-architecture-flow");
     expect(deployment.textContent ?? "").toMatch(/grounded answer generation, explicit conversation transformations, and Gold authoring/);
@@ -175,6 +177,12 @@ describe("16E evaluation evidence UI", () => {
       screen.getAllByText(/RRF is the first fusion method because dense and lexical scores are not directly calibrated/).length,
     ).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Compute portability" })).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/The earlier L5 CUDA runtime qualification was host\/profile-scoped/).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Slice 18C subsequently qualified CPU and CUDA container distribution/).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Large-source qualification and admission" })).toBeInTheDocument();
     expect(
       screen.getAllByText(/Only when the desired set contains a PDF over the ordinary 25 MiB threshold/).length,

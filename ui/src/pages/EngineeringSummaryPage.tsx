@@ -121,6 +121,7 @@ export function EngineeringSummaryPage() {
               provenance, not semantic entailment or faithfulness.
             </p>
             <EvidenceLink evidenceId={summary.evidence.citationId} />
+            <EvidenceLink evidenceId={summary.evidence.configId}>Inspect configuration evidence</EvidenceLink>
           </Card>
 
           <Card className="stack" id="finding-passages">

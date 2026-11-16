@@ -97,6 +97,16 @@ describe("18D-R Engineering routes", () => {
         'a[href="/engineering/evidence#evidence-generation.grounding-and-external-boundary"]',
       ),
     ).toBeInTheDocument();
+    expect(
+      document.querySelector(
+        'a[href="/engineering/evidence#evidence-product.current-configuration"]',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector(
+        'a[href="/engineering/evidence#evidence-generation.slice10e"]',
+      ),
+    ).toBeInTheDocument();
     mock.restore();
   });
 });

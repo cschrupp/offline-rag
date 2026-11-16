@@ -56,13 +56,13 @@ export function EngineeringArchitecturePage() {
           title="Runtime portability"
           data-testid="runtime-portability-flow"
           layers={[
-            { title: "Installation capability", detail: "CPU-only release image or CUDA-capable local/developer installation" },
+            { title: "Installation capability", detail: "CPU and CUDA container distributions; universal CPU-first workstation package with optional, explicit CUDA enablement" },
             { title: "AUTO resolver", detail: "the unchanged application policy selects a supported runtime for the installation" },
-            { title: "Selected runtime profile", detail: "CPU release → cpu_onnx_fp32_v1 / CPUExecutionProvider OR CUDA-capable install → cuda_fp16_v1 / torch_st_v1" },
+            { title: "Selected runtime profile", detail: "CPU container or workstation → cpu_onnx_fp32_v1 / CPUExecutionProvider OR CUDA container or CUDA-enabled workstation → cuda_fp16_v1 / torch_st_v1" },
             { title: "Provisioned model assets", detail: "external to the application image and common to the supported runtime profiles" },
           ]}
           notes={[
-            "REL-01 qualifies the CPU release artifact. CUDA runtime qualification does not mean a CUDA release image exists.",
+            "An earlier host/profile-scoped CUDA runtime qualification did not itself create a release artifact; later distribution qualification established both CPU and CUDA container paths.",
             "CPU ONNX and CUDA FP16 are alternatives selected by the existing AUTO policy; presentation does not force CPU or add a resolver.",
           ]}
         />

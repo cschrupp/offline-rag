@@ -2852,7 +2852,7 @@
         },
         {
           "line": 61,
-          "source": "{ title: \"Selected runtime profile\", detail: \"CPU release \u2192 cpu_onnx_fp32_v1 / CPUExecutionProvider OR CUDA-capable install \u2192 cuda_fp16_v1 / torch_st_v1\" },"
+          "source": "{ title: \"Selected runtime profile\", detail: \"CPU container or workstation \u2192 cpu_onnx_fp32_v1 / CPUExecutionProvider OR CUDA container or CUDA-enabled workstation \u2192 cuda_fp16_v1 / torch_st_v1\" },"
         },
         {
           "line": 62,
@@ -2860,10 +2860,10 @@
         },
         {
           "line": 65,
-          "source": "\"REL-01 qualifies the CPU release artifact. CUDA runtime qualification does not mean a CUDA release image exists.\","
+          "source": "\"An earlier host/profile-scoped CUDA runtime qualification did not itself create a release artifact; later distribution qualification established both CPU and CUDA container paths.\","
         }
       ],
-      "source_sha256": "6c8ba2bac4360e412e02cf60b80a351fb5bae536a4c76d13f493763ac081e5e0",
+      "source_sha256": "19f7034b11462a42e5ea52ad7661686c2c9e740af58490a4962d4b8a7964385d",
       "notes": "Census includes wrappers. Only domain indicators use catalog semantics; navigation indices, identifiers, locators and transient loading/error UI are exempt."
     },
     {
@@ -6600,7 +6600,7 @@
       "audit_disposition": "AUDITED_KEEP",
       "clearance": "cleared",
       "locations": [],
-      "source_sha256": "7008b9bfd49765518d4a73c7a5cbbf3437e3bb1859f4e34b7a238c49d17dfb24",
+      "source_sha256": "fca793dd4e4da9c1f12200e676954c5fa314a31003ad0269c2f9d39cb33d27cc",
       "notes": "Portfolio presentation selects facts by evidence, fact, variant, prompt, and metric identities. It displays no independent scientific calculation or live telemetry."
     }
   ]

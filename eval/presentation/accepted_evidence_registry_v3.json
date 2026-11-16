@@ -2241,7 +2241,7 @@
       "decision_effect": "Distinguishes the CPU release artifact from runtime portability without implying a CUDA release image.",
       "claim_scope": "REL-01 final CPU release and bounded CPU/CUDA runtime qualifications.",
       "caveats": [
-        "CUDA qualification is host/profile-scoped and does not constitute a CUDA release artifact.",
+        "The earlier L5 CUDA runtime qualification was host/profile-scoped and did not itself create a CUDA release artifact; Slice 18C subsequently qualified CPU and CUDA container distribution.",
         "AUTO resolution remains unchanged; application config does not force CPU.",
         "Historical REL-01 subject; Slice 18C subsequently qualified CPU/CUDA release distribution. Do not read this record as the current distribution matrix."
       ],
@@ -2301,7 +2301,7 @@
           {
             "fact_id": "runtime-profiles",
             "title": "Runtime profiles",
-            "claim": "CPU ONNX FP32 and CUDA FP16 have separate bounded runtime qualifications; the CUDA result did not change production large-PDF admission or create a CUDA image.",
+            "claim": "The earlier CPU ONNX FP32 and CUDA FP16 runtime trials were bounded host/profile qualifications and did not change production large-PDF admission or create a release image. Slice 18C subsequently qualified the current CPU and CUDA distribution paths.",
             "source_ref_ids": [
               "l5-summary",
               "cuda-summary"

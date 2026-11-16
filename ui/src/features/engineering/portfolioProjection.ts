@@ -260,7 +260,7 @@ export function projectEngineeringSummary(manifest: EngineeringEvidenceManifest)
       retrievalId: retrieval.evidence_id,
       pilotId: pilot.evidence_id,
       generationId: generation.evidence_id,
-      generationCountsId: generationCounts.evidence_id,
+      generationCountsId: generation.evidence_id,
       citationId: generationCounts.evidence_id,
       capacityId: capacity.evidence_id,
       releaseId: release.evidence_id,
