@@ -31,6 +31,20 @@ function requireObject(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function requireNonEmptyString(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new PortfolioProjectionError(`Required evidence value is missing: ${label}`);
+  }
+  return value;
+}
+
+function requirePositiveInteger(value: unknown, label: string): number {
+  if (!Number.isInteger(value) || typeof value !== "number" || value <= 0) {
+    throw new PortfolioProjectionError(`Required evidence value is invalid: ${label}`);
+  }
+  return value;
+}
+
 function requireFact(record: EvidenceRecord, factId: string): Record<string, unknown> {
   const presentation = requireObject(record.presentation, `${record.evidence_id}.presentation`);
   const facts = presentation.facts;
@@ -187,6 +201,18 @@ function requireArm(
 
 export function projectEngineeringSummary(manifest: EngineeringEvidenceManifest) {
   const retrieval = requireRecord(manifest, "performance.slice14c");
+  const retrievalProvenance = requireObject(
+    retrieval.provenance.fields,
+    "performance.slice14c.provenance",
+  );
+  const retrievalMachine = requireObject(
+    retrievalProvenance.machine_profile,
+    "performance.slice14c.machine_profile",
+  );
+  const retrievalModels = requireObject(
+    retrievalProvenance.model_ids,
+    "performance.slice14c.model_ids",
+  );
   const hybrid = requireVariant(retrieval, "hybrid");
   const reranked = requireVariant(retrieval, "hybrid_rerank");
   const pilot = requireRecord(manifest, "retrieval.slice9hp");
@@ -202,9 +228,12 @@ export function projectEngineeringSummary(manifest: EngineeringEvidenceManifest)
   );
 
   const generation = requireRecord(manifest, "generation.slice10e");
+  const generationProvenance = requireObject(
+    generation.provenance.fields,
+    "generation.slice10e.provenance",
+  );
   const prompt = requirePrompt(generation, "prompt-grounded-v1");
   const promptMetrics = requireObject(prompt.metrics, "prompt-grounded-v1.metrics");
-  const generationProvenance = requireObject(generation.provenance.fields, "generation.slice10e.provenance");
   if (
     generationProvenance.same_model_self_judge !== true ||
     generationProvenance.same_endpoint_as_generator !== true
@@ -230,6 +259,10 @@ export function projectEngineeringSummary(manifest: EngineeringEvidenceManifest)
   const recovery = requireRecord(manifest, "recovery.slice12c");
   const security = requireRecord(manifest, "security.slice13b");
   const levelC = requireRecord(manifest, "performance.slice14-level-c");
+  const levelCProvenance = requireObject(
+    levelC.provenance.fields,
+    "performance.slice14-level-c.provenance",
+  );
   const levelCMetrics = requireObject(levelC.presentation.metrics, "performance.slice14-level-c.metrics");
   const levelCEndToEnd = requireNestedMetric(
     levelCMetrics,
@@ -242,10 +275,22 @@ export function projectEngineeringSummary(manifest: EngineeringEvidenceManifest)
     typeof learnedRouter.claim !== "string" ||
     typeof shippedActions.claim !== "string" ||
     typeof securityPrimary.interpretation !== "string" ||
+    typeof currentProfiles.claim !== "string" ||
     typeof recovery.presentation.efficacy_evidence !== "string" ||
-    typeof recovery.presentation.product_recovery !== "string"
+    typeof recovery.presentation.product_recovery !== "string" ||
+    typeof citationMembership.claim !== "string"
   ) {
     throw new PortfolioProjectionError("Required product-decision evidence is incomplete.");
+  }
+  if (
+    !learnedRouter.claim.includes("NO-GO") ||
+    !shippedActions.claim.includes("explicit application-owned transformations") ||
+    recovery.presentation.efficacy_evidence !== "Insufficient" ||
+    recovery.presentation.product_recovery !== "Disabled" ||
+    securityPrimary.campaign_outcome !== "Fail — fail-closed" ||
+    !securityPrimary.interpretation.toLowerCase().includes("unevaluable")
+  ) {
+    throw new PortfolioProjectionError("Required product-decision evidence changed.");
   }
   const fullOrderNote = String(pilotFullPopulation.ndcg_order_note ?? "");
   const humanOrderNote = String(pilotHumanPopulation.ndcg_order_note ?? "");
@@ -271,6 +316,18 @@ export function projectEngineeringSummary(manifest: EngineeringEvidenceManifest)
       securityId: security.evidence_id,
     },
     retrieval: {
+      cpuModel: requireNonEmptyString(
+        retrievalMachine.cpu_model,
+        "performance.slice14c.machine_profile.cpu_model",
+      ),
+      embeddingModel: requireNonEmptyString(
+        retrievalModels.embedding,
+        "performance.slice14c.model_ids.embedding",
+      ),
+      rerankerModel: requireNonEmptyString(
+        retrievalModels.reranker,
+        "performance.slice14c.model_ids.reranker",
+      ),
       hybridQuality: requireNestedMetric(hybrid, "quality", "ndcg_at_10", "hybrid"),
       hybridLatency: requireNestedMetric(hybrid, "latency", "retrieval_p50", "hybrid"),
       rerankedQuality: requireNestedMetric(reranked, "quality", "ndcg_at_10", "hybrid_rerank"),
@@ -292,7 +349,10 @@ export function projectEngineeringSummary(manifest: EngineeringEvidenceManifest)
       invalidCitationRate: requireNestedMetric(promptMetrics, "", "citation_invalid_rate", "generation/prompt-grounded-v1"),
       noInvalidCitations: requireNestedMetric(promptMetrics, "", "citation_invalid_rate", "generation/prompt-grounded-v1").value === 0,
       selfJudgeIsSameModelAndEndpoint: true,
-      citationMembershipClaim: String(citationMembership.claim ?? ""),
+      generatorModel: requireNonEmptyString(
+        generationProvenance.generator_model_id,
+        "generation.slice10e.provenance.generator_model_id",
+      ),
     },
     capacity: {
       pdfLimit: requireFactMetric(capacity, "product-limit", "pdf-limit"),
@@ -304,18 +364,13 @@ export function projectEngineeringSummary(manifest: EngineeringEvidenceManifest)
       optimized: requireFactMetric(release, "historical-image-optimization", "optimized-image-bytes"),
       reduction: requireFactMetric(release, "historical-image-optimization", "image-reduction"),
     },
-    runtime: {
-      currentProfilesClaim: String(currentProfiles.claim ?? ""),
-      currentImageFactId: "current-cpu-image",
-    },
-    decisions: {
-      recoveryStatus: String(recovery.presentation.product_recovery ?? ""),
-      recoveryEfficacy: String(recovery.presentation.efficacy_evidence ?? ""),
-    },
+    runtime: { currentImageFactId: "current-cpu-image" },
+    decisions: {},
     levelC: {
       endToEndP50: levelCEndToEnd,
       generationP50: requireNestedMetric(levelCMetrics, "", "generation_p50", "level-c"),
-      populationLabel: String(levelCEndToEnd.population?.label ?? levelC.claim_scope),
+      cases: requirePositiveInteger(levelCProvenance.cases, "performance.slice14-level-c.provenance.cases"),
+      measured: requirePositiveInteger(levelCProvenance.measured, "performance.slice14-level-c.provenance.measured"),
     },
   };
 }

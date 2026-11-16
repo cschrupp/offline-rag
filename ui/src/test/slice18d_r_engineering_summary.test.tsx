@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { cleanup, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EngineeringEvidenceManifest } from "../features/engineering/evidenceTypes";
 import { renderApp } from "./render";
 import { installFetchMock, jsonResponse } from "./mockApi";
@@ -15,6 +15,7 @@ const manifestPath = join(
 const sourceManifest = JSON.parse(
   readFileSync(manifestPath, "utf8"),
 ) as EngineeringEvidenceManifest;
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 type MutableRecord = {
   evidence_id: string;
@@ -22,7 +23,16 @@ type MutableRecord = {
 };
 type MutableManifest = { records: MutableRecord[] };
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  if (originalScrollIntoView) {
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+  } else {
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+  }
+});
 
 function installMocks(manifest: unknown = sourceManifest) {
   return installFetchMock(async ({ url, method }) => {
@@ -97,17 +107,59 @@ describe("18D-R Engineering routes", () => {
         'a[href="/engineering/evidence#evidence-generation.grounding-and-external-boundary"]',
       ),
     ).toBeInTheDocument();
-    expect(
-      document.querySelector(
-        'a[href="/engineering/evidence#evidence-product.current-configuration"]',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "How the citation check works" })).toHaveAttribute(
+      "href",
+      "/engineering/evidence#evidence-generation.grounding-and-external-boundary",
+    );
     expect(
       document.querySelector(
         'a[href="/engineering/evidence#evidence-generation.slice10e"]',
       ),
     ).toBeInTheDocument();
     mock.restore();
+  });
+
+  it("scrolls to a Summary evidence card after the Evidence manifest renders", async () => {
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      return window.setTimeout(() => callback(performance.now()), 0);
+    });
+    vi.stubGlobal("cancelAnimationFrame", (frame: number) => window.clearTimeout(frame));
+    const summaryMock = installMocks();
+    renderApp("/engineering/summary");
+    const summaryLink = await screen.findByRole("link", { name: "How the citation check works" });
+    const summaryHref = summaryLink.getAttribute("href");
+    expect(summaryHref).toBe(
+      "/engineering/evidence#evidence-generation.grounding-and-external-boundary",
+    );
+    summaryMock.restore();
+    cleanup();
+
+    let resolveManifest!: (response: Response) => void;
+    const manifestResponse = new Promise<Response>((resolve) => {
+      resolveManifest = resolve;
+    });
+    const evidenceMock = installFetchMock(async ({ url }) => {
+      if (url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (url === "/v1/workspaces") return jsonResponse([]);
+      if (url === "/evidence/engineering-evidence-v3.json") return manifestResponse;
+      return jsonResponse({ error: { code: "not_found", message: "x" } }, { status: 404 });
+    });
+    renderApp(summaryHref!);
+    expect(
+      document.getElementById("evidence-generation.grounding-and-external-boundary"),
+    ).not.toBeInTheDocument();
+    resolveManifest(jsonResponse(sourceManifest));
+
+    const target = await screen.findByRole("heading", { name: "Grounding and external inference boundary" });
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(target.closest("[id^='evidence-']")).toHaveAttribute(
+      "id",
+      "evidence-generation.grounding-and-external-boundary",
+    );
+    expect(scrollIntoView.mock.contexts[0]).toBe(target.closest("[id^='evidence-']"));
+    evidenceMock.restore();
   });
 });
 
@@ -139,10 +191,10 @@ describe("18D-R semantic evidence projection", () => {
     const mock = installMocks(fixture);
     renderApp("/engineering/summary");
     const summary = await screen.findByTestId("engineering-summary");
-    expect(within(summary).getByText("0.321")).toBeInTheDocument();
+    expect(within(summary).getAllByText("0.321").length).toBeGreaterThan(0);
     expect(within(summary).getByText("50.0%")).toBeInTheDocument();
     expect(within(summary).getByText("1 MiB")).toBeInTheDocument();
-    expect(within(summary).getByText("2 MiB")).toBeInTheDocument();
+    expect(within(summary).queryByText("2 MiB")).not.toBeInTheDocument();
     expect(within(summary).getByRole("heading", { name: /Seneca answered 11 of 22/ })).toBeInTheDocument();
     mock.restore();
   });
@@ -163,7 +215,7 @@ describe("18D-R semantic evidence projection", () => {
     mock.restore();
   });
 
-  it("keeps internal evidence identifiers and hash families out of the default flow", async () => {
+  it("renders reader-facing copy without audit vocabulary or internal identifiers from the bundled manifest", async () => {
     const mock = installMocks();
     const { container } = renderApp("/engineering/summary");
     const summary = await screen.findByTestId("engineering-summary");
@@ -171,7 +223,23 @@ describe("18D-R semantic evidence projection", () => {
     expect(visibleText).not.toMatch(/engmanifest_|indicatorcatalog_|perfrun_|perfsuite_/i);
     expect(visibleText).not.toMatch(/[0-9a-f]{40,}/i);
     expect(visibleText).not.toMatch(/\b(?:Slice\s+\d|REL-\d|BETA-CONV|L[56])\b/i);
-    expect(container.textContent).toContain("The Summary is the explanation; Evidence is the audit trail.");
+    expect(visibleText).not.toMatch(/\b(?:EvidenceUnit|A-to-C)\b/i);
+    expect(visibleText).not.toMatch(/\b(?:accepted|recorded|observed|historical|population|fixture|membership|entailment|provenance|lane)\b/i);
+    const readerCopy = Array.from(
+      summary.querySelectorAll("h2, h3, p, summary"),
+    ).map((element) => element.textContent ?? "").join(" ");
+    expect(readerCopy.trim().split(/\s+/).length).toBeLessThan(700);
+    expect(visibleText).toContain("Re-ranking improved search quality, at a cost in speed.");
+    expect(visibleText).toContain("Questions answered");
+    expect(visibleText).toContain("Built, switched off");
+    expect(within(summary).getAllByRole("link").filter((link) =>
+      link.getAttribute("href")?.startsWith("/engineering/evidence#"),
+    )).toHaveLength(5);
+    expect(within(summary).getByRole("link", { name: "View source" })).toHaveAttribute(
+      "href",
+      "https://github.com/cschrupp/offline-rag",
+    );
+    expect(container.textContent).toContain("Every number on this page can be traced to its source.");
     mock.restore();
   });
 });

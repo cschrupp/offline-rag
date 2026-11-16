@@ -1769,6 +1769,13 @@ button.snapshot-badge {
   font-weight: 700;
 }
 
+.engineering-summary-measurement dd span {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .engineering-summary-story h3 {
   margin-top: 0;
 }

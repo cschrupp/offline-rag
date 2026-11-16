@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import {
   EvidenceManifestError,
@@ -7,6 +8,7 @@ import {
 } from "../features/engineering/evidenceClient";
 import { EngineeringNav } from "../features/engineering/EngineeringNav";
 import { EvidenceMetric } from "../features/engineering/EvidenceMetric";
+import { MetricBarChart } from "../features/engineering/MetricBarChart";
 import {
   PortfolioProjectionError,
   projectEngineeringSummary,
@@ -27,13 +29,6 @@ function Measurement({ label, metric }: { label: string; metric: Metric }) {
       <dd><EvidenceMetric metric={metric} /></dd>
     </div>
   );
-}
-
-function comparisonDirection(candidate: Metric, baseline: Metric): string {
-  if (candidate.value === null || baseline.value === null) return "unavailable";
-  if (candidate.value > baseline.value) return "higher";
-  if (candidate.value < baseline.value) return "lower";
-  return "the same";
 }
 
 export function EngineeringSummaryPage() {
@@ -85,199 +80,234 @@ export function EngineeringSummaryPage() {
       const failures = summary.generation.failures.value;
       const grade2Hits = summary.generation.grade2Hits.value;
       const grade2Eligible = summary.generation.grade2Eligible.value;
-      const qualityDirection = comparisonDirection(
-        summary.retrieval.rerankedQuality,
-        summary.retrieval.hybridQuality,
-      );
-      const latencyDirection = comparisonDirection(
-        summary.retrieval.rerankedLatency,
-        summary.retrieval.hybridLatency,
-      );
       content = (
         <div className="stack engineering-summary" data-testid="engineering-summary">
           <Card className="stack" id="what-seneca-does">
             <h2>Ask technical documents a question and get an answer you can inspect.</h2>
             <p>
-              Seneca is a local-first knowledge workspace. It parses and indexes
-              technical documents, finds relevant passages through semantic and
-              lexical retrieval, reranks candidates, and generates a cited answer.
-              Standalone operation is local and strict-offline by default; an
-              operator may separately configure an approved optional external
-              generation endpoint.
+              Seneca is a question-answering workspace for technical documents on
+              your machine. It reads PDFs, finds relevant passages and writes cited
+              answers. After provisioning, document processing, retrieval and
+              generation stay local by default. Operators may send only answer
+              writing to an approved external model.
             </p>
             <ol className="engineering-summary-process" aria-label="How a grounded answer is produced">
-              <li>Technical documents</li>
-              <li>Retrieve relevant passages</li>
-              <li>Fuse candidates and rerank evidence</li>
-              <li>Generate an answer from the selected context</li>
-              <li>Check citation membership and resolve source provenance</li>
+              <li>Read and index the documents</li>
+              <li>Search by keyword and by meaning</li>
+              <li>Merge results and re-rank them</li>
+              <li>Write an answer from the top passages</li>
+              <li>Check every citation against those passages</li>
             </ol>
             <p className="muted">
-              {summary.generation.citationMembershipClaim}
+              The citation check confirms that each citation points to a passage
+              retrieved for that question. It does not judge whether the passage
+              supports the sentence.
             </p>
             <p className="muted">
-              <strong>How measured.</strong> This describes the accepted
-              request/evidence path; the citation check confirms membership and
-              provenance, not semantic entailment or faithfulness.
+              <strong>Built with:</strong> FastAPI · React · Docling · Qdrant Local ·
+              Qwen3-Embedding-0.6B · bge-reranker-v2-m3 · Ollama
             </p>
-            <EvidenceLink evidenceId={summary.evidence.citationId} />
-            <EvidenceLink evidenceId={summary.evidence.configId}>Inspect configuration evidence</EvidenceLink>
+            <EvidenceLink evidenceId={summary.evidence.citationId}>How the citation check works</EvidenceLink>
           </Card>
 
           <Card className="stack" id="finding-passages">
-            <h2>Reranking improved observed retrieval quality, with additional latency.</h2>
+            <h2>Re-ranking improved search quality, at a cost in speed.</h2>
             <p>
-              nDCG@10 describes how relevant passages are ordered among the
-              first ten results. Higher values indicate better observed ranking;
-              this is a retrieval measure, not answer accuracy.
+              Ranking quality (nDCG@10) scores how well relevant passages rank in
+              the first ten results, from 0 to 1. It measures search, not answer accuracy.
             </p>
             <div className="engineering-table-wrap">
               <table>
-                <caption>Recorded development retrieval comparison</caption>
-                <thead>
-                  <tr><th scope="col">Measure</th><th scope="col">Hybrid</th><th scope="col">Hybrid + reranker</th></tr>
-                </thead>
+                <caption>Search quality and median search time</caption>
+                <thead><tr><th scope="col">Measure</th><th scope="col">Keyword + meaning</th><th scope="col">With re-ranking</th></tr></thead>
                 <tbody>
                   <tr>
-                    <th scope="row">nDCG@10</th>
+                    <th scope="row">Ranking quality</th>
                     <td><EvidenceMetric metric={summary.retrieval.hybridQuality} /></td>
                     <td><EvidenceMetric metric={summary.retrieval.rerankedQuality} /></td>
                   </tr>
                   <tr>
-                    <th scope="row">Retrieval p50</th>
+                    <th scope="row">Median search time</th>
                     <td><EvidenceMetric metric={summary.retrieval.hybridLatency} /></td>
                     <td><EvidenceMetric metric={summary.retrieval.rerankedLatency} /></td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            <MetricBarChart
+              caption="Ranking quality on a scale from 0 to 1"
+              rows={[
+                { id: "keyword-meaning", label: "Keyword + meaning", metric: summary.retrieval.hybridQuality },
+                { id: "with-reranking", label: "With re-ranking", metric: summary.retrieval.rerankedQuality },
+              ]}
+              domainMax={1}
+              valueHeading="Ranking quality"
+            />
             <p>
-              In this recorded comparison, reranking produced {qualityDirection}
-              observed ranking quality and {latencyDirection} retrieval latency.
-              Technical documents
-              often benefit from both lexical matching of exact terms and
-              semantic search for related wording. Keeping reranking separate
-              lets candidate retrieval and cross-encoder ranking be measured
-              independently.
+              Re-ranking raised quality from{" "}
+              <EvidenceMetric metric={summary.retrieval.hybridQuality} /> to{" "}
+              <EvidenceMetric metric={summary.retrieval.rerankedQuality} /> and
+              median search time from{" "}
+              <EvidenceMetric metric={summary.retrieval.hybridLatency} /> to{" "}
+              <EvidenceMetric metric={summary.retrieval.rerankedLatency} />.
             </p>
             <p className="muted">
-              A separate small pilot recorded dense-only variants at{" "}
-              <EvidenceMetric metric={summary.retrieval.densePilotC} /> and{" "}
-              <EvidenceMetric metric={summary.retrieval.densePilotD} /> nDCG@10.
-              The top two dense variants changed order on the human-only
-              sensitivity population.
-              These small experiments did not establish a universal production
-              winner. Semantic and lexical retrieval remain complementary
-              candidate sources under the technical-document rationale.
+              Keyword search stays alongside meaning-based search because exact
+              identifiers, codes and names are reliably found by keywords.
             </p>
-            <p className="muted"><strong>How measured.</strong> The primary comparison comes from the accepted development retrieval population. Dense values come from a separate small retrieval pilot.</p>
-            <EvidenceLink evidenceId={summary.evidence.retrievalId} />
-            <EvidenceLink evidenceId={summary.evidence.pilotId}>Inspect dense pilot</EvidenceLink>
+            <p className="muted">
+              Two meaning-only variants scored slightly higher in a small pilot (
+              <EvidenceMetric metric={summary.retrieval.densePilotC} /> and{" "}
+              <EvidenceMetric metric={summary.retrieval.densePilotD} />), and
+              their order reversed on human-graded questions. This small test
+              cannot separate results that close, so no variant is claimed as best.
+            </p>
+            <p className="muted">
+              <strong>How measured.</strong> Development benchmark on{" "}
+              {summary.retrieval.cpuModel}{" "}with {summary.retrieval.embeddingModel} and{" "}
+              {summary.retrieval.rerankerModel}.
+              Timings are not a speed target.
+            </p>
+            <EvidenceLink evidenceId={summary.evidence.retrievalId}>Inspect the retrieval evidence</EvidenceLink>
           </Card>
 
           <Card className="stack" id="answers-you-can-check">
             <h2>
-              Seneca answered {answered} of {total} development questions;{" "}
+              Seneca answered {answered} of {total} test questions, and{" "}
               {summary.generation.noInvalidCitations
-                ? "citation membership validation recorded no invalid citation IDs."
-                : "the reported invalid-citation rate was nonzero."}
+                ? "no answer cited a passage outside its retrieved set."
+                : "some answers cited a passage outside their retrieved set."}
             </h2>
             <dl className="engineering-summary-measurements">
-              <Measurement label={`${answered} of ${total} questions answered`} metric={summary.generation.answerRate} />
-              <Measurement label={`${failures} of ${total} generation failures`} metric={summary.generation.failureRate} />
-              <Measurement label={`${grade2Hits} of ${grade2Eligible} top-grade citation hits`} metric={summary.generation.grade2Rate} />
-              <Measurement label="Invalid citation rate" metric={summary.generation.invalidCitationRate} />
+              <div className="engineering-summary-measurement">
+                <dt>Questions answered</dt>
+                <dd>{answered} of {total}<span><EvidenceMetric metric={summary.generation.answerRate} /></span></dd>
+              </div>
+              <div className="engineering-summary-measurement">
+                <dt>Failed to generate</dt>
+                <dd>{failures} of {total}<span><EvidenceMetric metric={summary.generation.failureRate} /></span></dd>
+              </div>
+              <div className="engineering-summary-measurement">
+                <dt>Answers citing a top-rated passage</dt>
+                <dd>{grade2Hits} of {grade2Eligible}<span><EvidenceMetric metric={summary.generation.grade2Rate} /></span></dd>
+              </div>
+              <Measurement label="Invalid citations" metric={summary.generation.invalidCitationRate} />
             </dl>
-            <p>{failures} unanswered cases were generation failures, not model abstentions.</p>
-            <p className="muted">
-              This was a development fixture. The generator and judge used the
-              same model and endpoint, so self-judge results are not independent
-              accuracy evidence. Citation membership validation does not prove
-              that cited passages semantically support every generated claim.
+            <p>
+              The {failures} unanswered questions failed during generation and
+              were reported as failures, not answers. The third tile covers the{" "}
+              {grade2Eligible} answered questions that had a top-rated reference
+              passage; {grade2Hits} cited one.
             </p>
-            <p className="muted"><strong>How measured.</strong> Counts and rates are reported for the positive development population; grade-2 citation hits use the explicitly reported eligible subset.</p>
-            <EvidenceLink evidenceId={summary.evidence.generationCountsId} />
-            <EvidenceLink evidenceId={summary.evidence.generationId}>Inspect prompt comparison</EvidenceLink>
+            <p className="muted">
+              Answer quality was graded by the same model that wrote the answers.
+              Those grades are a development signal, so they are not shown on this
+              page.
+            </p>
+            <p className="muted">
+              <strong>How measured.</strong> {total} development questions; answers
+              were written by the local {summary.generation.generatorModel} model.
+            </p>
+            <EvidenceLink evidenceId={summary.evidence.generationCountsId}>Inspect the answer evidence</EvidenceLink>
           </Card>
 
           <Card className="stack" id="local-execution">
-            <h2>Local execution works across CPU and compatible NVIDIA GPU systems.</h2>
-            <p>{summary.runtime.currentProfilesClaim}</p>
+            <h2>Seneca runs on a CPU alone, and uses an NVIDIA GPU when one is available.</h2>
+            <p>
+              The search model has CPU and half-precision NVIDIA GPU paths. Seneca
+              detects hardware and selects a supported path automatically. Both
+              paths have been qualified on real installations.
+            </p>
             <div className="engineering-summary-two-column">
-              <div><h3>Current PDF product limit</h3><p><EvidenceMetric metric={summary.capacity.pdfLimit} /></p></div>
-              <div><h3>Large-PDF admission threshold</h3><p><EvidenceMetric metric={summary.capacity.threshold} /></p>
-                <p className="muted">A PDF above this ordinary threshold activates additional CPU-profile and host-resource admission checks.</p>
+              <div><h3>Largest PDF accepted</h3><p><EvidenceMetric metric={summary.capacity.pdfLimit} /></p></div>
+              <div><h3>Extra checks above</h3><p><EvidenceMetric metric={summary.capacity.threshold} /></p>
+                <p className="muted">Before accepting a larger PDF, Seneca checks available memory and disk space.</p>
               </div>
             </div>
-            <h3>Historical release-image optimization</h3>
+            <h3>CPU container image size</h3>
             <div className="engineering-table-wrap">
               <table>
-                <caption>Historical release-image optimization</caption>
-                <thead><tr><th scope="col">Image</th><th scope="col">Recorded size</th></tr></thead>
+                <caption className="visually-hidden">CPU container image sizes before and after optimization</caption>
+                <thead><tr><th scope="col">Stage</th><th scope="col">Image size</th></tr></thead>
                 <tbody>
-                  <tr><th scope="row">Original packaging</th><td><EvidenceMetric metric={summary.images.original} /></td></tr>
-                  <tr><th scope="row">Optimized CPU image</th><td><EvidenceMetric metric={summary.images.optimized} /></td></tr>
-                  <tr><th scope="row">Recorded A-to-C reduction</th><td><EvidenceMetric metric={summary.images.reduction} /></td></tr>
+                  <tr><th scope="row">Before</th><td><EvidenceMetric metric={summary.images.original} /></td></tr>
+                  <tr><th scope="row">After</th><td><EvidenceMetric metric={summary.images.optimized} /></td></tr>
+                  <tr><th scope="row">Reduction</th><td><EvidenceMetric metric={summary.images.reduction} /></td></tr>
                 </tbody>
               </table>
             </div>
-            <p className="muted">The current CPU image was measured separately at <EvidenceMetric metric={summary.images.current} />. The earlier optimized image is from a separate historical qualification, not the current image.</p>
+            <p>
+              The CPU release image was reduced from{" "}
+              <EvidenceMetric metric={summary.images.original} /> to{" "}
+              <EvidenceMetric metric={summary.images.optimized} />, a{" "}
+              <EvidenceMetric metric={summary.images.reduction} /> reduction.
+            </p>
+            <p className="muted">
+              Removing the CUDA/GPU dependencies was a major contributor; the
+              packaging test also changed other dependencies and build steps.
+            </p>
             <details>
-              <summary>Recorded end-to-end performance</summary>
-              <p>In the recorded population ({summary.levelC.populationLabel}), median end-to-end generation-path latency was <EvidenceMetric metric={summary.levelC.endToEndP50} />. The generation-only p50 was <EvidenceMetric metric={summary.levelC.generationP50} /> in that same recorded population.</p>
-              <p className="muted">This is descriptive evidence from one recorded machine/model configuration, not a release latency target. The retrieval p50 above comes from a different population and measures a different part of the path.</p>
-              <EvidenceLink evidenceId="performance.slice14-level-c" />
+              <summary>How long does a full answer take?</summary>
+              <p>
+                With a large local model, a full question took a median of{" "}
+                <EvidenceMetric metric={summary.levelC.endToEndP50} />; answer writing
+                alone took <EvidenceMetric metric={summary.levelC.generationP50} />.
+                One machine and model were measured over {summary.levelC.cases} questions
+                and {summary.levelC.measured} runs. This is not a speed target; search
+                time in Section 2 was measured separately.
+              </p>
+              <EvidenceLink evidenceId="performance.slice14-level-c">Inspect the runtime evidence</EvidenceLink>
             </details>
-            <p className="muted"><strong>How measured.</strong> Current runtime profiles and limits come from accepted product qualification/policy; historical image sizes and latency values retain their original populations.</p>
-            <EvidenceLink evidenceId={summary.evidence.runtimeId} />
-            <EvidenceLink evidenceId={summary.evidence.capacityId}>Inspect capacity evidence</EvidenceLink>
-            <EvidenceLink evidenceId={summary.evidence.releaseId}>Inspect release evidence</EvidenceLink>
           </Card>
 
           <Card className="stack" id="not-shipped">
-            <h2>Several capabilities were held back when the evidence did not justify shipping them.</h2>
+            <h2>Test results decided what shipped: two features were held back, and one security test is still open.</h2>
             <div className="engineering-summary-story">
-              <h3>Learned free-text router</h3>
+              <h3>Free-text conversation routing</h3>
+              <p><strong>Rejected</strong></p>
               <p>
-                A learned router was tested, but an unseen Spanish request that
-                mixed a factual question with a conversation action entered the
-                conversation-only lane. That lane does not retrieve evidence,
-                so the router crossed the grounding boundary and was rejected.
+                A model routed typed requests around document search. The rule
+                prohibited this for factual questions, but an unseen Spanish
+                request combined a rewrite with a factual question and bypassed
+                search. Seneca rejected the router and offers Summarize, Simplify
+                and Translate as explicit actions. Factual questions still use search.
               </p>
-              <p><strong>Status:</strong> Rejected by the grounding safety rule. Explicit application-owned transformations were shipped instead; ordinary factual requests remain grounded.</p>
             </div>
             <div className="engineering-summary-story">
               <h3>Automatic query retry</h3>
-              <p><strong>Status:</strong> Built and evaluated; evidence was insufficient, so product recovery remains disabled.</p>
-              <p>{summary.decisions.recoveryEfficacy} · {summary.decisions.recoveryStatus}</p>
+              <p><strong>Built, switched off</strong></p>
+              <p>
+                When results are weak, Seneca can rewrite the question and retry.
+                It was built and tested, but did not show enough benefit, so it remains off.
+              </p>
             </div>
             <div className="engineering-summary-story">
-              <h3>Security campaign</h3>
+              <h3>Adversarial security test</h3>
+              <p><strong>Open</strong></p>
               <p>
-                The adversarial campaign completed, but a required security
-                measurement could not be evaluated on its accepted test surface.
-                The campaign therefore failed closed under its rules.
+                An attack campaign tested question-answering. One required check
+                could not run, which the rules count as a failure. The campaign is
+                marked failed. This does not show attacks succeeded or establish
+                that Seneca is secure.
               </p>
-              <p><strong>Status:</strong> Fail-closed because a required measurement could not be evaluated. This does not mean every attack succeeded, and it does not establish security completeness.</p>
             </div>
-            <p className="engineering-takeaway">Predefined gates kept uncertain behavior out of the product instead of treating implementation completion as proof that a capability should ship.</p>
-            <p className="muted"><strong>How measured.</strong> These decisions are summarized from the accepted conversation, recovery, and security records; no new campaign was run for this page.</p>
-            <EvidenceLink evidenceId={summary.evidence.decisionsId} />
-            <EvidenceLink evidenceId={summary.evidence.recoveryId}>Inspect recovery evidence</EvidenceLink>
-            <EvidenceLink evidenceId={summary.evidence.securityId}>Inspect security evidence</EvidenceLink>
+            <p className="engineering-takeaway">Code ships only when it meets the rule set before testing.</p>
+            <EvidenceLink evidenceId={summary.evidence.decisionsId}>Inspect the decision evidence</EvidenceLink>
           </Card>
 
           <Card className="stack" id="verify-claims">
-            <h2>The Summary is the explanation; Evidence is the audit trail.</h2>
+            <h2>Every number on this page can be traced to its source.</h2>
             <p>
-              Summary measurements are projected from versioned accepted
-              evidence. The Evidence page retains the source links, populations,
-              qualifications, and decision context behind those claims.
+              The numbers above are read from a versioned evidence file rather
+              than typed into the page. For each result, the Evidence page shows
+              the test set, exact stored value and source file with its checksum.
+              If the evidence file is missing or invalid, the Summary shows an
+              error instead of substituting numbers.
             </p>
-            <p className="muted"><strong>How measured.</strong> The bundled manifest is validated before these semantic selections are rendered. Missing or incompatible evidence makes the Summary unavailable instead of substituting stale values.</p>
             <div className="row">
-              <Link className="button" to="/engineering/evidence">Inspect evidence</Link>
-              <Link className="button button-secondary" to="/engineering/architecture">See architecture</Link>
+              <Button to="/engineering/evidence" variant="primary">Inspect the evidence</Button>
+              <Button to="/engineering/architecture" variant="secondary">See the architecture</Button>
+              <a className="btn btn-secondary" href="https://github.com/cschrupp/offline-rag" target="_blank" rel="noreferrer">View source</a>
             </div>
           </Card>
         </div>

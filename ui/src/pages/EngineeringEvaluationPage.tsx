@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Badge } from "../components/Badge";
 import { Card } from "../components/Card";
 import {
@@ -738,10 +739,20 @@ function SecuritySection({
 }
 
 export function EngineeringEvaluationPage() {
+  const location = useLocation();
   const query = useQuery({
     queryKey: ["engineering-evidence-manifest"],
     queryFn: ({ signal }) => fetchEngineeringEvidenceManifest(signal),
   });
+
+  useEffect(() => {
+    if (!query.isSuccess || !location.hash) return;
+    const targetId = decodeURIComponent(location.hash.slice(1));
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.hash, query.data, query.isSuccess]);
 
   const content = useMemo(() => {
     if (query.isLoading) {
