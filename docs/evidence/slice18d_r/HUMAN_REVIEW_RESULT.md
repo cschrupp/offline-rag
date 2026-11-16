@@ -1,6 +1,6 @@
 # Slice 18D-R — Human Review Result
 
-Implementation candidate: `3577047f9507f67ca4b86f4b958b2893b6b0278e`
+Implementation candidate: `111348d6f1c51fc3aba41ec03074a65cb7061241`
 
 This record is prepared for the post-implementation product review. No Human
 presentation or fresh-reviewer session has been performed or inferred by the
@@ -15,8 +15,8 @@ H2_RESULT: PENDING
 ## H1 — Human owner presentation
 
 ```yaml
-candidate_commit: 3577047f9507f67ca4b86f4b958b2893b6b0278e
-build_identity: 3577047f9507f67ca4b86f4b958b2893b6b0278e
+candidate_commit: 111348d6f1c51fc3aba41ec03074a65cb7061241
+build_identity: 111348d6f1c51fc3aba41ec03074a65cb7061241
 presenter: Carlos
 duration: PENDING
 confusion_encountered: PENDING
@@ -28,7 +28,7 @@ disposition: PENDING
 ```yaml
 reviewer_name: PENDING
 prior_familiarity: PENDING
-candidate_commit: 3577047f9507f67ca4b86f4b958b2893b6b0278e
+candidate_commit: 111348d6f1c51fc3aba41ec03074a65cb7061241
 review_duration: PENDING
 misunderstandings: PENDING
 disposition: PENDING
