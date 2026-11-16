@@ -85,11 +85,11 @@ export function EngineeringSummaryPage() {
           <Card className="stack" id="what-seneca-does">
             <h2>Ask technical documents a question and get an answer you can inspect.</h2>
             <p>
-              Seneca is a question-answering workspace for technical documents on
-              your machine. It reads PDFs, finds relevant passages and writes cited
-              answers. After provisioning, document processing, retrieval and
-              generation stay local by default. Operators may send only answer
-              writing to an approved external model.
+              Seneca answers questions about technical documents on your machine.
+              It reads PDFs, finds relevant passages and writes answers with
+              citations. After setup, document processing, retrieval and
+              generation stay local by default. An operator may send only
+              answer-writing to an approved external model.
             </p>
             <ol className="engineering-summary-process" aria-label="How a grounded answer is produced">
               <li>Read and index the documents</li>
@@ -301,8 +301,8 @@ export function EngineeringSummaryPage() {
               The numbers above are read from a versioned evidence file rather
               than typed into the page. For each result, the Evidence page shows
               the test set, exact stored value and source file with its checksum.
-              If the evidence file is missing or invalid, the Summary shows an
-              error instead of substituting numbers.
+              Missing or invalid evidence produces an error, never substituted
+              numbers.
             </p>
             <div className="row">
               <Button to="/engineering/evidence" variant="primary">Inspect the evidence</Button>
@@ -317,8 +317,11 @@ export function EngineeringSummaryPage() {
   return (
     <div className="stack engineering-page">
       <header className="stack engineering-page-header" style={{ gap: "0.5rem" }}>
-        <h1>Engineering summary</h1>
-        <p style={{ margin: 0 }}>What the evidence says about Seneca’s design, behavior, and trade-offs.</p>
+        <h1>Engineering</h1>
+        <p style={{ margin: 0 }}>
+          What Seneca does, how well it worked in testing, what was left out, and
+          how to check each claim.
+        </p>
         <EngineeringNav />
       </header>
       {content}

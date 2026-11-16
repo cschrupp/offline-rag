@@ -74,8 +74,8 @@ function factMetric(
 
 describe("18D-R Engineering routes", () => {
   it.each([
-    ["/engineering", "Engineering summary"],
-    ["/engineering/summary", "Engineering summary"],
+    ["/engineering", "Engineering"],
+    ["/engineering/summary", "Engineering"],
     ["/engineering/evidence", "Evidence"],
     ["/engineering/evaluation", "Evidence"],
     ["/engineering/architecture", "Architecture"],
@@ -219,14 +219,22 @@ describe("18D-R semantic evidence projection", () => {
     const mock = installMocks();
     const { container } = renderApp("/engineering/summary");
     const summary = await screen.findByTestId("engineering-summary");
-    const visibleText = summary.textContent ?? "";
+    const visiblePage = container.querySelector(".engineering-page");
+    expect(visiblePage).not.toBeNull();
+    expect(within(visiblePage as HTMLElement).getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Engineering",
+    );
+    expect(visiblePage?.textContent).toContain(
+      "What Seneca does, how well it worked in testing, what was left out, and how to check each claim.",
+    );
+    const visibleText = visiblePage?.textContent ?? "";
     expect(visibleText).not.toMatch(/engmanifest_|indicatorcatalog_|perfrun_|perfsuite_/i);
     expect(visibleText).not.toMatch(/[0-9a-f]{40,}/i);
     expect(visibleText).not.toMatch(/\b(?:Slice\s+\d|REL-\d|BETA-CONV|L[56])\b/i);
     expect(visibleText).not.toMatch(/\b(?:EvidenceUnit|A-to-C)\b/i);
     expect(visibleText).not.toMatch(/\b(?:accepted|recorded|observed|historical|population|fixture|membership|entailment|provenance|lane)\b/i);
     const readerCopy = Array.from(
-      summary.querySelectorAll("h2, h3, p, summary"),
+      visiblePage?.querySelectorAll("h1, h2, h3, p, summary") ?? [],
     ).map((element) => element.textContent ?? "").join(" ");
     expect(readerCopy.trim().split(/\s+/).length).toBeLessThan(700);
     expect(visibleText).toContain("Re-ranking improved search quality, at a cost in speed.");
