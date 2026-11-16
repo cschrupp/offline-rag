@@ -6,7 +6,7 @@
 slice: 18D-R
 base: 8591aacc1810ba7265014c55a4d9327f7f755a02
 implementation_commit: ebcf3db3160add5cd25c3068949f3fd6ba0e251a
-final_implementation_candidate: 111348d6f1c51fc3aba41ec03074a65cb7061241
+final_implementation_candidate: 2094fe8d402688f7cb454f7fe09b3bc2c7c5cb03
 status: IMPLEMENTATION COMPLETE
 automated_qualification: PASS
 independent_review: PENDING
@@ -78,9 +78,11 @@ the Summary.
   Overview primary Engineering CTA opens Summary.
 - Summary evidence links target stable IDs on the corresponding Evidence card.
 
-The implementation was committed in `ebcf3db3160add5cd25c3068949f3fd6ba0e251a`, followed by the narrative correction `3577047f9507f67ca4b86f4b958b2893b6b0278e`. Corrective commit `111348d6f1c51fc3aba41ec03074a65cb7061241` reconciles Architecture with the current CPU/CUDA distribution, makes the generation-count link point to its source record, adds the current-configuration evidence link, and clarifies the historical CUDA caveat. It changes no accepted measurements. The final implementation candidate is `111348d6f1c51fc3aba41ec03074a65cb7061241`.
+The implementation was committed in `ebcf3db3160add5cd25c3068949f3fd6ba0e251a`, followed by the narrative correction `3577047f9507f67ca4b86f4b958b2893b6b0278e`. Corrective commit `111348d6f1c51fc3aba41ec03074a65cb7061241` reconciles Architecture with the current CPU/CUDA distribution, makes the generation-count link point to its source record, adds the current-configuration evidence link, and clarifies the historical CUDA caveat. It changes no accepted measurements.
 
-Changed implementation paths across all three code commits:
+Presentation corrective `2094fe8d402688f7cb454f7fe09b3bc2c7c5cb03` replaces auditor-facing Summary prose with reader-facing component copy while retaining manifest-bound measurements and fail-closed evidence guards. It adds the retrieval comparison chart, limits each narrative section to one evidence link, and scrolls asynchronous Evidence cards into view for hash links. The regression uses the bundled manifest and checks visible copy for audit vocabulary and internal identifiers. No registry, catalog, exporter, manifest, or scientific measurement changed. The prior `111348d6` review candidate remains historical; the final technical candidate is `2094fe8d402688f7cb454f7fe09b3bc2c7c5cb03`.
+
+Changed implementation paths across the implementation and three corrective code commits:
 
 ```text
 docs/evidence/slice18d_metrics/SURFACE_INVENTORY.json
@@ -113,7 +115,7 @@ The exact-candidate commands and results are:
 | `python scripts/build_seneca_engineering_evidence.py --check` | PASS; final corrective manifest identity above |
 | `pytest -q tests/unit/test_slice16e_engineering_evidence.py tests/unit/test_slice18d_indicator_catalog.py` | 37 passed on final corrective candidate |
 | `cd ui && npm test` | 473 passed across 51 files on pre-corrective candidate `3577047f`; final corrective was checked by the focused suite below |
-| `cd ui && npx vitest run src/test/slice16e_engineering_evidence.test.tsx src/test/slice18d_r_engineering_summary.test.tsx` | 25 passed across 2 files on final corrective candidate |
+| `cd ui && npm test -- --run src/test/slice18d_r_engineering_summary.test.tsx src/test/slice16e_engineering_evidence.test.tsx` | 26 passed across 2 files on final presentation corrective candidate |
 | `cd ui && npm run lint` | PASS |
 | `cd ui && npm run typecheck` | PASS |
 | `cd ui && npm run build` | PASS; existing Vite advisory that the main minified chunk exceeds 500 kB |
@@ -122,8 +124,10 @@ The exact-candidate commands and results are:
 | `python -m py_compile scripts/build_seneca_engineering_evidence.py tests/unit/test_slice16e_engineering_evidence.py tests/unit/test_slice18d_indicator_catalog.py` | PASS |
 | `git diff --check` | PASS |
 
-The final corrective's focused tests cover the revised current runtime matrix,
-historical caveat, generation evidence target, and configuration evidence link.
+The presentation corrective's focused tests cover the reader-facing copy,
+bundled-manifest identifier/audit-language exclusion, one-per-section evidence
+links, and deferred Evidence-card scroll target, alongside the existing
+Engineering evidence tests.
 The build warning is advisory and unrelated to this tranche. No model, benchmark,
 security, GPU, ingestion, or scientific campaign was run. No live/Human UI
 presentation was performed.
@@ -141,7 +145,7 @@ status passages remain historical.
 
 ```yaml
 implementation: COMPLETE
-candidate: 111348d6f1c51fc3aba41ec03074a65cb7061241
+candidate: 2094fe8d402688f7cb454f7fe09b3bc2c7c5cb03
 automated_qualification: PASS
 H1_presentation: PENDING
 H2_fresh_reviewer: PENDING
