@@ -6,7 +6,7 @@
 slice: 18D-R
 base: 8591aacc1810ba7265014c55a4d9327f7f755a02
 implementation_commit: ebcf3db3160add5cd25c3068949f3fd6ba0e251a
-final_implementation_candidate: 2094fe8d402688f7cb454f7fe09b3bc2c7c5cb03
+final_implementation_candidate: ef606f667ad13a4730ef04fef648ff1f800d8652
 status: IMPLEMENTATION COMPLETE
 automated_qualification: PASS
 independent_review: PENDING
@@ -80,9 +80,9 @@ the Summary.
 
 The implementation was committed in `ebcf3db3160add5cd25c3068949f3fd6ba0e251a`, followed by the narrative correction `3577047f9507f67ca4b86f4b958b2893b6b0278e`. Corrective commit `111348d6f1c51fc3aba41ec03074a65cb7061241` reconciles Architecture with the current CPU/CUDA distribution, makes the generation-count link point to its source record, adds the current-configuration evidence link, and clarifies the historical CUDA caveat. It changes no accepted measurements.
 
-Presentation corrective `2094fe8d402688f7cb454f7fe09b3bc2c7c5cb03` replaces auditor-facing Summary prose with reader-facing component copy while retaining manifest-bound measurements and fail-closed evidence guards. It adds the retrieval comparison chart, limits each narrative section to one evidence link, and scrolls asynchronous Evidence cards into view for hash links. The regression uses the bundled manifest and checks visible copy for audit vocabulary and internal identifiers. No registry, catalog, exporter, manifest, or scientific measurement changed. The prior `111348d6` review candidate remains historical; the final technical candidate is `2094fe8d402688f7cb454f7fe09b3bc2c7c5cb03`.
+Presentation corrective `2094fe8d402688f7cb454f7fe09b3bc2c7c5cb03` replaces auditor-facing Summary prose with reader-facing component copy while retaining manifest-bound measurements and fail-closed evidence guards. It adds the retrieval comparison chart, limits each narrative section to one evidence link, and scrolls asynchronous Evidence cards into view for hash links. The regression uses the bundled manifest and checks visible copy for audit vocabulary and internal identifiers. No registry, catalog, exporter, manifest, or scientific measurement changed. The subsequent header corrective `ef606f667ad13a4730ef04fef648ff1f800d8652` applies the requested Engineering page title/description and extends the visible-copy regression to include the page header; it updates the older route expectation accordingly. The final technical candidate is `ef606f667ad13a4730ef04fef648ff1f800d8652`.
 
-Changed implementation paths across the implementation and three corrective code commits:
+Changed implementation paths across the implementation and four corrective code commits:
 
 ```text
 docs/evidence/slice18d_metrics/SURFACE_INVENTORY.json
@@ -145,7 +145,7 @@ status passages remain historical.
 
 ```yaml
 implementation: COMPLETE
-candidate: 2094fe8d402688f7cb454f7fe09b3bc2c7c5cb03
+candidate: ef606f667ad13a4730ef04fef648ff1f800d8652
 automated_qualification: PASS
 H1_presentation: PENDING
 H2_fresh_reviewer: PENDING
