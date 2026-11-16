@@ -23,7 +23,7 @@ export function EngineeringArchitecturePage() {
             { title: "Dense + BM25 retrieval", detail: "current snapshot evidence" },
             { title: "RRF → BGE reranker", detail: "rank and select context" },
             { title: "Evidence sufficiency", detail: "answer or safely abstain" },
-            { title: "Generation", detail: "local by default · optional approved REL-03 endpoint" },
+            { title: "Generation", detail: "local by default · approved optional external generation endpoint" },
             { title: "Citation membership", detail: "validate IDs against current EvidenceUnit[] and resolve provenance" },
           ]}
           notes={[
@@ -77,11 +77,11 @@ export function EngineeringArchitecturePage() {
             { title: "Seneca API and workspace data" },
             { title: "Local embeddings · retrieval · reranking" },
             { title: "Local evidence and citation authority" },
-            { title: "Generation endpoint", detail: "strict-offline default · optional operator-selected REL-03" },
+            { title: "Generation endpoint", detail: "strict-offline default · optional operator-selected external endpoint" },
           ]}
           notes={[
             "Default operation is standalone and strict-offline. Initial provisioning may require separately managed downloads.",
-            "REL-03's approved external inference seam covers grounded answer generation, explicit conversation transformations, and Gold authoring. Retrieval, embeddings, reranking, evidence selection, citation membership and provenance authority, and Gold truth remain local.",
+            "The approved optional external generation endpoint can serve grounded answer generation, explicit conversation transformations, and Gold authoring. Retrieval, embeddings, reranking, evidence selection, citation membership and provenance authority, and Gold truth remain local.",
           ]}
         />
       </Card>
@@ -110,7 +110,7 @@ export function EngineeringArchitecturePage() {
           These items are not part of the active Seneca execution path.
         </p>
         <ul>
-          <li>Query/retrieval rewrite and retry recovery (Slice 12C) remains product-disabled after insufficient efficacy evidence.</li>
+          <li>Query rewrite and retry recovery remains product-disabled after insufficient efficacy evidence.</li>
           <li>Operational crash/restart recovery is a separate accepted persistence capability that preserves the published snapshot and permits a subsequent operation.</li>
           <li>LangGraph adapter</li>
           <li>NeMo Guardrails</li>

@@ -57,9 +57,27 @@ def test_v3_preserves_every_v2_observation_without_recomputation():
     assert len(new["records"]) == len(old["records"]) == 12
     for before, after in zip(old["records"], new["records"], strict=True):
         assert before["evidence_id"] == after["evidence_id"]
-        assert dict(observations(before["presentation"])) == dict(
-            observations(after["presentation"])
-        )
+        before_values = dict(observations(before["presentation"]))
+        after_values = dict(observations(after["presentation"]))
+        assert before_values.items() <= after_values.items()
+        additional_paths = set(after_values) - set(before_values)
+        expected_additional_paths = set()
+        if before["evidence_id"] == "generation.slice10e":
+            expected_additional_paths = {
+                "/facts/0/metrics/0/metric",
+                "/facts/0/metrics/1/metric",
+                "/facts/0/metrics/2/metric",
+                "/facts/0/metrics/3/metric",
+                "/facts/0/metrics/4/metric",
+            }
+        elif before["evidence_id"] == "release.verification":
+            expected_additional_paths = {
+                "/facts/2/metrics/0/metric",
+                "/facts/2/metrics/1/metric",
+                "/facts/2/metrics/2/metric",
+                "/facts/3/metrics/0/metric",
+            }
+        assert additional_paths == expected_additional_paths
 
 
 @pytest.mark.parametrize(

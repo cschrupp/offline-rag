@@ -289,6 +289,8 @@ def validate_source_binding(
             raise ExporterError(f"source literal has no numeric value: {literal}")
         try:
             actual = Decimal(match.group(0).replace(",", ""))
+            if "%" in literal:
+                actual /= Decimal(100)
             expected_decimal = Decimal(str(expected))
         except InvalidOperation as exc:
             raise ExporterError(
@@ -301,7 +303,10 @@ def validate_source_binding(
             )
     else:
         raise ExporterError(f"{label}.source_binding.format invalid: {binding_format}")
-    if actual != expected:
+    expected_actual = (
+        Decimal(str(expected)) if binding_format == "literal" else expected
+    )
+    if actual != expected_actual:
         raise ExporterError(
             f"source-bound value mismatch for {label}: expected {expected!r}, got {actual!r}"
         )
@@ -621,6 +626,15 @@ def project_record(
                 source_refs=source_refs,
                 repo_root=repo_root,
             )
+        elif "facts" in presentation:
+            validated_facts = validate_key_facts(
+                {"kind": "key_facts", "facts": presentation["facts"]},
+                evidence_id=evidence_id,
+                currency=currency,
+                source_refs=source_refs,
+                repo_root=repo_root,
+            )
+            presentation["facts"] = validated_facts["facts"]
         provenance_out = {
             "evidence_family": provenance["evidence_family"],
             "fields": fields or {},

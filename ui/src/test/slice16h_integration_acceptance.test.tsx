@@ -134,7 +134,7 @@ describe("16H-A/K — cross-surface shell integration", () => {
 
     await user.click(within(nav).getByRole("link", { name: /^Engineering$/i }));
     expect(
-      await screen.findByRole("heading", { name: /Engineering evidence|Evaluation/i }),
+      await screen.findByRole("heading", { name: /Engineering summary/i }),
     ).toBeInTheDocument();
     expect(
       mock.calls.some((c) => c.url.startsWith("/eval/")),
@@ -480,7 +480,7 @@ describe("16H-I — portfolio evidence consistency", () => {
     });
     renderApp("/engineering/evaluation");
     expect(
-      await screen.findByRole("heading", { name: /Engineering|Evaluation/i }),
+      await screen.findByRole("heading", { name: "Evidence" }),
     ).toBeInTheDocument();
     expect(mock.calls.some((c) => c.url.includes("/eval"))).toBe(false);
     mock.restore();

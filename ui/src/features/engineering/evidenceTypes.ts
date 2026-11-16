@@ -16,6 +16,10 @@ export type Metric = {
   precision?: number;
   unit?: string;
   value_qualifier?: "exact" | "approximate" | null;
+  population?: {
+    label: string;
+    population_id: string;
+  };
 };
 
 export type SourceRef = {

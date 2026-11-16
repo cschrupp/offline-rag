@@ -1708,6 +1708,71 @@ button.snapshot-badge {
   outline-offset: 2px;
 }
 
+.engineering-summary > .card {
+  scroll-margin-top: 1rem;
+}
+
+.engineering-summary h2 {
+  max-width: 62rem;
+  margin-top: 0;
+}
+
+.engineering-summary-process {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  counter-reset: engineering-step;
+}
+
+.engineering-summary-process li {
+  min-height: 5rem;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  counter-increment: engineering-step;
+}
+
+.engineering-summary-process li::before {
+  content: counter(engineering-step);
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.engineering-summary-measurements,
+.engineering-summary-two-column {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3);
+}
+
+.engineering-summary-measurement,
+.engineering-summary-two-column > div,
+.engineering-summary-story {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.engineering-summary-measurement dt {
+  color: var(--muted);
+}
+
+.engineering-summary-measurement dd {
+  margin: var(--space-2) 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.engineering-summary-story h3 {
+  margin-top: 0;
+}
+
 .engineering-status-explain {
   align-items: center;
   gap: var(--space-2);

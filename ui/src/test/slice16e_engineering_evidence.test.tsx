@@ -62,7 +62,7 @@ describe("16E routing and shell", () => {
 
     await user.click(within(nav).getByRole("link", { name: /^Engineering$/i }));
     expect(
-      await screen.findByRole("heading", { name: "Engineering evidence" }),
+      await screen.findByRole("heading", { name: "Engineering summary" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("navigation", { name: "Engineering" }),
@@ -387,7 +387,7 @@ describe("16E overview", () => {
     expect(
       screen.getByRole("heading", { name: "Engineering evidence" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Open Evaluation/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Open Engineering/i })).toBeInTheDocument();
     mock.restore();
   });
 });
