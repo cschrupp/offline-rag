@@ -98,8 +98,10 @@ RUN groupadd --gid 10001 offlinerag \
 
 WORKDIR /app
 
+# Native OpenCV dependencies used by Docling TableFormer.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends \
+         ca-certificates libxcb1 libgl1 libglib2.0-0t64 libxext6 libx11-6 libsm6 libice6 \
     && if [ "$SENECA_DEPENDENCY_PROFILE" = cuda-dev ]; then \
          apt-get install -y --no-install-recommends gcc libc6-dev; \
        fi \
