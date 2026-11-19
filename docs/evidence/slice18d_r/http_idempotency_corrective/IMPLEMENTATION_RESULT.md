@@ -47,12 +47,27 @@ IntentHandle same-fingerprint, changed-fingerprint, and reset behavior.
 
 ## HTTP review VM
 
-`GET http://34.123.133.92/v1/workspaces` returned `200 []` once, confirming an
-empty workspace list before any create request. Subsequent checks of
-`/workspaces` and `/v1/workspaces` failed to connect. The VM was therefore not
-available for browser rendering or a create-workspace mutation. No workspace
-was created. These live-VM checks remain pending; automated tests and Docker
-build do not substitute for them.
+The VM was initially unavailable, then came online during the follow-up smoke.
+The live results are:
+
+- `GET http://34.123.133.92/workspaces`: **200**.
+- The page references `index-D07EKBCI.js`; its SHA-256 exactly matches the
+  candidate build at `ui/dist/assets/index-D07EKBCI.js`:
+  `b3c789c7105944f34b0bc23f6189d91645caab4100007e9d40c6d9daf6098aa4`.
+- Headless Firefox loaded the actual plain-HTTP page with
+  `isSecureContext=false`, `typeof crypto.randomUUID === "undefined"`, and
+  `typeof crypto.getRandomValues === "function"`. The Create workspace UI was
+  visible alongside the existing Recipes workspace.
+- Submitting the Create workspace form succeeded. A fresh
+  `GET /v1/workspaces` returned the new empty workspace:
+  `workspace_id=ws_f2ceb4b3793f4c539bf60896da320bf5`, title
+  `HTTP Idempotency Smoke 87241907`, revision 1. The existing Recipes workspace
+  remained present.
+
+The workspace library was not empty, so the “No workspaces yet” empty-state
+copy was not applicable. The QA workspace is left in place; no user workspace
+was removed. One WebDriver-side asynchronous list assertion did not serialize
+its fetch result; the independent API GET above confirmed the creation.
 
 ## Scope
 
