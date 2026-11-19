@@ -14,6 +14,11 @@ from pathlib import Path
 
 if (os.getuid(), os.getgid()) != (10001, 10001):
     raise SystemExit("Unexpected runtime UID/GID")
+for path in ("/app/.env", "/app/.git", "/app/src", "/run/secrets/build_ca"):
+    if Path(path).exists():
+        raise SystemExit(f"Unexpected image file or directory: {path}")
+if any(Path("/data").iterdir()):
+    raise SystemExit("Unexpected files in the image data directory")
 spec = importlib.util.find_spec("cv2")
 if spec is None or not spec.origin:
     raise SystemExit("OpenCV package not found")
@@ -98,12 +103,19 @@ def main() -> None:
     if args.models and args.pdf:
         if not args.models.is_dir() or not args.pdf.is_file():
             parser.error("Expected a provisioned model directory and an existing PDF")
-        for path, destination in ((args.models, "/models"), (args.pdf, "/qualification.pdf")):
+        for path, destination in (
+            (args.models, "/models"),
+            (args.pdf, "/qualification.pdf"),
+        ):
             command.extend(
-                ["--mount", f"type=bind,src={path.resolve()},dst={destination},readonly"]
+                [
+                    "--mount",
+                    f"type=bind,src={path.resolve()},dst={destination},readonly",
+                ]
             )
         code += PDF_CHECK
-    subprocess.run([*command, args.image, "-c", code], check=True)
+    result = subprocess.run([*command, args.image, "-c", code], check=False)
+    raise SystemExit(result.returncode)
 
 
 if __name__ == "__main__":
