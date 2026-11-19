@@ -5,7 +5,7 @@
 ```yaml
 result: PARTIAL
 branch: corrective/18d-r-docker-ui-catalog
-remote_branch: NOT_CREATED
+remote_branch: PUSHED
 corrective_commit: c76d487b38a599c474cdb3a4470600d24d2876be
 parent: ef606f667ad13a4730ef04fef648ff1f800d8652
 changed_implementation_paths:
@@ -13,7 +13,7 @@ changed_implementation_paths:
 ui_build: PASS
 ui_builder_docker_build: UNAVAILABLE_DOCKER_SOCKET_PERMISSION_DENIED
 full_cpu_image_build: NOT_RUN
-push: BLOCKED_GITHUB_INTEGRATION_403
+push: SUCCESS
 promotion: NOT_AUTHORIZED
 ```
 
@@ -45,13 +45,14 @@ import remain unchanged; the whole `eval/` directory is not copied.
 - Full CPU image build, image labels/size inspection, and full-image provenance
   test were not run because Docker daemon access was unavailable.
 
-## Remote branch attempt
+## Remote branch
 
-GitHub search found no existing `corrective/18d-r-docker-ui-catalog` branch.
-Creating the branch from the authorized base was attempted through the connected
-GitHub integration and rejected with HTTP 403, `Resource not accessible by
-integration`. The corrective commit remains intact in the isolated local
-checkout. No remote ref was created, and `main` was not changed.
+GitHub branch search found no existing
+`corrective/18d-r-docker-ui-catalog` branch. The connected GitHub integration's
+branch-creation API returned HTTP 403 (`Resource not accessible by
+integration`). After network push authorization was granted, the branch was
+created by a normal non-force `git push`; the corrective and evidence commits
+were pushed to that branch. `main` was not changed.
 
 ## Scope integrity
 
@@ -66,11 +67,11 @@ See the verbatim attachment copy in `AUTHORIZATION_PROMPT.txt`.
 
 ## Exact final execution response
 
-> **Disposition: PARTIAL.** The catalog-copy corrective is committed locally at
-> `c76d487b38a599c474cdb3a4470600d24d2876be` on
-> `corrective/18d-r-docker-ui-catalog`, parent
-> `ef606f667ad13a4730ef04fef648ff1f800d8652`. The implementation change is
-> limited to `deploy/Dockerfile`: it copies only
+> **Disposition: PARTIAL.** The catalog-copy corrective is committed at
+> `c76d487b38a599c474cdb3a4470600d24d2876be`, parent
+> `ef606f667ad13a4730ef04fef648ff1f800d8652`, on
+> `corrective/18d-r-docker-ui-catalog`. The only implementation change is in
+> `deploy/Dockerfile`: it copies only
 > `eval/presentation/indicator_catalog_v1.json` into the UI builder before
 > `npm run build`.
 >
@@ -78,11 +79,10 @@ See the verbatim attachment copy in `AUTHORIZATION_PROMPT.txt`.
 > used the existing dependency installation after confirming the package and
 > lockfile match the authorized base. The Docker UI-builder command was
 > attempted but unavailable because access to `/var/run/docker.sock` was denied;
-> full CPU-image build and image-provenance inspection were not run. No other
-> scientific or application behavior changed.
+> the full CPU-image build and image-provenance inspection were not run. No
+> unrelated application or scientific behavior changed.
 >
-> Push was blocked: GitHub branch creation returned HTTP 403, `Resource not
-> accessible by integration`. The commit and this evidence record remain in the
-> local isolated checkout. No remote branch was created; `main` was not changed.
-> No promotion, H1/H2 acceptance, public release, or Milestone 7 closeout is
-> claimed.
+> The corrective and evidence commits are pushed to
+> `corrective/18d-r-docker-ui-catalog`. GitHub integration branch creation had
+> returned HTTP 403, so the authorized normal push path was used. No promotion,
+> H1/H2 acceptance, public release, or Milestone 7 closeout is claimed.
