@@ -24,6 +24,8 @@ RUN --mount=type=secret,id=build_ca,required=false \
     && npm ci
 
 COPY ui/ ./
+# catalog.ts imports the repo-level indicator catalog.
+COPY eval/presentation/indicator_catalog_v1.json /eval/presentation/indicator_catalog_v1.json
 RUN npm run build
 
 FROM ghcr.io/astral-sh/uv:0.11.18 AS uv-bin
