@@ -67,11 +67,10 @@ See the verbatim attachment copy in `AUTHORIZATION_PROMPT.txt`.
 
 ## Exact final execution response
 
-> **Disposition: PARTIAL.** The catalog-copy corrective is committed at
-> `c76d487b38a599c474cdb3a4470600d24d2876be`, parent
-> `ef606f667ad13a4730ef04fef648ff1f800d8652`, on
-> `corrective/18d-r-docker-ui-catalog`. The only implementation change is in
-> `deploy/Dockerfile`: it copies only
+> **Disposition: PARTIAL.** Branch: `corrective/18d-r-docker-ui-catalog`.
+> Corrective commit: `c76d487b38a599c474cdb3a4470600d24d2876be`, parent
+> `ef606f667ad13a4730ef04fef648ff1f800d8652`. The only implementation change
+> is in `deploy/Dockerfile`: it copies only
 > `eval/presentation/indicator_catalog_v1.json` into the UI builder before
 > `npm run build`.
 >
@@ -82,7 +81,9 @@ See the verbatim attachment copy in `AUTHORIZATION_PROMPT.txt`.
 > the full CPU-image build and image-provenance inspection were not run. No
 > unrelated application or scientific behavior changed.
 >
-> The corrective and evidence commits are pushed to
-> `corrective/18d-r-docker-ui-catalog`. GitHub integration branch creation had
-> returned HTTP 403, so the authorized normal push path was used. No promotion,
-> H1/H2 acceptance, public release, or Milestone 7 closeout is claimed.
+> Evidence files: `docs/evidence/slice18d_r/docker_ui_catalog_corrective/AUTHORIZATION_PROMPT.txt`
+> (verbatim authorization) and `EXECUTION_RESULT.md`. The corrective and
+> evidence commits are pushed to `corrective/18d-r-docker-ui-catalog`; GitHub
+> confirms the remote branch and corrective commit. The local worktree is clean.
+> No promotion, H1/H2 acceptance, public release, or Milestone 7 closeout is
+> claimed.
