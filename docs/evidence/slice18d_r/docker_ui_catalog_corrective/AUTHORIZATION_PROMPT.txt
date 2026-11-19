@@ -1,0 +1,278 @@
+You are authorized to execute a **bounded corrective fix in the GitHub repository `cschrupp/offline-rag`**.
+
+## Authority and objective
+
+Correct one demonstrated Docker packaging regression in the 18D-R technical candidate.
+
+Canonical corrective base:
+
+`ef606f667ad13a4730ef04fef648ff1f800d8652`
+
+Preferred branch:
+
+`corrective/18d-r-docker-ui-catalog`
+
+A local VM commit already reproduced the intended fix:
+
+`90a8e8e2bd1e6539588df9f5d197859929c7e2bc`
+
+That commit exists only on the review VM and is **reference evidence only**. Do not assume it exists on GitHub and do not require access to the VM. Recreate and independently verify the change from the canonical base.
+
+## Demonstrated defect
+
+At `ef606f66`, the frontend contains:
+
+`ui/src/features/indicators/catalog.ts`
+
+with:
+
+```ts
+import catalog from "../../../../eval/presentation/indicator_catalog_v1.json";
+```
+
+The required source file exists at:
+
+`eval/presentation/indicator_catalog_v1.json`
+
+However, the Docker UI builder currently does:
+
+```dockerfile
+COPY ui/ ./
+RUN npm run build
+```
+
+and therefore does not copy the repo-level `eval/presentation/indicator_catalog_v1.json` into the build stage.
+
+Observed clean Docker build failure:
+
+```text
+src/features/indicators/catalog.ts(1,21): error TS2307:
+Cannot find module '../../../../eval/presentation/indicator_catalog_v1.json'
+or its corresponding type declarations.
+```
+
+## Authorized implementation
+
+First inspect the actual GitHub state at the canonical base and independently confirm the defect.
+
+If confirmed, make only this packaging correction in `deploy/Dockerfile`:
+
+```diff
+ COPY ui/ ./
++# catalog.ts imports the repo-level indicator catalog.
++COPY eval/presentation/indicator_catalog_v1.json /eval/presentation/indicator_catalog_v1.json
+ RUN npm run build
+```
+
+The intent is to preserve the existing authoritative catalog and repo-relative import. Do not copy the whole `eval/` tree.
+
+## Explicit non-goals
+
+Do NOT:
+
+- modify `ui/src/features/indicators/catalog.ts`;
+- duplicate or relocate the catalog into `ui/`;
+- change any indicator definitions or values;
+- modify scientific/evaluation evidence;
+- change retrieval, embeddings, reranking, generation, citation, or Gold behavior;
+- change model identities, revisions, representations, provisioning, or `/models`;
+- change the CPU/CUDA resolver;
+- change `base.yaml`;
+- add the temporary H1/H2 review model `NO_GENERATOR_CONFIGURED_FOR_H2_REVIEW` to repository configuration;
+- weaken generation endpoint/model allowlist validation;
+- change `DEPLOYMENT.md` merely because the review VM required explicit `OFFLINE_RAG_LLM_MODEL` and `OFFLINE_RAG_APPROVED_LLM_MODELS`; the existing deployment guide already documents those requirements;
+- modify unrelated code or documentation;
+- merge to `main`;
+- promote a release;
+- start 18E, 18F, 18G, or 18H work.
+
+This is a packaging corrective only.
+
+## Branch safety
+
+Create `corrective/18d-r-docker-ui-catalog` from exactly:
+
+`ef606f667ad13a4730ef04fef648ff1f800d8652`
+
+If that branch already exists remotely, inspect it first.
+
+Do not force-push or overwrite unrelated work.
+
+Before changing anything, report:
+
+- current remote branch state;
+- checked-out/base SHA;
+- whether the defect is independently reproduced from repository source.
+
+## Verification
+
+Run the narrowest relevant checks first.
+
+Required:
+
+```bash
+git diff --check
+```
+
+Run the frontend build in the normal repository environment if available.
+
+Most importantly, if Docker is available, run:
+
+```bash
+docker build \
+  --target ui-builder \
+  -f deploy/Dockerfile \
+  -t seneca-18dr-ui-buildcheck \
+  .
+```
+
+The original TS2307 failure must be absent.
+
+Then commit the corrective. Recommended subject:
+
+```text
+fix(deploy): include indicator catalog in UI build
+```
+
+After committing, capture the corrective commit SHA and use that exact SHA for the full-image provenance test.
+
+If Docker is available:
+
+```bash
+CORRECTIVE_SHA="$(git rev-parse HEAD)"
+
+docker build \
+  -f deploy/Dockerfile \
+  --build-arg SENECA_DEPENDENCY_PROFILE=cpu-release \
+  --build-arg SENECA_SOURCE_SHA="$CORRECTIVE_SHA" \
+  -t "seneca-review:${CORRECTIVE_SHA:0:12}" \
+  .
+```
+
+Inspect:
+
+```bash
+docker image inspect "seneca-review:${CORRECTIVE_SHA:0:12}" \
+  --format 'ID={{.Id}}
+Size={{.Size}}
+Revision={{index .Config.Labels "org.opencontainers.image.revision"}}
+Profile={{index .Config.Labels "io.seneca.dependency-profile"}}'
+```
+
+Required provenance expectations:
+
+```text
+Revision=<exact corrective commit SHA>
+Profile=cpu-release
+```
+
+Record actual image size; do not impose a new threshold.
+
+If the environment cannot run Docker, state `UNAVAILABLE` explicitly. Do not substitute an npm build and call the Docker packaging defect fully qualified.
+
+## Existing external execution evidence
+
+Treat the following only as supporting reproduction/corrective evidence, **not as qualification of the new GitHub commit**:
+
+On the temporary Google review VM, the same two-line working-tree correction produced:
+
+```text
+Docker build: 31/31 FINISHED
+Image size: 2,346,787,156 bytes
+Profile: cpu-release
+/health/live: 200
+/health/ready: 200
+/: 200
+/engineering/summary: 200
+```
+
+That test image was intentionally labeled:
+
+```text
+Revision=ef606f667ad13a4730ef04fef648ff1f800d8652
+Corrective=ui-indicator-catalog-copy-v1
+```
+
+because the corrective had not yet been committed.
+
+Therefore it proves the proposed change works operationally, but it must not be represented as commit-bound qualification of the new corrective SHA.
+
+## Generation configuration observation
+
+During the VM deployment, startup initially remained `NOT_READY` because:
+
+```text
+generation.model = REPLACE_WITH_APPROVED_LOCAL_MODEL
+generation.approved_models = []
+```
+
+The existing deployment documentation already requires the operator to provide:
+
+```text
+OFFLINE_RAG_LLM_MODEL
+OFFLINE_RAG_APPROVED_LLM_MODELS
+```
+
+The H1/H2 review VM used a clearly non-production placeholder solely because generation was not part of that human-review surface.
+
+Do not turn this observation into a product-code change in this corrective unless independent repository inspection proves an actual contradiction in the supported deployment contract. If you discover one, STOP and report it separately rather than expanding scope.
+
+## Evidence / audit record
+
+Preserve the exact authorization prompt you received and your exact final execution response in the corrective evidence record, consistent with the project’s existing prompt/response evidence convention.
+
+The record should distinguish:
+
+- defect reproduction;
+- authorized change;
+- local VM supporting evidence;
+- GitHub corrective commit;
+- commit-bound verification actually executed;
+- checks unavailable in the execution environment;
+- remaining H1/H2 human-review issues, which are outside this corrective.
+
+Do not rewrite historical evidence.
+
+## Push
+
+Push only the corrective branch.
+
+Do not merge it.
+
+Do not update `main`.
+
+If repository permissions prevent the push, leave the local corrective commit intact and report the exact permission failure.
+
+## Stop conditions
+
+Stop and report rather than broadening scope if:
+
+- the canonical base does not contain the described defect;
+- the catalog path has materially changed;
+- the remote corrective branch contains unrelated work;
+- the proposed two-line fix no longer builds;
+- another source change appears necessary;
+- Docker exposes a separate failure unrelated to this catalog dependency;
+- repository state makes a clean single-parent corrective impossible.
+
+## Final response
+
+Return a compact execution report containing:
+
+- disposition: `PASS`, `PARTIAL`, or `BLOCKED`;
+- branch;
+- corrective commit SHA;
+- parent SHA;
+- changed files;
+- exact functional diff;
+- `git diff --check`;
+- UI-builder result;
+- full CPU Docker build result, if available;
+- image ID, byte size, revision label and dependency-profile label, if available;
+- tests/checks run with outcomes;
+- evidence file(s) created or updated;
+- push status;
+- explicit statement that no unrelated behavior or scientific evidence was changed;
+- any remaining limitations or separate findings.
+
+Do not claim H1/H2 human acceptance, promotion, public release, or Milestone 7 closeout.
