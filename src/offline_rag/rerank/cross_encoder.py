@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from pathlib import Path
+from threading import Lock
 
 from offline_rag.config.models import AppSettings
 from offline_rag.core.ids import (
@@ -28,7 +29,9 @@ def _resolve_device(device: str) -> str:
     try:
         import torch
     except ImportError as exc:
-        raise CrossEncoderRerankerError("torch is required for CrossEncoderReranker") from exc
+        raise CrossEncoderRerankerError(
+            "torch is required for CrossEncoderReranker"
+        ) from exc
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -77,8 +80,8 @@ class CrossEncoderReranker:
         self.batch_size = int(batch_size)
         self.local_files_only = True
         self.trust_remote_code = False
-        self._tokenizer = None
-        self._model = None
+        self._load_lock = Lock()
+        self._loaded: tuple[object, object] | None = None
 
         require_reranker_artifacts(
             self.model_path,
@@ -109,9 +112,18 @@ class CrossEncoderReranker:
         )
 
     def _load(self) -> tuple[object, object]:
-        if self._tokenizer is not None and self._model is not None:
-            return self._tokenizer, self._model
+        loaded = self._loaded
+        if loaded is not None:
+            return loaded
 
+        with self._load_lock:
+            if self._loaded is None:
+                # Publish the pair only after initialization succeeds. A failed
+                # attempt leaves the next caller free to retry.
+                self._loaded = self._initialize()
+            return self._loaded
+
+    def _initialize(self) -> tuple[object, object]:
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
         tokenizer = AutoTokenizer.from_pretrained(
@@ -124,11 +136,20 @@ class CrossEncoderReranker:
             local_files_only=True,
             trust_remote_code=False,
         )
+        self._require_materialized(model)
         model.eval()
         model.to(self.device)
-        self._tokenizer = tokenizer
-        self._model = model
+        self._require_materialized(model)
         return tokenizer, model
+
+    @staticmethod
+    def _require_materialized(model) -> None:
+        if any(tensor.is_meta for tensor in model.parameters()) or any(
+            tensor.is_meta for tensor in model.buffers()
+        ):
+            raise CrossEncoderRerankerError(
+                "reranker checkpoint contains unmaterialized meta parameters or buffers"
+            )
 
     def _assert_query_fits(self, tokenizer: object, query_text: str) -> None:
         """Fail if query + pair specials cannot fit within max_length."""
