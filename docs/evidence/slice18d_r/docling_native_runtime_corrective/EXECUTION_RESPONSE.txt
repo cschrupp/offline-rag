@@ -1,0 +1,28 @@
+**COMPLETE for independent technical review.** The corrective and evidence were pushed to `corrective/18d-r-docling-native-runtime`. The technical candidate is `c5a973955f20ea29abe473ffe9ae816946eb26ad`, with parent `fb2a129165e24e943301569c2f2397b1ed43f6f2` and starting base `d0250895df86a98fd1d206ac45fc99c338ae4cd0`.
+
+- `deploy/Dockerfile` adds the seven Debian 13 native packages required by Docling’s OpenCV dependency in the final runtime stage.
+- `scripts/verify_docling_runtime.py` checks release image identity, native linkage, imports, and optional real PDF conversion.
+- `docs/evidence/slice18d_r/docling_native_runtime_corrective/` adds `AUTHORIZATION_PROMPT.txt`, `IMPLEMENTATION_RESULT.md`, `REVIEW_VM_DEPLOYMENT_RUNBOOK.md`, and `EXECUTION_RESPONSE.txt`.
+
+The full CPU image build passed on retry. Its revision label matches the candidate, its profile is `cpu-release`, and it runs as UID/GID 10001. Image ID and local digest are `sha256:44df9cab79f24e58ef1027f69050dc7473bd30c8ada1c45ed86f08350f82511e`. Size is **2,635,989,176 bytes**.
+
+The verifier rejected the prior image for missing `libxcb.so.1`. On the new image, all **42** OpenCV shared objects linked, OpenCV and TableFormer imported, and the canonical Docling parser returned **2 content blocks** from the repository PDF fixture with networking disabled. Six focused Python tests, Ruff lint and format, Python compilation, runbook shell syntax, and `git diff --check` passed.
+
+On the review VM, complete the inventory in the [deployment runbook](https://github.com/cschrupp/offline-rag/blob/corrective/18d-r-docling-native-runtime/docs/evidence/slice18d_r/docling_native_runtime_corrective/REVIEW_VM_DEPLOYMENT_RUNBOOK.md), then run this from the Seneca checkout:
+
+```bash
+set -e
+git fetch origin corrective/18d-r-docling-native-runtime
+sha=c5a973955f20ea29abe473ffe9ae816946eb26ad
+git merge-base --is-ancestor "$sha" FETCH_HEAD
+git switch --detach "$sha"
+tag="seneca-review:${sha:0:12}"
+docker build -f deploy/Dockerfile \
+  --build-arg SENECA_DEPENDENCY_PROFILE=cpu-release \
+  --build-arg SENECA_SOURCE_SHA="$sha" -t "$tag" .
+python3 scripts/verify_docling_runtime.py "$tag" "$sha" \
+  --models /srv/seneca/models \
+  --pdf tests/fixtures/ingestion/pdf/born_digital_reference.pdf
+```
+
+The runbook covers cutover, rollback, and the post-deployment ingestion smoke. VM deployment, promotion, and H1/H2 acceptance remain pending.
