@@ -345,3 +345,84 @@ See [reproducibility instructions](REPRODUCIBILITY.md), [authorization](evidence
 and the [protocol](RESEARCH_PLAN.md).
 
 [Independent review status](evidence/REVIEW_STATUS.md)
+
+## 9. Exact-incident batching on four vCPUs
+
+This follow-up uses the accepted interim revision as its baseline. The
+original experiment found a CPU bottleneck in transformer forward passes.
+The padding projection and local synthetic pilot pointed to a way to reduce
+that work while retaining every candidate. The four-vCPU comparison tests
+that mechanism on the original Recipes question and selected document.
+
+The experiment ran against an isolated copy of Recipes revision 4.
+Both arms used the deployed image, the approved PyTorch FP32 BGE checkpoint,
+two intra-op and two inter-op threads, the canonical Qwen3 CPU profile,
+30 RRF candidates, passage-only truncation and a 1,024-token ceiling.
+Arm A used the deployed consecutive 16+14 shape. Arm B performed a timed
+length prepass, stably sorted by tokenized length and original ordinal,
+and scored 8+8+8+6. It restored score association before the canonical
+sort and context packer. A/B warm-up was followed by measured blocks
+A/B, B/A, A/B in one isolated process.
+
+The preregistered gates required every logit delta to satisfy
+`abs(B-A) <= 1e-4 + 1e-5 * abs(A)`, exact candidate and evidence parity,
+and median paired reductions of at least 20% in both forward and assembler
+wall time. The [protocol and execution evidence](evidence/exact-incident-batching/PROTOCOL.md)
+record the exact safeguards and instrumentation.
+
+**Result.** Both preregistered performance thresholds and all four parity
+comparisons passed. Median paired warm forward wall time fell **48.6%**,
+assembler wall time fell **46.8%**, and forward process CPU time fell
+**48.5%**. The original synthetic pilot measured a **34.3%** median paired
+forward reduction on its separate host and workload.
+
+| Block and arm | Assembler (s) | BGE forward (s) | Forward by batch (s) | Forward CPU-s | Padded positions | End RSS (MiB) |
+|---|---:|---:|---|---:|---:|---:|
+| 0 A | 115.957 | 63.535 | 32.657 + 30.878 | 124.83 | 6,590 | 3913.2 |
+| 0 B | 36.816 | 34.639 | 3.626 + 7.130 + 10.370 + 13.514 | 69.26 | 1,398 | 3924.8 |
+| 1 A | 64.020 | 62.025 | 31.148 + 30.877 | 124.01 | 6,590 | 3925.0 |
+| 1 B | 36.370 | 34.404 | 3.626 + 7.045 + 10.248 + 13.485 | 68.79 | 1,398 | 3925.4 |
+| 2 B | 36.550 | 34.264 | 3.623 + 6.971 + 10.239 + 13.431 | 68.51 | 1,398 | 3925.5 |
+| 2 A | 68.707 | 66.698 | 30.993 + 35.704 | 133.06 | 6,590 | 3925.4 |
+| 3 A | 80.409 | 76.661 | 43.344 + 33.317 | 151.70 | 6,590 | 3922.8 |
+| 3 B | 37.949 | 35.485 | 3.725 + 7.211 + 10.559 + 13.990 | 70.62 | 1,398 | 3924.6 |
+
+Block 0 was warm-up and is excluded from the performance gate. The three
+measured forward reductions were **44.5%, 48.6%, and 53.7%** in paired
+order. Assembler reductions were **43.2%, 46.8%, and 52.8%**. Arm A forward
+time varied from 62.025 to 76.661 s. B ranged from 34.264 to 35.485 s.
+The ordering and all observations are retained because a single percentage
+would hide that variation. The 20% threshold was exceeded in every measured
+pair on both wall endpoints.
+
+Observed batch widths were 368 and 406 in A, and 86, 166, 241 and 406 in B.
+Both arms processed the same 4,982 active token positions. B removed 5,192
+padded positions, about 79% of A's padding. The reduction in process CPU
+time shows that this workload performed less compute, alongside reduced
+wall time at the same thread setting. End-of-call RSS stayed close to
+3.83 GiB for both arms. The shared process high-water RSS was 4.24 GiB and
+cannot isolate an arm-specific peak. The lowest sampled host available
+memory after an observed call was 10.15 GiB.
+
+The largest absolute raw-logit delta was **3.81e-6**. For every pair, the
+ordered candidate IDs, candidate-aligned active inputs and positions,
+full ranked IDs, selected anchors, all five evidence units, and the
+645-token packed context matched. The raw record associates each signed
+logit difference with its original fused ordinal. A changed ranking or
+packed context would have prevented a pass even within logit tolerance.
+The experiment evaluated scientific output identity on this query and
+did not invoke generation or evaluate answer quality.
+
+**Engineering decision.** Advance sorted-eight batching to independent
+technical review as a candidate for broader qualification. Keep the
+deployed defaults. Three pairs on one query in a shared warm process
+cannot establish performance on diverse cohorts, concurrent loads, or
+production p95. Before integration, require a representative multi-query
+comparison of candidate, rank and evidence parity, including near ties,
+and measure latency and resource use under concurrency. This experiment
+neither validates reduced candidate depth nor expands the accepted
+quality–latency frontier for that question.
+
+See the [full measurement record](evidence/exact-incident-batching/MEASUREMENTS.log),
+[derived summary](evidence/exact-incident-batching/SUMMARY.json), and
+[execution and restoration record](evidence/exact-incident-batching/EXECUTION.md).
