@@ -32,16 +32,21 @@ pause new work, inspect the operation tray and server activity, and wait
 for active ingestion and queries to finish. Do not begin ingestion when it
 cannot reasonably finish within the remaining review window.
 
-On the VM, run the following. Pass the minimum **remaining** free disk GiB
-needed for Docker build intermediates, rollback images, source bytes and
-index growth. The example uses 20 GiB. Increase it if the workload requires
-more. For a first deployment, pass `host-only` after the disk minimum
+On the VM, enter a workload-specific minimum for **remaining** free disk
+space in GiB. For routine startup and ingestion, budget for source bytes,
+staging, index growth, and operating headroom. For an image rebuild, also
+budget for BuildKit intermediates, the new image, and retained rollback
+images on Docker's filesystem. Run the preflight again with the rebuild
+budget before building. The review VM was reported to have about 16 GiB
+free after swap was allocated. Check current space with `df`; a RAM resize
+does not itself expand the boot disk. For a first deployment, pass `host-only` after the disk minimum
 and run the full check once the container exists. Separately review `MemAvailable` against the specific workload and
 other host processes. The physical RAM floor allows for kernel reservations
 on the nominal 16 GiB machine.
 
 ```bash
-bash -s -- 20 <<'BASH'
+read -r -p 'Minimum remaining disk headroom for this operation (GiB): ' seneca_disk_gib &&
+bash -s -- "$seneca_disk_gib" <<'BASH'
 set -euo pipefail
 fail() { printf 'PREFLIGHT FAIL: %s\n' "$*" >&2; exit 1; }
 [[ ${1:-} =~ ^[1-9][0-9]*$ ]] || fail "Pass remaining disk headroom in GiB"
@@ -111,12 +116,13 @@ Plan a maintenance window. Review existing mechanisms with `swapon --show`,
 `lsblk -f`, and the swap entries in `/etc/fstab`. If another mechanism is
 configured or active, investigate it before adding another. Use these
 commands on a compatible **ext4** root filesystem with sufficient space.
-Other filesystems may need a different swap procedure. The example requires
-8 GiB for the file plus 20 GiB remaining. The script preserves an existing
+Other filesystems may need a different swap procedure. Enter the minimum disk space your workload needs after swap allocation.
+Provisioning checks for that headroom plus 8 GiB for the swap file. The script preserves an existing
 active target and refuses to overwrite an inactive file.
 
 ```bash
-sudo bash -s -- 20 <<'BASH'
+read -r -p 'Minimum remaining disk headroom after swap (GiB): ' seneca_disk_gib &&
+sudo bash -s -- "$seneca_disk_gib" <<'BASH'
 set -euo pipefail
 fail() { printf 'SWAP SETUP FAIL: %s\n' "$*" >&2; exit 1; }
 [[ ${1:-} =~ ^[1-9][0-9]*$ ]] || fail "Pass remaining disk headroom in GiB"
