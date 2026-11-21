@@ -426,3 +426,127 @@ quality–latency frontier for that question.
 See the [full measurement record](evidence/exact-incident-batching/MEASUREMENTS.log),
 [derived summary](evidence/exact-incident-batching/SUMMARY.json), and
 [execution and restoration record](evidence/exact-incident-batching/EXECUTION.md).
+
+## 10. Rich's workspace — a small pool with expensive pairs
+
+A single 58 KiB PDF produced ten eligible passages. The warm isolated
+assembler scored all ten in one 10 × 509 tensor batch. At 30.592 seconds,
+the BGE forward pass accounted for nearly all of the 30.615-second scorer
+interval. Dense search took 0.465 seconds within the 31.108-second total.
+The forward pass still processes thousands of input positions across
+every transformer layer even when the corpus contains only ten passages.
+
+| Stage or observation | Cold | Warm |
+|---|---:|---:|
+| Dense retrieval including Qwen3 | 34.422 s | 0.465 s |
+| Lexical retrieval | 0.029 s | 0.016 s |
+| BGE scorer | 31.787 s | 30.615 s |
+| BGE forward within scorer | 30.357 s | 30.592 s |
+| Context expansion and packing | 0.334 s | 0.009 s |
+| Assembler total | **66.576 s** | **31.108 s** |
+| Process CPU time | 93.95 CPU-s | 63.31 CPU-s |
+
+![Cold and warm Rich workspace retrieval stage waterfall](figures/08-rich-stage-waterfall.png)
+
+*Figure 8. Two assembler calls on one four-vCPU VM process. The waterfall
+uses the nonoverlapping leaf stages with rounding and unclassified time
+retained. BGE forward is already included in the scorer segment. The raw
+timers, resource samples, and reproducible figure inputs are retained
+with the stage-attribution record.*
+
+The 33.957-second dense cold/warm gap captures first-use Qwen3 and dense
+retrieval costs together. The trace does not separate Qwen3 initialization
+from artifact I/O and other dense activity. BGE first-use load or wait took
+1.327 seconds and its forward duration remained near 30.5 seconds warm.
+A startup-warming intervention could address the cold component and would
+leave the warm forward work in place.
+
+The browser's 46.095-second HTTP 200 and cited rendering establish that
+end-to-end delivery worked on that attempt. They leave earlier intermittent
+transport failures unresolved. Its 39.775-second context stage used a
+different resolver-derived retrieval question, as shown by the linked
+query and conversation hashes. The stage-attribution run used the original
+question without history. It is a same-snapshot related workload.
+The cold and warm diagnostic calls had identical full rankings, logits,
+anchors, three evidence units and 3,729 packed tokens.
+
+Recipes had 30 pairs and roughly 57% padding in two consecutive batches,
+and sorted-eight measurably reduced forward cost on that query. Rich's
+single batch had 624 padded positions out of 5,090 (12.3%). Most of its
+pairs approach the 509-token batch maximum. Candidate count, individual
+lengths, and batch maxima jointly determine padded tensor size. Fewer
+pairs can still be expensive when most of them are long.
+
+### A bounded comparison of consecutive batch shapes
+
+| Consecutive grouping | Batch widths | Total positions | Padding positions | Squared-width proxy |
+|---|---|---:|---:|---:|
+| 10 | 509 | 5,090 | 624 | 2,590,810 |
+| 5 + 5 | 509, 508 | 5,085 | 619 | 2,585,725 |
+| 4 + 4 + 2 | 509, 508, 499 | 5,066 | 600 | 2,566,582 |
+| 2 + 2 + 2 + 2 + 2 | 509, 477, 329, 508, 499 | 4,644 | 178 | 2,203,832 |
+
+These are arithmetic projections from the original ordered lengths. Only
+the first grouping has timing evidence on Rich's exact pairs. Five
+forward calls at batch size two trade lower padding for more sequential
+calls and potentially different kernel efficiency. The
+[proposed protocol](evidence/small-pool-design/PROTOCOL.md) freezes
+model, inputs, CPU budget, grouping order, warm-up, four counterbalanced
+blocks and the performance and parity gates. It makes no latency prediction.
+
+### Marginal relevance at equal candidate depth
+
+The retained Slice 9H-P artifacts permit a matched comparison of RRF and
+BGE on the same original prefix. The following uses the 16 human-reviewed
+development cases and the canonical graded metrics. At each depth, the
+BGE order is the restriction of the retained 30-candidate permutation to
+the original RRF prefix. These cases were retrospectively capped. They
+do not represent naturally small corpora or a newly timed small-batch pass.
+Six assistant-only cases are available as a separate sensitivity cohort.
+
+| Pool depth | RRF → BGE nDCG@5 | RRF → BGE Recall@5 | Improves / regresses / ties on nDCG@5 | Top-five membership changes | Membership changes with all four judged endpoints tied |
+|---|---:|---:|---:|---:|---:|
+| 5 | .743 → .753 | .583 → .583 | 3 / 4 / 9 | 0 | 0 |
+| 10 | .743 → .793 | .583 → .654 | 6 / 4 / 6 | 14 | 5 |
+| 15 | .743 → .829 | .583 → .683 | 6 / 4 / 6 | 15 | 5 |
+| 20 | .743 → .818 | .583 → .663 | 5 / 5 / 6 | 15 | 5 |
+
+At depth five reranking can change position without changing membership.
+At depth ten, 14 cases changed membership and nine of those showed
+no nDCG@5 gain. Five of those swaps tied on nDCG@5, Recall@5,
+Precision@5 and HitRate@5. A tied metric can hide meaningful evidence
+differences. These artifacts capture passage ranks, not downstream
+context assembly under both policies. They cannot establish that the
+selected evidence or packed text changed or that those changes would
+affect the answer. Fire Safety improved on two of three depth-ten cases.
+Emergency Management regressed on both of two. The categories are too
+small to support category-level routing or generalization.
+
+On Rich's diagnostic, the ordered input and full ranked ID digests
+differ, which establishes that BGE changed ordering. The retained
+diagnostic does not expose which passages moved, an RRF-only packed
+context, or independent Rich relevance labels. Scope identity and
+BGE agreement cannot substitute for that evidence. See the
+[matched-prefix data](data/small-pool-replay.json) and
+[quality-gated policy proposal](evidence/small-pool-design/QUALITY_POLICY.md).
+
+### Architecture choices and order of work
+
+| Treatment | Mechanism | Scientific risk and implementation cost | Memory and Docker implications | Evidence required |
+|---|---|---|---|---|
+| Optimize current BGE batching | Change tensor widths and kernel shapes, keep all pairs | Lower risk, bounded scorer change. FP32 accumulation can still change rank near ties | Same checkpoint and runtime. Smaller activation tensors and more calls may trade off. Measure peak RSS, including co-resident Qwen3 | Approved exact-pair comparison, selected evidence parity, representative workloads and concurrency |
+| Quality-qualified RRF-only | Skip classifier execution for an explicitly eligible path | Higher relevance risk. Moderate policy and validation work. Rank and evidence can change even in one document | Lower reranker memory only if model is never loaded, or safely released with a separate lifecycle policy. Mixed paths may still retain it | Blinded paired judging, conservative per-stratum gates, identical scope and context contract, CPU/wall cost |
+| Smaller multilingual reranker | Reduce model compute and activation size | High scientific risk, new checkpoint and adapter qualification, multilingual/technical drift | Potentially smaller weight and RAM footprint, which must be measured. Requires new provisioned bundle and compatible Docker runtime | Multi-domain and multilingual retrieval quality, calibration/rank and evidence outcomes, offline artifact verification |
+| Quantization or alternate representation | Use lower-precision kernels or a different execution engine | Medium to high risk, separate format export, parity and scientific review. Near ties can flip | Quantization may shrink weights but calibration, buffers and runtime can offset savings. FP32 ONNX previously added a sidecar and RSS without a meaningful four-vCPU gain on Recipes | Hash-bound artifacts, raw score/order and evidence gates where applicable, measured CPU-seconds, RSS and throughput |
+| Faster inference hardware | Increase compute or memory bandwidth with the same pipeline | Low risk for equivalent supported execution, rising if backend or precision changes. Higher operational cost | Larger CPU allocation or accelerator-aware Docker and driver provisioning. Measure contention and footprint, verify supported profile | Equal-workload comparison, exact rank/evidence parity, capacity and cost checks |
+
+First qualify the proposed grouping comparison on these ten pairs with
+separate execution authority. In parallel with a later approved label
+collection, build a held-out set of naturally small pools and test the
+RRF-only quality gate. If neither approach improves the tradeoff, compare
+hardware at matched scientific settings before taking on a new model or
+representation. The accepted Recipes batching and ONNX findings retain
+their original scope. No new inference or production change was executed.
+
+[Rich stage attribution and provenance](evidence/rich-stage/REPORT.md) ·
+[Reproduction instructions](evidence/small-pool-design/REPRODUCE.md)

@@ -1,0 +1,138 @@
+{
+  "cold": {
+    "stage_ms": {
+      "Dense + Qwen3": 34422,
+      "Lexical": 29,
+      "RRF": 0,
+      "Pair construction": 0,
+      "BGE scorer": 31787,
+      "Sort": 0,
+      "Expand + pack": 334,
+      "Rounding / other": 4
+    },
+    "forward_s": 30.356925516000047,
+    "forward_cpu_s": 60.633360657000004,
+    "bge_load_or_wait_s": 1.3274201510002968,
+    "batches": [
+      {
+        "batch_size": 10,
+        "padded_width": 509,
+        "lengths": [
+          502,
+          509,
+          477,
+          435,
+          268,
+          329,
+          508,
+          454,
+          499,
+          485
+        ],
+        "padded_positions": 624,
+        "active_positions": 4466,
+        "padding_fraction": 0.12259332023575638
+      }
+    ],
+    "assembler": {
+      "phase": "cold",
+      "dense_ms": 34422,
+      "lexical_ms": 29,
+      "fusion_ms": 0,
+      "pair_build_ms": 0,
+      "rerank_infer_ms": 31787,
+      "sort_ms": 0,
+      "context_expand_ms": 334,
+      "assembler_total_ms": 66576,
+      "reranker_input_count": 10,
+      "candidate_count": 10,
+      "evidence_unit_count": 3,
+      "context_token_count": 3729,
+      "process_wall_ms": 103800,
+      "rss_before_bytes": 363851776,
+      "rss_after_bytes": 4093485056,
+      "peak_rss_kib": 4223696,
+      "cpu_user_s": 85.869347,
+      "cpu_system_s": 8.075859000000001,
+      "host_available_kib": 13067020,
+      "embedding_profile": "cpu_onnx_fp32_v1",
+      "reranker_device": "cpu"
+    },
+    "sample_count": 21,
+    "sample_process_peak_cores": 2.002105895064665,
+    "sample_host_peak_busy_pct": 53.02175664786463,
+    "sample_peak_rss_kib": 4040108,
+    "sample_min_available_kib": 12812080,
+    "sample_swap_free_range_kib": [
+      8372376
+    ]
+  },
+  "warm": {
+    "stage_ms": {
+      "Dense + Qwen3": 465,
+      "Lexical": 16,
+      "RRF": 0,
+      "Pair construction": 0,
+      "BGE scorer": 30615,
+      "Sort": 0,
+      "Expand + pack": 9,
+      "Rounding / other": 3
+    },
+    "forward_s": 30.592118319999827,
+    "forward_cpu_s": 61.28932156500001,
+    "bge_load_or_wait_s": 1.4341000678541604e-05,
+    "batches": [
+      {
+        "batch_size": 10,
+        "padded_width": 509,
+        "lengths": [
+          502,
+          509,
+          477,
+          435,
+          268,
+          329,
+          508,
+          454,
+          499,
+          485
+        ],
+        "padded_positions": 624,
+        "active_positions": 4466,
+        "padding_fraction": 0.12259332023575638
+      }
+    ],
+    "assembler": {
+      "phase": "warm",
+      "dense_ms": 465,
+      "lexical_ms": 16,
+      "fusion_ms": 0,
+      "pair_build_ms": 0,
+      "rerank_infer_ms": 30615,
+      "sort_ms": 0,
+      "context_expand_ms": 9,
+      "assembler_total_ms": 31108,
+      "reranker_input_count": 10,
+      "candidate_count": 10,
+      "evidence_unit_count": 3,
+      "context_token_count": 3729,
+      "process_wall_ms": 134911,
+      "rss_before_bytes": 4093485056,
+      "rss_after_bytes": 4096901120,
+      "peak_rss_kib": 4367300,
+      "cpu_user_s": 59.149986999999996,
+      "cpu_system_s": 4.158556999999998,
+      "host_available_kib": 13071944,
+      "embedding_profile": "cpu_onnx_fp32_v1",
+      "reranker_device": "cpu"
+    },
+    "sample_count": 10,
+    "sample_process_peak_cores": 2.002460073545481,
+    "sample_host_peak_busy_pct": 52.38473767885532,
+    "sample_peak_rss_kib": 4285720,
+    "sample_min_available_kib": 12788532,
+    "sample_swap_free_range_kib": [
+      8372376
+    ]
+  }
+}

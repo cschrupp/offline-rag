@@ -1,0 +1,2577 @@
+{
+  "all": {
+    "10": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.802841202267107,
+          "precision5": 0.4818181818181818,
+          "recall5": 0.684688995215311
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.04167524474989495,
+          "precision5": 0.036363636363636355,
+          "recall5": 0.057947900053163214
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.761165957517212,
+          "precision5": 0.44545454545454544,
+          "recall5": 0.6267410951621478
+        }
+      },
+      "membership_changed_all_endpoints_tied": 9,
+      "membership_changed_no_ndcg_gain": 14,
+      "n": 22,
+      "ndcg5_outcomes": {
+        "improved": 7,
+        "regressed": 5,
+        "tied": 10
+      },
+      "top5_membership_changed": 20,
+      "top5_order_changed": 22
+    },
+    "15": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.833461608154741,
+          "precision5": 0.5090909090909091,
+          "recall5": 0.6995879851143009
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.07229565063752898,
+          "precision5": 0.06363636363636364,
+          "recall5": 0.07284688995215312
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.761165957517212,
+          "precision5": 0.44545454545454544,
+          "recall5": 0.6267410951621478
+        }
+      },
+      "membership_changed_all_endpoints_tied": 8,
+      "membership_changed_no_ndcg_gain": 13,
+      "n": 22,
+      "ndcg5_outcomes": {
+        "improved": 8,
+        "regressed": 5,
+        "tied": 9
+      },
+      "top5_membership_changed": 21,
+      "top5_order_changed": 22
+    },
+    "20": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.8253153367054858,
+          "precision5": 0.4909090909090909,
+          "recall5": 0.6854465709728867
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.06414937918827378,
+          "precision5": 0.04545454545454546,
+          "recall5": 0.05870547581073897
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.761165957517212,
+          "precision5": 0.44545454545454544,
+          "recall5": 0.6267410951621478
+        }
+      },
+      "membership_changed_all_endpoints_tied": 8,
+      "membership_changed_no_ndcg_gain": 14,
+      "n": 22,
+      "ndcg5_outcomes": {
+        "improved": 7,
+        "regressed": 6,
+        "tied": 9
+      },
+      "top5_membership_changed": 21,
+      "top5_order_changed": 22
+    },
+    "5": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.773857991880713,
+          "precision5": 0.44545454545454544,
+          "recall5": 0.6267410951621478
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.012692034363500991,
+          "precision5": 0.0,
+          "recall5": 0.0
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.761165957517212,
+          "precision5": 0.44545454545454544,
+          "recall5": 0.6267410951621478
+        }
+      },
+      "membership_changed_all_endpoints_tied": 0,
+      "membership_changed_no_ndcg_gain": 0,
+      "n": 22,
+      "ndcg5_outcomes": {
+        "improved": 6,
+        "regressed": 4,
+        "tied": 12
+      },
+      "top5_membership_changed": 0,
+      "top5_order_changed": 19
+    }
+  },
+  "assistant_only": {
+    "10": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.8300467515106832,
+          "precision5": 0.43333333333333335,
+          "recall5": 0.7666666666666666
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.019488684531809936,
+          "precision5": -1.850371707708594e-17,
+          "recall5": 0.022222222222222216
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.8105580669788733,
+          "precision5": 0.43333333333333335,
+          "recall5": 0.7444444444444445
+        }
+      },
+      "membership_changed_all_endpoints_tied": 4,
+      "membership_changed_no_ndcg_gain": 5,
+      "n": 6,
+      "ndcg5_outcomes": {
+        "improved": 1,
+        "regressed": 1,
+        "tied": 4
+      },
+      "top5_membership_changed": 6,
+      "top5_order_changed": 6
+    },
+    "15": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.8455847427438796,
+          "precision5": 0.43333333333333335,
+          "recall5": 0.7444444444444445
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.03502667576500637,
+          "precision5": 0.0,
+          "recall5": 0.0
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.8105580669788733,
+          "precision5": 0.43333333333333335,
+          "recall5": 0.7444444444444445
+        }
+      },
+      "membership_changed_all_endpoints_tied": 3,
+      "membership_changed_no_ndcg_gain": 4,
+      "n": 6,
+      "ndcg5_outcomes": {
+        "improved": 2,
+        "regressed": 1,
+        "tied": 3
+      },
+      "top5_membership_changed": 6,
+      "top5_order_changed": 6
+    },
+    "20": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.8455847427438796,
+          "precision5": 0.43333333333333335,
+          "recall5": 0.7444444444444445
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.03502667576500637,
+          "precision5": 0.0,
+          "recall5": 0.0
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.8105580669788733,
+          "precision5": 0.43333333333333335,
+          "recall5": 0.7444444444444445
+        }
+      },
+      "membership_changed_all_endpoints_tied": 3,
+      "membership_changed_no_ndcg_gain": 4,
+      "n": 6,
+      "ndcg5_outcomes": {
+        "improved": 2,
+        "regressed": 1,
+        "tied": 3
+      },
+      "top5_membership_changed": 6,
+      "top5_order_changed": 6
+    },
+    "5": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.8292063280325179,
+          "precision5": 0.43333333333333335,
+          "recall5": 0.7444444444444445
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.018648261053644578,
+          "precision5": 0.0,
+          "recall5": 0.0
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.8105580669788733,
+          "precision5": 0.43333333333333335,
+          "recall5": 0.7444444444444445
+        }
+      },
+      "membership_changed_all_endpoints_tied": 0,
+      "membership_changed_no_ndcg_gain": 0,
+      "n": 6,
+      "ndcg5_outcomes": {
+        "improved": 3,
+        "regressed": 0,
+        "tied": 3
+      },
+      "top5_membership_changed": 0,
+      "top5_order_changed": 5
+    }
+  },
+  "bge_run": "evalhybrerank_770241211814412fbf8e28c28d5e3635",
+  "chunk_set": "chunkset_6d4925ea8d66e7dc599a884e96bc5f6b094e4288d565372d15e6002086c41da2",
+  "corpus": "corpus_040e49a1d261dba4e853939b36348dc40109551d6fdb49b38c7a9d896409eadb",
+  "gold": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+  "human_reviewed": {
+    "10": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.7926391213007659,
+          "precision5": 0.5,
+          "recall5": 0.6539473684210526
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.049995204831676826,
+          "precision5": 0.05,
+          "recall5": 0.07134502923976609
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.7426439164690891,
+          "precision5": 0.45,
+          "recall5": 0.5826023391812866
+        }
+      },
+      "membership_changed_all_endpoints_tied": 5,
+      "membership_changed_no_ndcg_gain": 9,
+      "n": 16,
+      "ndcg5_outcomes": {
+        "improved": 6,
+        "regressed": 4,
+        "tied": 6
+      },
+      "top5_membership_changed": 14,
+      "top5_order_changed": 16
+    },
+    "15": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.8289154326838141,
+          "precision5": 0.5375,
+          "recall5": 0.6827668128654971
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.08627151621472495,
+          "precision5": 0.08750000000000001,
+          "recall5": 0.10016447368421053
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.7426439164690891,
+          "precision5": 0.45,
+          "recall5": 0.5826023391812866
+        }
+      },
+      "membership_changed_all_endpoints_tied": 5,
+      "membership_changed_no_ndcg_gain": 9,
+      "n": 16,
+      "ndcg5_outcomes": {
+        "improved": 6,
+        "regressed": 4,
+        "tied": 6
+      },
+      "top5_membership_changed": 15,
+      "top5_order_changed": 16
+    },
+    "20": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.8177143094410881,
+          "precision5": 0.5125,
+          "recall5": 0.6633223684210526
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.07507039297199906,
+          "precision5": 0.0625,
+          "recall5": 0.08072002923976608
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.7426439164690891,
+          "precision5": 0.45,
+          "recall5": 0.5826023391812866
+        }
+      },
+      "membership_changed_all_endpoints_tied": 5,
+      "membership_changed_no_ndcg_gain": 10,
+      "n": 16,
+      "ndcg5_outcomes": {
+        "improved": 5,
+        "regressed": 5,
+        "tied": 6
+      },
+      "top5_membership_changed": 15,
+      "top5_order_changed": 16
+    },
+    "5": {
+      "means": {
+        "bge": {
+          "hit5": 1.0,
+          "ndcg5": 0.7531023658237862,
+          "precision5": 0.45,
+          "recall5": 0.5826023391812866
+        },
+        "delta": {
+          "hit5": 0.0,
+          "ndcg5": 0.010458449354697145,
+          "precision5": 0.0,
+          "recall5": 0.0
+        },
+        "rrf": {
+          "hit5": 1.0,
+          "ndcg5": 0.7426439164690891,
+          "precision5": 0.45,
+          "recall5": 0.5826023391812866
+        }
+      },
+      "membership_changed_all_endpoints_tied": 0,
+      "membership_changed_no_ndcg_gain": 0,
+      "n": 16,
+      "ndcg5_outcomes": {
+        "improved": 3,
+        "regressed": 4,
+        "tied": 9
+      },
+      "top5_membership_changed": 0,
+      "top5_order_changed": 14
+    }
+  },
+  "human_reviewed_categories": {
+    "Construction Materials": {
+      "depth10_ndcg5_outcomes": {
+        "regressed": 1
+      },
+      "n": 1
+    },
+    "Emergency Management": {
+      "depth10_ndcg5_outcomes": {
+        "regressed": 2
+      },
+      "n": 2
+    },
+    "Emergency Response": {
+      "depth10_ndcg5_outcomes": {
+        "improved": 1
+      },
+      "n": 1
+    },
+    "Fire Safety": {
+      "depth10_ndcg5_outcomes": {
+        "improved": 2,
+        "tied": 1
+      },
+      "n": 3
+    },
+    "Fire Science": {
+      "depth10_ndcg5_outcomes": {
+        "tied": 1
+      },
+      "n": 1
+    },
+    "Firefighting Operations": {
+      "depth10_ndcg5_outcomes": {
+        "tied": 1
+      },
+      "n": 1
+    },
+    "Firefighting Tactics": {
+      "depth10_ndcg5_outcomes": {
+        "regressed": 1
+      },
+      "n": 1
+    },
+    "Incident Management": {
+      "depth10_ndcg5_outcomes": {
+        "tied": 1
+      },
+      "n": 1
+    },
+    "Legal": {
+      "depth10_ndcg5_outcomes": {
+        "improved": 1
+      },
+      "n": 1
+    },
+    "Safety Management": {
+      "depth10_ndcg5_outcomes": {
+        "tied": 1
+      },
+      "n": 1
+    },
+    "Safety Policy": {
+      "depth10_ndcg5_outcomes": {
+        "improved": 1
+      },
+      "n": 1
+    },
+    "Safety Protocols": {
+      "depth10_ndcg5_outcomes": {
+        "tied": 1
+      },
+      "n": 1
+    },
+    "Structural Engineering": {
+      "depth10_ndcg5_outcomes": {
+        "improved": 1
+      },
+      "n": 1
+    }
+  },
+  "input_sha256": {
+    "E_hybrid_rrf_full22.json": "04167b5342d2da4d71130505d552f572ff78d7988a94e83ccf5afd401d84c488",
+    "F_hybrid_rerank_full22.json": "cd4bcc5828df23a7a8a7e2038198368d900cbb42030636de2f45dc3b019c61ee",
+    "cases.jsonl": "cfdad88c2838fb1fa86912a5a7aca567e65d18aab627be76c17720802e161982",
+    "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172_adjudication_cohort_map_v1.json": "ad84ad9f2eb5a4b8ec8af3b0679b923d15887bc7c733fa4cb6efa8e01810ae8e",
+    "meta.json": "d1fc157e2c68d1b907224a9fd24a4f0c18669303390d2d715ea49d4041e616c9"
+  },
+  "rows": [
+    {
+      "category": "Firefighting Tactics",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.38250073714724464,
+            "precision5": 0.2,
+            "recall5": 0.1111111111111111
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.10104155414609711,
+            "precision5": -0.2,
+            "recall5": -0.1111111111111111
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.48354229129334175,
+            "precision5": 0.4,
+            "recall5": 0.2222222222222222
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.46067715488476185,
+            "precision5": 0.4,
+            "recall5": 0.2222222222222222
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.0228651364085799,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.48354229129334175,
+            "precision5": 0.4,
+            "recall5": 0.2222222222222222
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.38250073714724464,
+            "precision5": 0.2,
+            "recall5": 0.1111111111111111
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.10104155414609711,
+            "precision5": -0.2,
+            "recall5": -0.1111111111111111
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.48354229129334175,
+            "precision5": 0.4,
+            "recall5": 0.2222222222222222
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.46067715488476185,
+            "precision5": 0.4,
+            "recall5": 0.2222222222222222
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.0228651364085799,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.48354229129334175,
+            "precision5": 0.4,
+            "recall5": 0.2222222222222222
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 1
+    },
+    {
+      "category": "Fire Safety",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 1.0,
+            "recall5": 0.2631578947368421
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.13120507751234178,
+            "precision5": 0.19999999999999996,
+            "recall5": 0.05263157894736842
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8687949224876582,
+            "precision5": 0.8,
+            "recall5": 0.21052631578947367
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 1.0,
+            "recall5": 0.2631578947368421
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.13120507751234178,
+            "precision5": 0.19999999999999996,
+            "recall5": 0.05263157894736842
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8687949224876582,
+            "precision5": 0.8,
+            "recall5": 0.21052631578947367
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 1.0,
+            "recall5": 0.2631578947368421
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.13120507751234178,
+            "precision5": 0.19999999999999996,
+            "recall5": 0.05263157894736842
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8687949224876582,
+            "precision5": 0.8,
+            "recall5": 0.21052631578947367
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8687949224876582,
+            "precision5": 0.8,
+            "recall5": 0.21052631578947367
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8687949224876582,
+            "precision5": 0.8,
+            "recall5": 0.21052631578947367
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 2
+    },
+    {
+      "category": "Firefighting Tactics",
+      "cohort": "assistant_only",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8262346571285599,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8262346571285599,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8262346571285599,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8262346571285599,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8262346571285599,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8262346571285599,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8262346571285599,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8262346571285599,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": false
+        }
+      },
+      "ordinal": 3
+    },
+    {
+      "category": "Emergency Management",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9726097514324383,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.02739024856756167,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9726097514324383,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.02739024856756167,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9726097514324383,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.02739024856756167,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9832184408687481,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.0167815591312519,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 4
+    },
+    {
+      "category": "Safety Management",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 5
+    },
+    {
+      "category": "Construction Materials",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.34519134224686937,
+            "precision5": 0.4,
+            "recall5": 0.08333333333333333
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.1400372128694532,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.48522855511632257,
+            "precision5": 0.4,
+            "recall5": 0.08333333333333333
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.34519134224686937,
+            "precision5": 0.4,
+            "recall5": 0.08333333333333333
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.1400372128694532,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.48522855511632257,
+            "precision5": 0.4,
+            "recall5": 0.08333333333333333
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.34519134224686937,
+            "precision5": 0.4,
+            "recall5": 0.08333333333333333
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.1400372128694532,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.48522855511632257,
+            "precision5": 0.4,
+            "recall5": 0.08333333333333333
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.34519134224686937,
+            "precision5": 0.4,
+            "recall5": 0.08333333333333333
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.1400372128694532,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.48522855511632257,
+            "precision5": 0.4,
+            "recall5": 0.08333333333333333
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 6
+    },
+    {
+      "category": "Structural Engineering",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7262287617954056,
+            "precision5": 0.2,
+            "recall5": 0.3333333333333333
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.26802942807932567,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.45819933371607996,
+            "precision5": 0.2,
+            "recall5": 0.3333333333333333
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7262287617954056,
+            "precision5": 0.2,
+            "recall5": 0.3333333333333333
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.26802942807932567,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.45819933371607996,
+            "precision5": 0.2,
+            "recall5": 0.3333333333333333
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7262287617954056,
+            "precision5": 0.2,
+            "recall5": 0.3333333333333333
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.26802942807932567,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.45819933371607996,
+            "precision5": 0.2,
+            "recall5": 0.3333333333333333
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7262287617954056,
+            "precision5": 0.2,
+            "recall5": 0.3333333333333333
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.26802942807932567,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.45819933371607996,
+            "precision5": 0.2,
+            "recall5": 0.3333333333333333
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 7
+    },
+    {
+      "category": "Fire Safety",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.5296347172140421,
+            "precision5": 0.6,
+            "recall5": 0.3
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.014863272330364663,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.5147714448836774,
+            "precision5": 0.6,
+            "recall5": 0.3
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.6608397947263839,
+            "precision5": 0.8,
+            "recall5": 0.4
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.14606834984270645,
+            "precision5": 0.20000000000000007,
+            "recall5": 0.10000000000000003
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.5147714448836774,
+            "precision5": 0.6,
+            "recall5": 0.3
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.6608397947263839,
+            "precision5": 0.8,
+            "recall5": 0.4
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.14606834984270645,
+            "precision5": 0.20000000000000007,
+            "recall5": 0.10000000000000003
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.5147714448836774,
+            "precision5": 0.6,
+            "recall5": 0.3
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.5296347172140421,
+            "precision5": 0.6,
+            "recall5": 0.3
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.014863272330364663,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.5147714448836774,
+            "precision5": 0.6,
+            "recall5": 0.3
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 8
+    },
+    {
+      "category": "Resource Management",
+      "cohort": "assistant_only",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 9
+    },
+    {
+      "category": "Fire Safety",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 10
+    },
+    {
+      "category": "Legal",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8724997542842517,
+            "precision5": 0.8,
+            "recall5": 0.8
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.07817641773751727,
+            "precision5": 0.20000000000000007,
+            "recall5": 0.20000000000000007
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7943233365467345,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8724997542842517,
+            "precision5": 0.8,
+            "recall5": 0.8
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.07817641773751727,
+            "precision5": 0.20000000000000007,
+            "recall5": 0.20000000000000007
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7943233365467345,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7714582001381546,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.0228651364085799,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7943233365467345,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7943233365467345,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7943233365467345,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": false
+        }
+      },
+      "ordinal": 11
+    },
+    {
+      "category": "Emergency Management",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9832184408687481,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.0167815591312519,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9832184408687481,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.0167815591312519,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9832184408687481,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.0167815591312519,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9832184408687481,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.0167815591312519,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 12
+    },
+    {
+      "category": "Safety Protocols",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.2,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 13
+    },
+    {
+      "category": "Firefighting Operations",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7979168917078058,
+            "precision5": 1.0,
+            "recall5": 0.5555555555555556
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7979168917078058,
+            "precision5": 1.0,
+            "recall5": 0.5555555555555556
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7979168917078058,
+            "precision5": 1.0,
+            "recall5": 0.5555555555555556
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7979168917078058,
+            "precision5": 1.0,
+            "recall5": 0.5555555555555556
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7979168917078058,
+            "precision5": 1.0,
+            "recall5": 0.5555555555555556
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7979168917078058,
+            "precision5": 1.0,
+            "recall5": 0.5555555555555556
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7979168917078058,
+            "precision5": 1.0,
+            "recall5": 0.5555555555555556
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7979168917078058,
+            "precision5": 1.0,
+            "recall5": 0.5555555555555556
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 14
+    },
+    {
+      "category": "Firefighting Operations",
+      "cohort": "assistant_only",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7424693355471289,
+            "precision5": 0.4,
+            "recall5": 0.5
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7424693355471289,
+            "precision5": 0.4,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7424693355471289,
+            "precision5": 0.4,
+            "recall5": 0.5
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7424693355471289,
+            "precision5": 0.4,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7424693355471289,
+            "precision5": 0.4,
+            "recall5": 0.5
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7424693355471289,
+            "precision5": 0.4,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.7520764230169481,
+            "precision5": 0.4,
+            "recall5": 0.5
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.009607087469819198,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.7424693355471289,
+            "precision5": 0.4,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 15
+    },
+    {
+      "category": "Incident Management",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9072836011519267,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.9072836011519267,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9072836011519267,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.9072836011519267,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9072836011519267,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.9072836011519267,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9072836011519267,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.9072836011519267,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 16
+    },
+    {
+      "category": "Fire Science",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8207820281163857,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8207820281163857,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8207820281163857,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8207820281163857,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8207820281163857,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8207820281163857,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8207820281163857,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.8207820281163857,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": false
+        }
+      },
+      "ordinal": 17
+    },
+    {
+      "category": "Definitions",
+      "cohort": "assistant_only",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.4706617492287646,
+            "precision5": 0.6,
+            "recall5": 0.6
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.004106019775041381,
+            "precision5": -0.20000000000000007,
+            "recall5": -0.20000000000000007
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.47476776900380596,
+            "precision5": 0.8,
+            "recall5": 0.8
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.6575375750262825,
+            "precision5": 0.8,
+            "recall5": 0.8
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.18276980602247656,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.47476776900380596,
+            "precision5": 0.8,
+            "recall5": 0.8
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.6575375750262825,
+            "precision5": 0.8,
+            "recall5": 0.8
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.18276980602247656,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.47476776900380596,
+            "precision5": 0.8,
+            "recall5": 0.8
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.5664415584195445,
+            "precision5": 0.8,
+            "recall5": 0.8
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0916737894157385,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.47476776900380596,
+            "precision5": 0.8,
+            "recall5": 0.8
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 18
+    },
+    {
+      "category": "Fire Safety",
+      "cohort": "assistant_only",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.121038126965901,
+            "precision5": 0.19999999999999996,
+            "recall5": 0.33333333333333337
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.878961873034099,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.121038126965901,
+            "precision5": 0.19999999999999996,
+            "recall5": 0.33333333333333337
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.878961873034099,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 1.0,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.121038126965901,
+            "precision5": 0.19999999999999996,
+            "recall5": 0.33333333333333337
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.878961873034099,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.878961873034099,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.878961873034099,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 19
+    },
+    {
+      "category": "Emergency Response",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.4671445995090871,
+            "precision5": 0.6,
+            "recall5": 0.75
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.32883153378905283,
+            "precision5": 0.39999999999999997,
+            "recall5": 0.5
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.1383130657200343,
+            "precision5": 0.2,
+            "recall5": 0.25
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8381840863879982,
+            "precision5": 0.8,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.6998710206679639,
+            "precision5": 0.6000000000000001,
+            "recall5": 0.75
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.1383130657200343,
+            "precision5": 0.2,
+            "recall5": 0.25
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8381840863879982,
+            "precision5": 0.8,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.6998710206679639,
+            "precision5": 0.6000000000000001,
+            "recall5": 0.75
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.1383130657200343,
+            "precision5": 0.2,
+            "recall5": 0.25
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.21922102252603518,
+            "precision5": 0.2,
+            "recall5": 0.25
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.08090795680600088,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.1383130657200343,
+            "precision5": 0.2,
+            "recall5": 0.25
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 20
+    },
+    {
+      "category": "Safety Policy",
+      "cohort": "human_reviewed",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8772153153380493,
+            "precision5": 0.4,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.26406812257259094,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.6131471927654584,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8772153153380493,
+            "precision5": 0.4,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.26406812257259094,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.6131471927654584,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8772153153380493,
+            "precision5": 0.4,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.26406812257259094,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.6131471927654584,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.6131471927654584,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.6131471927654584,
+            "precision5": 0.2,
+            "recall5": 0.5
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 21
+    },
+    {
+      "category": "Fire Safety",
+      "cohort": "assistant_only",
+      "depths": {
+        "10": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.940914767159646,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.0,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.940914767159646,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "15": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8472668887613066,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.09364787839833932,
+            "precision5": -0.19999999999999996,
+            "recall5": -0.33333333333333337
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.940914767159646,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "20": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.8472668887613066,
+            "precision5": 0.4,
+            "recall5": 0.6666666666666666
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": -0.09364787839833932,
+            "precision5": -0.19999999999999996,
+            "recall5": -0.33333333333333337
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.940914767159646,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": true,
+          "top5_order_changed": true
+        },
+        "5": {
+          "bge": {
+            "hit5": 1.0,
+            "ndcg5": 0.9515234565959557,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "delta": {
+            "hit5": 0.0,
+            "ndcg5": 0.01060868943630977,
+            "precision5": 0.0,
+            "recall5": 0.0
+          },
+          "rrf": {
+            "hit5": 1.0,
+            "ndcg5": 0.940914767159646,
+            "precision5": 0.6,
+            "recall5": 1.0
+          },
+          "top5_membership_changed": false,
+          "top5_order_changed": true
+        }
+      },
+      "ordinal": 22
+    }
+  ],
+  "rrf_run": "evalhybretrieve_d15a9564963247cf8c514faf7aaaf0d4"
+}

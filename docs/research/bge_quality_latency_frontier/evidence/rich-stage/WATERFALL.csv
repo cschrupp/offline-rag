@@ -1,0 +1,17 @@
+phase,stage,start_s,end_s
+cold,Dense + Qwen3,0.0,34.422
+cold,Lexical,34.422,34.451
+cold,RRF,34.451,34.451
+cold,Pair construction,34.451,34.451
+cold,BGE scorer,34.451,66.238
+cold,Sort,66.238,66.238
+cold,Expand + pack,66.238,66.572
+cold,Rounding / other,66.572,66.576
+warm,Dense + Qwen3,0.0,0.465
+warm,Lexical,0.465,0.481
+warm,RRF,0.481,0.481
+warm,Pair construction,0.481,0.481
+warm,BGE scorer,0.481,31.096
+warm,Sort,31.096,31.096
+warm,Expand + pack,31.096,31.105
+warm,Rounding / other,31.105,31.108
