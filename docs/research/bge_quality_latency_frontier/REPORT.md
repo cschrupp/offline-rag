@@ -550,3 +550,75 @@ their original scope. No new inference or production change was executed.
 
 [Rich stage attribution and provenance](evidence/rich-stage/REPORT.md) ·
 [Reproduction instructions](evidence/small-pool-design/REPRODUCE.md)
+
+## 11. BGE-15 qualification — publication boundary and open performance gate
+
+Reducing `reranker.input_k` changes the candidate pool **before** raw-logit
+scoring. It changes `reranker_config_hash`, which is part of the immutable
+snapshot manifest. The ordinary registry rejects BGE-30 snapshots under
+BGE-15 settings with `reranker_config_stale`, and vice versa. Flipping a
+global setting would leave existing workspace bindings stale.
+
+The canonical publisher can validate a new manifest against the same
+dense and lexical backing without ingesting again. The isolated BGE-15
+publication must keep source, chunk, dense and lexical identity, and use
+matching settings with depth 15, output_k 10 and the existing anchor_k 5.
+An offline fixture using the deployed registry, a real local lexical
+fixture and a fake Qdrant backend verified distinct snapshot IDs, reuse
+of the same index identities, both mismatched-config rejections, and
+restoration of the original corpus pointer. Real Recipes backing is
+a remaining VM preflight check. [Publication and rollback plan](evidence/bge15-cpu/PUBLICATION.md)
+
+### What the depth replay supports
+
+| 16 human-reviewed development queries | BGE-30 | BGE-15 |
+|---|---:|---:|
+| Mean nDCG@5 | .8177 | .8289 |
+| Mean nDCG@10 | .8283 | .8293 |
+| Mean Recall@5 | .6633 | .6828 |
+| Mean Recall@10 | .7905 | .7978 |
+| Judged positives retained in full pools | 79 / 102 | 64 / 102 |
+
+**Depth 15 regressed on two queries:** Fire Safety (−0.0676 nDCG@10)
+and Construction Materials (−0.0636). Three queries improved and eleven
+tied. Figure 7 shows the full distribution. Dropping 15 judged positives
+from the full pools can coexist with slightly higher mean Recall@10.
+The retained ranked lists show different top-five membership on 3 of 16
+queries and do not establish the selected anchors, evidence units or
+packed contexts a live BGE-15 run would produce. Development averages
+do not establish query-level non-inferiority. The proposed independent
+held-out gate includes paired nDCG/Recall margins and direct-evidence
+and context-sufficiency protections. [Predeclared protocol](evidence/bge15-cpu/PROTOCOL.md)
+
+### Four-vCPU timing remains pending
+
+At preflight, the VM's remaining run time was about 26 minutes, below
+the validated 30-minute minimum maintenance margin. No stop, copy,
+publication write, or inference was attempted. The four-arm matrix
+remains pending a sufficiently long VM window and validation of both
+publications against the copied store.
+
+| Comparison cell | Evidence available today |
+|---|---|
+| BGE-30, consecutive | Historical Recipes warm scorer about 56–57 s in prior diagnostics |
+| BGE-15, consecutive | No four-vCPU measurements |
+| BGE-30, sorted-eight | Historical exact-incident qualification, 48.6% median paired forward gain, section 9 |
+| BGE-15, sorted-eight | No four-vCPU measurements |
+
+No depth-15 wall time, CPU, memory, output parity or combined batching
+benefit is inferred from the historical numbers. A later measured
+four-arm run will hold the original fused order, dense and lexical
+branch depths and scope fixed; depth 15 consumes its first 15 IDs.
+The protocol compares four counterbalanced paired blocks, includes a
+research performance screen, and keeps within-depth batching parity
+separate from the quality consequences of reducing depth. Relevance
+replay on Slice 9H-P and VM timing on Recipes cannot establish a measured
+quality–latency frontier on one population.
+
+**Disposition:** publication and experimental design ready for independent
+review. Performance and production quality remain unevaluated. The current
+runtime has a single settings profile, so mixed-depth workspaces would
+require separately reviewed settings-aware binding, or isolation at the
+deployment boundary. Migration and rollout design await both evidence
+gates. Retain the original BGE-30 settings, manifests, indexes and bindings
+for rollback.

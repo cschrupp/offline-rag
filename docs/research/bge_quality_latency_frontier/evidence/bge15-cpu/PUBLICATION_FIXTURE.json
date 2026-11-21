@@ -1,0 +1,9 @@
+{
+  "fixture_only": true,
+  "different_reranker_hashes": true,
+  "different_snapshot_ids": true,
+  "same_dense_and_lexical_identity": true,
+  "cross_profile_resolution_rejected": 2,
+  "original_manifest_preserved": true,
+  "rollback_pointer_verified": true
+}
