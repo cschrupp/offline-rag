@@ -1,0 +1,189 @@
+# Codex Task — Seneca Cloud VM Memory and Swap Deployment Requirements
+
+## Objective
+
+Update the Seneca repository to capture the operational lessons from the November 20, 2026 Google Cloud review VM incident.
+
+The objective is to ensure future cloud deployments consistently verify adequate physical memory and **persistent host-level swap before running memory-intensive ingestion workloads**.
+
+Repository: `cschrupp/offline-rag`
+
+Starting point: the current `corrective/18d-r-reranker-initialization` branch, including its evidence commit.
+
+Proposed branch: `docs/cloud-deployment-memory-preflight`
+
+Read `AGENTS.md`, `DEPLOYMENT.md`, and relevant cloud deployment runbooks before editing.
+
+This is an authorized **documentation and deployment-checklist task**. Do not modify application code or change the existing scientific configuration.
+
+## 1. Incident evidence
+
+The following observations were confirmed on the Google Cloud review VM.
+
+**Original environment**
+
+- Instance: `seneca-review`
+- Zone: `us-central1-a`
+- Machine: `e2-standard-2`
+- vCPUs: 2
+- RAM: 8 GiB
+- Swap: none
+- Application: Seneca CPU-release Docker container
+
+**Incident**
+
+On November 20, 2026, during semantic search index construction, the Linux kernel invoked the global OOM killer.
+
+Recorded evidence:
+
+- Timestamp: `2026-11-20 23:48:16 UTC`
+- Terminated process: Seneca Python server, UID 10001
+- Anonymous RSS at termination: approximately 7.3 GiB
+- Last ingestion stage: `building_indexes`
+- Operation recovery: `recovered_A`
+- Previous published workspace snapshot preserved
+- Ingestion operation interrupted
+
+The incident was caused by host memory exhaustion. The evidence does not independently establish a memory leak or defective embedding algorithm.
+
+**Mitigation performed**
+
+An 8 GiB swap file was created at:
+
+`/swapfile-seneca`
+
+It was successfully activated and verified through `/proc/swaps` and `free -h`.
+
+Persistent activation was configured using:
+
+`/swapfile-seneca none swap sw 0 0`
+
+The `/etc/fstab` entry was verified. Post-reboot persistence has not yet been demonstrated.
+
+A subsequent small PDF ingestion completed successfully. That result does not establish that all larger workloads fit within the original RAM capacity.
+
+**Planned machine configuration**
+
+- `e2-standard-4`
+- 4 vCPUs
+- 16 GiB physical RAM
+- Retained 8 GiB host swap
+- Existing two-hour maximum VM runtime for cost control
+
+The machine upgrade is planned, not yet established as completed.
+
+## 2. Required repository changes
+
+### A. Permanent deployment guide
+
+Update `DEPLOYMENT.md` with a concise section addressing cloud-host memory prerequisites.
+
+Include:
+
+- Why this requirement exists, referencing the observed OOM incident.
+- Persistent swap as a requirement for the GCE review profile.
+- Verification of swap activation and persistence.
+- Sufficient free disk space for the swap file.
+- Physical RAM sizing and why swap is not equivalent to RAM.
+- Checks before large ingestion.
+- Reverification after VM reboot or machine-type changes.
+- Protection of persistent workspace data and model mounts.
+- The existing two-hour automatic STOP policy.
+
+Do not claim the swap requirement applies universally to every Seneca installation. Distinguish the specific Google Cloud review profile from general workstation and GPU-server deployments.
+
+### B. Deployment preflight checklist
+
+Add a short, repeatable checklist in the appropriate deployment runbook or a dedicated cloud preflight document.
+
+At minimum, verify:
+
+1. Expected instance and machine type.
+2. Physical RAM and available host memory.
+3. Active swap capacity of at least 8 GiB for this GCE review profile.
+4. Correct persistent `/etc/fstab` entry.
+5. Swap-file permissions (`0600`).
+6. Sufficient remaining filesystem capacity.
+7. Docker daemon and application restart configuration.
+8. Preservation of `/srv/seneca/data` and `/srv/seneca/models`.
+9. Two-hour maximum runtime and STOP rather than DELETE semantics.
+10. No active ingestion before planned shutdown or resize.
+
+Provide safe, copy-pasteable Linux commands.
+
+Use a separate Bash process for strict scripts rather than applying `set -e` directly to an operator's interactive SSH shell.
+
+The preflight should be non-destructive. It must not silently create swap, resize the VM, restart Docker, or interrupt an active ingestion.
+
+### C. Initial provisioning instructions
+
+Document how to create persistent swap on a new compatible Linux VM:
+
+- Check whether a swap file or alternate swap mechanism already exists.
+- Verify filesystem compatibility and available disk capacity.
+- Create an appropriately sized swap file.
+- Restrict its permissions.
+- Initialize and activate swap.
+- Back up `/etc/fstab`.
+- Add exactly one persistent entry.
+- Verify the result.
+- Validate persistence after the next controlled reboot.
+
+Make the procedure idempotent where practical. Never reformat an already active swap file.
+
+## 3. Explicit exclusions
+
+Do not:
+
+- Modify `src/`, `tests/`, model settings, inference behavior, or dependency locks.
+- Change `deploy/Dockerfile`.
+- Introduce swap management inside the application container.
+- Change the machine type or terminate the live VM.
+- Modify GCP scheduling policies or the two-hour runtime limit.
+- Change secrets, OpenRouter settings, network configuration, or firewall rules.
+- Delete rollback containers, images, volumes or workspace files.
+- Treat swap as a substitute for adequate RAM.
+- Reopen H1/H2 scientific acceptance.
+
+No infrastructure-as-code implementation is required in this task.
+
+## 4. Validation
+
+Perform a focused documentation review and verify:
+
+- Commands are syntactically valid.
+- Preflight checks fail clearly when the required swap is absent.
+- The instructions do not duplicate `/etc/fstab` entries.
+- Existing active swap is not reformatted.
+- The commands do not accidentally terminate an interactive SSH shell.
+- Paths and requirements match the established GCE review environment.
+- No application or dependency files changed.
+
+Run `git diff --check`.
+
+If appropriate, use `bash -n` against extracted shell examples or an equivalent non-executing syntax check.
+
+Do not execute provisioning or destructive commands as part of documentation validation.
+
+## 5. Deliverables
+
+Push the documentation branch for independent review.
+
+Provide:
+
+- Exact branch and commit SHA.
+- Changed-file list.
+- Summary of the deployment requirements introduced.
+- Validation results.
+- Confirmation that application code, scientific contracts and existing deployment artifacts were not modified.
+- Any operational caveats requiring Human attention.
+
+Record the complete authorization prompt and final implementation response in the documentation branch's evidence, consistent with existing repository practice. Avoid unnecessary self-referential SHA commits.
+
+Stop after pushing. Do not merge into main without review.
+
+## Acceptance criterion
+
+A future operator preparing a Seneca Google Cloud review deployment should be able to follow the repository guidance and determine **before deployment or substantial ingestion** whether the host has sufficient physical memory, active and persistent swap, adequate disk space, and the correct cost-control shutdown policy.
+
+A missing or inadequate swap configuration must produce an explicit failed preflight for this deployment profile rather than a silent warning.

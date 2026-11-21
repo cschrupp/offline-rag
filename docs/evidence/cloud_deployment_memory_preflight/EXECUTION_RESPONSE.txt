@@ -1,0 +1,9 @@
+Pushed [`docs/cloud-deployment-memory-preflight`](https://github.com/cschrupp/offline-rag/tree/docs/cloud-deployment-memory-preflight) for independent review. The documentation commit is `7e45f3650854608b5af5b5de63c1c2c59445a65e`.
+
+- `DEPLOYMENT.md` records the GCE review profile’s planned 16 GiB host, required 8 GiB of persistent host swap, and two-hour automatic STOP policy.
+- `docs/cloud_review_vm_memory_preflight.md` gives operators a read-only preflight, guarded swap provisioning, and checks for disk headroom, Docker restart settings, and persistent mounts.
+- `docs/evidence/cloud_deployment_memory_preflight/` records the authorization and execution response.
+
+`git diff --check`, shell syntax checks, and isolated fixtures for absent swap, reuse of active swap, and duplicate fstab entries passed. The branch contains documentation and evidence only. No VM commands, application changes, or promotion were performed.
+
+The operator still needs to verify the resize, swap activation after reboot, and the effective two-hour STOP policy on the VM.
