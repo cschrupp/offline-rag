@@ -393,3 +393,20 @@ and npm are needed only by the release builder. Slice 18B-R Docker runtime and
 18B-P package qualification are distinct from real-host systemd/WSL lifecycle
 validation, which remains deferred. Native Windows is only a separate
 feasibility spike; CUDA workstation packaging remains deferred.
+
+## 12. Google Cloud review VM memory preflight
+
+On November 20, 2026, the review VM's kernel OOM killer interrupted
+ingestion during index construction on an 8 GiB host with no swap.
+For subsequent GCE review deployments, use the planned 16 GiB
+`e2-standard-4` profile and at least 8 GiB of active, persistent host swap.
+Swap provides emergency headroom with disk latency. Size physical RAM for
+the expected workload, and verify available RAM and disk headroom before
+substantial ingestion. These requirements are specific to the GCE review
+profile. Workstation and GPU server sizing depends on their workloads.
+
+Run the [cloud VM preflight](docs/cloud_review_vm_memory_preflight.md)
+before deployment and substantial ingestion, and repeat it after a
+reboot or machine type change. Preserve the persistent workspace data
+and model mounts. Keep the existing two-hour automatic **STOP** policy,
+with the instance and persistent disks retained.
