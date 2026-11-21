@@ -15,8 +15,9 @@ The artifact SHA-256 values and run IDs are recorded in
 local workspace containing the original Slice 9H-P E/F full-22 result
 artifacts under `eval/results/9h_p/` and the exact GoldDataset v1 directory.
 These local historical inputs may contain source-derived text and are not
-copied into this publication draft. Verify their SHA-256 against the manifest
-before running. The repo contains the cohort membership and corrected Slice
+copied into this publication draft. The replay resolves exact filenames and
+checks all seven inputs against [the frozen digest manifest](data/historical-input-sha256.json)
+before reading any scientific content. The repo contains the cohort membership and corrected Slice
 14C aggregate. The scalar VM log is included with this study. It is a retained
 observation, not a new VM run.
 
@@ -53,6 +54,9 @@ The timed interval is model forward only. Scorer wall, process CPU time and
 cumulative RSS are also retained. The runtime uses the existing reranker
 load contract with Torch 2.14.0+cpu and Transformers 4.57.6, CPU FP32, on an
 Intel i9-10885H with 16 visible logical CPUs and measured intra/inter 2/2.
+The pilot requires one finite FP32 score per candidate, complete and unique
+score association, exact ranks, and numerical agreement with atol=1e-4 and
+rtol=1e-5. An invalid score, association or parity failure exits nonzero.
 Synthetic logit and rank parity do not establish evidence-unit parity.
 Timing will vary by host, workload and operating conditions.
 
@@ -60,7 +64,7 @@ Timing will vary by host, workload and operating conditions.
 
 ```bash
 Rscript "$study/scripts/figures.R" "$study"
-python -m pytest -q "$study/scripts/test_analyze.py" tests/unit/test_slice9_evaluation.py
+python -m pytest -q "$study/scripts" tests/unit/test_slice9_evaluation.py
 ruff check "$study/exploratory"
 ruff format --check "$study/exploratory"
 git diff --check

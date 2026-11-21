@@ -32,3 +32,22 @@ def test_padding_uses_batch_max_width():
     assert result["slots"] == 10
     assert result["padding"] == 2
     assert result["attention_proxy"] == 34
+
+
+def test_verify_inputs_rejects_changed_missing_and_duplicate_paths(tmp_path):
+    from analyze import digest, verify_inputs
+
+    first = tmp_path / "first.json"
+    second = tmp_path / "second.json"
+    first.write_text("{}")
+    second.write_text("[]")
+    expected = {first.name: digest(first), second.name: digest(second)}
+    verify_inputs((first, second), expected)
+    with pytest.raises(ValueError, match="names"):
+        verify_inputs((first, first), expected)
+    second.write_text("{}")
+    with pytest.raises(ValueError, match="SHA-256 mismatch"):
+        verify_inputs((first, second), expected)
+    second.unlink()
+    with pytest.raises(ValueError, match="missing"):
+        verify_inputs((first, second), expected)

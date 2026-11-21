@@ -50,7 +50,7 @@ quality$metric <- factor(quality$metric, levels = c("ndcg5", "ndcg10", "recall10
                          labels = c("nDCG@5", "nDCG@10", "Recall@10"))
 save("04-prefix-quality", ggplot(quality, aes(arm, value, colour = metric, group = metric)) +
        geom_line(linewidth = .8) + geom_point(size = 3) + scale_colour_manual(values = palette) +
-       labs(title = "Fifteen candidates retain the measured quality signal",
+       labs(title = "Fifteen candidates retain cohort-average relevance",
             subtitle = "Slice 9H-P · 16 human-reviewed queries · deterministic order replay",
             x = "RRF only or BGE input depth", y = "Macro-average score", colour = NULL))
 front <- data.frame(arm = c("Hybrid RRF", "Hybrid + BGE"),
@@ -75,3 +75,21 @@ if (length(trials) == 4) {
          subtitle = "Local CPU · one synthetic length-matched workload · AB and BA blocks",
          x = NULL, y = "Forward wall time (s)", colour = "Measured block"))
 }
+
+human <- Filter(function(row) row$cohort == "human_reviewed", data$cases)
+paired <- do.call(rbind, lapply(human, function(row) data.frame(
+  label = paste(row$ordinal, row$category, sep = " · "),
+  change = row$arms[["BGE-15"]]$ndcg10 - row$arms[["BGE-30"]]$ndcg10
+)))
+paired$label <- factor(paired$label, levels = rev(paired$label))
+paired$outcome <- ifelse(paired$change < 0, "Regression",
+                         ifelse(paired$change > 0, "Improvement", "Tie"))
+save("07-per-query-depth-changes",
+     ggplot(paired, aes(change, label, colour = outcome)) +
+       geom_vline(xintercept = 0, colour = "#B2C0C9") +
+       geom_segment(aes(x = 0, xend = change, yend = label), linewidth = .7) +
+       geom_point(size = 2.6) +
+       scale_colour_manual(values = c(Regression = "#B54A32", Improvement = "#126E82", Tie = "#596E7B")) +
+       labs(title = "Similar averages hide two query-level regressions",
+            subtitle = "Slice 9H-P · 16 human-reviewed queries · paired replay",
+            x = "nDCG@10 change (BGE-15 minus BGE-30)", y = NULL, colour = NULL), h = 6.5)

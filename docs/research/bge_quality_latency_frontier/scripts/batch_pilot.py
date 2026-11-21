@@ -53,6 +53,53 @@ WORDS = (" oil", " salt", " food", " red", " water", " green")
 ADAPTER = "sentence-transformers-cross-encoder-v1"
 
 
+ATOL = 1e-4
+RTOL = 1e-5
+
+
+def assign_logits(scores, seen, group, logits):
+    if (
+        len(set(group)) != len(group)
+        or seen.intersection(group)
+        or any(not 0 <= candidate < len(scores) for candidate in group)
+    ):
+        raise ValueError("candidate-score association is invalid")
+    if (
+        logits.shape != (len(group), 1)
+        or logits.dtype != torch.float32
+        or not torch.isfinite(logits).all()
+    ):
+        raise ValueError("expected one finite FP32 logit per candidate")
+    scores[group] = logits.squeeze(1)
+    seen.update(group)
+
+
+def rank_scores(scores, seen):
+    if seen != set(range(len(scores))):
+        raise ValueError("candidate scores are missing")
+    return sorted(seen, key=lambda i: (-scores[i].item(), i))
+
+
+def check_parity(baseline, candidate):
+    close = torch.allclose(candidate[1], baseline[1], atol=ATOL, rtol=RTOL)
+    rank_match = baseline[2] == candidate[2]
+    print(
+        json.dumps(
+            {
+                "parity_block": baseline[0]["block"],
+                "allclose": close,
+                "rank_match": rank_match,
+                "atol": ATOL,
+                "rtol": RTOL,
+                "max_abs_difference": (baseline[1] - candidate[1]).abs().max().item(),
+            }
+        ),
+        flush=True,
+    )
+    if not close or not rank_match:
+        raise ValueError("pilot parity failed")
+
+
 def sha256(path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
@@ -71,7 +118,8 @@ def main(model_path):
     )
     tokenizer, model = reranker._load()
     reranker._assert_query_fits(tokenizer, QUERY)
-    assert all(p.dtype == torch.float32 for p in model.parameters())
+    if any(p.dtype != torch.float32 for p in model.parameters()):
+        raise ValueError("expected FP32 model parameters")
     overhead = len(tokenizer(QUERY, text_pair="oil")["input_ids"]) - 1
     passages = [
         WORDS[i % len(WORDS)] * (length - overhead) for i, length in enumerate(LENGTHS)
@@ -107,6 +155,7 @@ def main(model_path):
     for block, names in enumerate((list(arms), list(arms), list(reversed(arms)))):
         for name in names:
             scores = torch.empty(30, dtype=torch.float32)
+            seen = set()
             timings = []
             started = perf_counter()
             for group in arms[name]:
@@ -120,9 +169,11 @@ def main(model_path):
                 )
                 for ordinal, candidate in enumerate(group):
                     active = tokens["attention_mask"][ordinal].bool()
-                    assert active.sum().item() == LENGTHS[candidate]
+                    if active.sum().item() != LENGTHS[candidate]:
+                        raise ValueError("candidate token length changed")
                     identity = tokens["input_ids"][ordinal, active].tolist()
-                    assert inputs.setdefault(candidate, identity) == identity
+                    if inputs.setdefault(candidate, identity) != identity:
+                        raise ValueError("candidate encoded inputs changed")
                 with torch.inference_mode():
                     wall, cpu = perf_counter(), process_time()
                     logits = model(**tokens).logits
@@ -133,10 +184,8 @@ def main(model_path):
                             process_time() - cpu,
                         ]
                     )
-                assert logits.shape == (len(group), 1)
-                assert logits.dtype == torch.float32 and torch.isfinite(logits).all()
-                scores[group] = logits.squeeze(1)
-            rank = sorted(range(30), key=lambda i: (-scores[i].item(), i))
+                assign_logits(scores, seen, group, logits)
+            rank = rank_scores(scores, seen)
             record = {
                 "block": block,
                 "arm": name,
@@ -158,21 +207,7 @@ def main(model_path):
             for row in outputs
             if row[0]["block"] == block and row[0]["arm"] == "sorted8"
         )
-        close = torch.allclose(sorted_arm[1], baseline[1], atol=1e-4, rtol=1e-5)
-        print(
-            json.dumps(
-                {
-                    "parity_block": block,
-                    "allclose": close,
-                    "rank_match": baseline[2] == sorted_arm[2],
-                    "max_abs_difference": (baseline[1] - sorted_arm[1])
-                    .abs()
-                    .max()
-                    .item(),
-                }
-            ),
-            flush=True,
-        )
+        check_parity(baseline, sorted_arm)
 
 
 if __name__ == "__main__":

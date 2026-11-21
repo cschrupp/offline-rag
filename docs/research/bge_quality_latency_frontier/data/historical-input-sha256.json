@@ -1,0 +1,9 @@
+{
+  "E_hybrid_rrf_full22.json": "04167b5342d2da4d71130505d552f572ff78d7988a94e83ccf5afd401d84c488",
+  "F_hybrid_rerank_full22.json": "cd4bcc5828df23a7a8a7e2038198368d900cbb42030636de2f45dc3b019c61ee",
+  "aggregate.json": "2b7083a58d61ca2b56d4bc5a1d5ebdcf4f399889eb918f99376ae2aa5a96f3a7",
+  "cases.jsonl": "cfdad88c2838fb1fa86912a5a7aca567e65d18aab627be76c17720802e161982",
+  "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172_adjudication_cohort_map_v1.json": "ad84ad9f2eb5a4b8ec8af3b0679b923d15887bc7c733fa4cb6efa8e01810ae8e",
+  "meta.json": "d1fc157e2c68d1b907224a9fd24a4f0c18669303390d2d715ea49d4041e616c9",
+  "seneca-four-results.log": "ff9f0ddf34ce9d32780b7962c87245c3a27e7f953212f92caee57aa8aca5bcb1"
+}

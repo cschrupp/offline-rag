@@ -105,17 +105,45 @@ def padding(lengths, groups):
     }
 
 
+def verify_inputs(paths, expected):
+    """Reject missing, duplicate, unexpected or modified inputs before replay."""
+    if len(paths) != len(expected) or {path.name for path in paths} != set(expected):
+        raise ValueError("historical input names do not match the manifest")
+    for path in paths:
+        if not path.is_file() or digest(path) != expected[path.name]:
+            raise ValueError(
+                f"historical input missing or SHA-256 mismatch: {path.name}"
+            )
+
+
 def main(root, gold_path, measurements, output):
+    left_path = root / "eval/results/9h_p/E_hybrid_rrf_full22.json"
+    right_path = root / "eval/results/9h_p/F_hybrid_rerank_full22.json"
+    cohort_path = root / (
+        "eval/fixtures/sufficiency/"
+        "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172"
+        "_adjudication_cohort_map_v1.json"
+    )
+    perf_path = root / (
+        "eval/results/performance_14/"
+        "perfsuite_5248892df382995ac96ec2b09aea61bf27510673b93e0d816d6a255a2f4305ba/"
+        "perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca/"
+        "aggregate.json"
+    )
+    paths = (
+        left_path,
+        right_path,
+        cohort_path,
+        perf_path,
+        gold_path / "meta.json",
+        gold_path / "cases.jsonl",
+        measurements,
+    )
+    expected_hashes = read(
+        Path(__file__).resolve().parents[1] / "data/historical-input-sha256.json"
+    )
+    verify_inputs(paths, expected_hashes)
     gold = load_gold_dataset(gold_path)
-    left_path, right_path = (
-        next((root / "eval/results/9h_p").glob(f"{key}_*full22.json")) for key in "EF"
-    )
-    cohort_path = next(
-        (root / "eval/fixtures/sufficiency").glob(f"{gold.dataset_id}_*")
-    )
-    perf_path = next(
-        root.glob("eval/results/performance_14/*/perfrun_deb*/aggregate.json")
-    )
     left, right, perf = map(read, (left_path, right_path, perf_path))
     cohorts = read(cohort_path)
     assert cohorts["gold_dataset_id"] == gold.dataset_id
@@ -207,18 +235,7 @@ def main(root, gold_path, measurements, output):
                     "rrf": left["run_id"],
                     "bge30": right["run_id"],
                     "14c": perf["run_id"],
-                    "input_hashes": {
-                        path.name: digest(path)
-                        for path in (
-                            left_path,
-                            right_path,
-                            cohort_path,
-                            perf_path,
-                            gold.path / "meta.json",
-                            gold.path / "cases.jsonl",
-                            measurements,
-                        )
-                    },
+                    "input_hashes": expected_hashes,
                 },
                 "cases": rows,
                 "cohorts": {

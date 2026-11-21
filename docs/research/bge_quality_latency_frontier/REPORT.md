@@ -16,7 +16,10 @@ nearly doubling CPU time.
 
 Two alternatives address the workload itself. A replay of 16 human-reviewed
 development queries found that reranking the first 15 fused candidates
-retained the cohort’s mean nDCG@10 and Recall@10 relative to reranking 30.
+retained cohort-average nDCG@10 and Recall@10 relative to reranking 30.
+Three queries improved, two regressed, and eleven tied on nDCG@10.
+This exploratory result establishes neither query-level non-inferiority
+nor production readiness.
 Five and ten candidates missed the preregistered exploratory quality screen.
 In the Recipes workload, sorting by token length and batching eight at a
 time would remove 5,192 of the 6,590 padded token positions. A bounded
@@ -65,6 +68,13 @@ seconds. The 2/1 result matched all logits in its experiment. The 4/1
 result changed logits and failed that experiment’s exact-logit criterion
 despite unchanged ranks and selected evidence. The cause of the unusually
 slow baseline batch was unresolved.
+
+Conventional CPU tuning left the same 30 pairs and the same padded
+tensors to score. Torch's apparent thread-setting gain largely disappeared
+against the earlier baseline. ONNX changed the execution engine, but on
+the four-vCPU VM its 4/1 run used 229.22 CPU-seconds for warm assembly
+versus 117.09 for Torch, with only 0.238 seconds wall-time difference.
+This makes lowering padded work a more direct target for this incident.
 
 The later ONNX study used its own declared numerical tolerance. Both ONNX
 settings passed exact ranking, anchor, evidence and packed-context parity,
@@ -164,8 +174,9 @@ discriminate the arms. Precision and all cohort results are in the data.*
 
 ![Depth and retrieval metrics](figures/04-prefix-quality.png)
 
-*Figure 3. Depth replay on the human-review cohort. Cost savings from
-scoring fewer candidates were not timed.*
+*Figure 3. Depth replay on 16 human-reviewed development queries. Similar
+cohort averages do not establish query-level non-inferiority or deployment
+readiness. Depth-specific latency was not measured.*
 
 BGE-15 and BGE-20 passed the exploratory mean-loss screen. The BGE-15
 paired nDCG@10 change relative to BGE-30 was +.0010 with descriptive 95%
@@ -176,6 +187,33 @@ depth 30, even though its Recall@10 was slightly higher. The 22-case
 sensitivity run ranked BGE-15 at .847 nDCG@10 versus .842 for BGE-30.
 The six assistant-only cases yielded .894 versus .879 and cannot resolve
 uncertainty in the human-reviewed stratum.
+
+![Paired per-query nDCG changes](figures/07-per-query-depth-changes.png)
+
+*Figure 7. BGE-15 minus BGE-30 nDCG@10 for each human-reviewed query.
+Positive values favor BGE-15. Zero means a metric tie, even if lists differ.*
+
+The five nonzero changes show how the cohort mean can conceal individual
+losses. These are case-level scores. Fire Safety appears twice with opposite
+outcomes, so its regression cannot be generalized to the category.
+
+| Case ordinal | Category | Paired nDCG@10 change |
+|---:|---|---:|
+| 1 | Firefighting Tactics | +0.0511 |
+| 2 | Fire Safety | −0.0676 |
+| 6 | Construction Materials | −0.0636 |
+| 8 | Fire Safety | +0.0663 |
+| 11 | Legal | +0.0291 |
+
+Eleven cases tied, three improved and two regressed. The full input pool
+contained **64 judged-positive query–passage matches at depth 15 versus
+79 at depth 30**, across 102 known positives in the cohort. These are summed
+counts before applying the top-ten cutoff. Recall@10 is a macro-average of
+per-query fractions restricted to the first ten results after reranking.
+A shorter input pool can lose judged positives overall while moving more
+of the retained positives into the top ten on some queries. This replay
+does not establish whether such a change improves grounded answers.
+
 
 ### Padding and forward cost
 
@@ -211,7 +249,10 @@ synthetic pairs with the same 30 tokenized lengths as the incident.*
 *Table 4. Forward times are sums of individual batch timings.
 CPU time includes all process threads during those forward calls.*
 
-The median paired reduction was 34.3%, above the 20% local pilot screen.
+The projection removes 5,192 padded slots, about 79% of the original
+padding, and reduces the squared-width proxy by 61.3%. Neither percentage
+estimates wall time. The measured synthetic median forward reduction was
+34.3%, above the 20% local pilot screen.
 Every pair had identical unpadded IDs across arms, and both blocks passed
 the predefined logit tolerance with a maximum difference of 1.76e-5.
 After restoring original score association, all 30 ranks matched. Evidence
