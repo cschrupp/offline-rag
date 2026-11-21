@@ -3,7 +3,7 @@
 
 *An empirical investigation of candidate depth, length-aware batching, and the marginal value of neural reranking.*
 
-**Interim research report · Seneca**
+**INTERIM RESEARCH REPORT · Seneca**
 
 ## Executive summary
 
@@ -106,7 +106,7 @@ checking ranking and evidence remain necessary.
 
 ## 4. Experimental methodology
 
-The [preregistered protocol](design/PROTOCOL.md) fixes hypotheses, nulls,
+The [preregistered protocol](RESEARCH_PLAN.md) fixes hypotheses, nulls,
 endpoints, tolerances, and exploratory screens. The research branch starts
 at deployed source `9c92e706c4b9e9d9ac0816a655bdf131cc63fca1`. ONNX
 qualification `1d1f9aec`, thread diagnostic `9066e62f`, and instrumentation
@@ -121,7 +121,7 @@ qualification `1d1f9aec`, thread diagnostic `9066e62f`, and instrumentation
 | Level-C and Slice 10E | Generation boundary and evaluation design | Different objectives and populations, no paired depth treatment |
 
 The Gold dataset, corpus, chunk set and historical input hashes appear in
-[observations.json](executed/observations.json). The human-reviewed cohort
+[observations.json](data/observations.json). The human-reviewed cohort
 contains 102 positive judgments across 16 cases. The assistant-only cohort
 has 18 across six. The frozen legacy results and adjudication map retain
 their original dispositions. In particular, human review here is development
@@ -300,5 +300,7 @@ multiple query categories. Measure the cost and relevance of each arm
 on that same population before selecting a frontier or training an
 adaptive policy.
 
-See [reproducibility instructions](REPRODUCE.md), [authorization](design/AUTHORIZATION.md),
-and the [protocol](design/PROTOCOL.md).
+See [reproducibility instructions](REPRODUCIBILITY.md), [authorization](evidence/study/AUTHORIZATION.md),
+and the [protocol](RESEARCH_PLAN.md).
+
+[Independent review status](evidence/REVIEW_STATUS.md)

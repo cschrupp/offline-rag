@@ -3,15 +3,15 @@
 Branch `research/bge-quality-latency-frontier` starts at
 `9c92e706c4b9e9d9ac0816a655bdf131cc63fca1`. Protocol freeze `830879ed`
 preceded both new analyses. The exact source commits executed are in
-[replay-commit.txt](executed/replay-commit.txt) and
-[pilot-commit.txt](executed/pilot-commit.txt). The benchmark ran in the
+[replay-commit.txt](evidence/study/replay-commit.txt) and
+[pilot-commit.txt](evidence/study/pilot-commit.txt). The benchmark ran in the
 research worktree, using the existing local Python 3.14.5 environment
 without changes to the release dependency graph.
 
 ## Frozen inputs
 
 The artifact SHA-256 values and run IDs are recorded in
-[observations.json](executed/observations.json). Use an existing authorized
+[observations.json](data/observations.json). Use an existing authorized
 local workspace containing the original Slice 9H-P E/F full-22 result
 artifacts under `eval/results/9h_p/` and the exact GoldDataset v1 directory.
 These local historical inputs may contain source-derived text and are not
@@ -23,10 +23,10 @@ observation, not a new VM run.
 ```bash
 study=docs/research/bge_quality_latency_frontier
 export PYTHONPATH="$PWD/src"
-python "$study/exploratory/analyze.py" \
+python "$study/scripts/analyze.py" \
   "$AUTHORIZED_ARTIFACT_REPO" "$AUTHORIZED_GOLD_DATASET" \
-  "$study/executed/seneca-four-results.log" /tmp/seneca-replay.json
-cmp /tmp/seneca-replay.json "$study/executed/observations.json"
+  "$study/evidence/study/seneca-four-results.log" /tmp/seneca-replay.json
+cmp /tmp/seneca-replay.json "$study/data/observations.json"
 ```
 
 The replay code validates corpus, chunk set, Gold identity, dense/lexical
@@ -46,7 +46,7 @@ batch shapes. It does not use original incident documents or a vector store.
 
 ```bash
 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
-  python "$study/exploratory/batch_pilot.py" "$LOCAL_BGE_MODEL" > /tmp/seneca-pilot.jsonl
+  python "$study/scripts/batch_pilot.py" "$LOCAL_BGE_MODEL" > /tmp/seneca-pilot.jsonl
 ```
 
 The timed interval is model forward only. Scorer wall, process CPU time and
@@ -59,8 +59,8 @@ Timing will vary by host, workload and operating conditions.
 ## Figures and checks
 
 ```bash
-Rscript "$study/exploratory/figures.R" "$study"
-python -m pytest -q "$study/exploratory/test_analyze.py" tests/unit/test_slice9_evaluation.py
+Rscript "$study/scripts/figures.R" "$study"
+python -m pytest -q "$study/scripts/test_analyze.py" tests/unit/test_slice9_evaluation.py
 ruff check "$study/exploratory"
 ruff format --check "$study/exploratory"
 git diff --check

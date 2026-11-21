@@ -1,7 +1,7 @@
 library(ggplot2)
 library(jsonlite)
 root <- commandArgs(trailingOnly = TRUE)[1]
-data <- fromJSON(file.path(root, "executed", "observations.json"), simplifyVector = FALSE)
+data <- fromJSON(file.path(root, "data", "observations.json"), simplifyVector = FALSE)
 palette <- c("#126E82", "#EC9A29", "#8C6478")
 style <- theme_minimal(base_size = 13) + theme(
   plot.title.position = "plot", plot.title = element_text(face = "bold", size = 17),
@@ -63,7 +63,7 @@ save("06-14c-descriptive-frontier", ggplot(front, aes(p50, ndcg, label = arm)) +
        labs(title = "Two observed points on the Slice 14C frontier",
             subtitle = "22 development queries · 220 warm observations per arm",
             x = "Median total wall time (s)", y = "Macro nDCG@10"))
-raw <- lapply(readLines(file.path(root, "executed", "batch-pilot.jsonl")), fromJSON, simplifyVector = FALSE)
+raw <- lapply(readLines(file.path(root, "data", "batch-pilot.jsonl")), fromJSON, simplifyVector = FALSE)
 trials <- Filter(function(r) !is.null(r$arm) && !isTRUE(r$warmup), raw)
 if (length(trials) == 4) {
   trial <- do.call(rbind, lapply(trials, function(r) data.frame(
