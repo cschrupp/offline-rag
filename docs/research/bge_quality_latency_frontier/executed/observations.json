@@ -1,0 +1,3658 @@
+{
+  "14c_latency": [
+    {
+      "stats": {
+        "attempted_count": 220,
+        "contract": "performance-benchmark-aggregate-v1",
+        "failure_count": 0,
+        "instrumentation_exclusion_count": 0,
+        "max": 12.926994864013977,
+        "min": 3.508741957019083,
+        "n": 220,
+        "p50": 5.617130434024148,
+        "p95": 8.311822108470368,
+        "statistics_semantics_version": "perf-stats-linear-interp-v1",
+        "valid_count": 220,
+        "warmup_count": 44
+      },
+      "variant": "hybrid"
+    },
+    {
+      "stats": {
+        "attempted_count": 220,
+        "contract": "performance-benchmark-aggregate-v1",
+        "failure_count": 0,
+        "instrumentation_exclusion_count": 0,
+        "max": 70.4453759349417,
+        "min": 5.31094303203281,
+        "n": 220,
+        "p50": 7.412913789972663,
+        "p95": 13.53324203192023,
+        "statistics_semantics_version": "perf-stats-linear-interp-v1",
+        "valid_count": 220,
+        "warmup_count": 44
+      },
+      "variant": "hybrid_rerank"
+    }
+  ],
+  "14c_quality": [
+    {
+      "eligible_case_count": 22,
+      "hit_rate_at_1": 0.7727272727272727,
+      "hit_rate_at_10": 1.0,
+      "hit_rate_at_5": 1.0,
+      "mrr": 0.8863636363636364,
+      "ndcg_at_1": 0.7424242424242423,
+      "ndcg_at_10": 0.7905068212751879,
+      "ndcg_at_5": 0.7611659575172122,
+      "precision_at_1": 0.7727272727272727,
+      "precision_at_10": 0.32272727272727275,
+      "precision_at_5": 0.4454545454545455,
+      "recall_at_1": 0.34191254651780967,
+      "recall_at_10": 0.8070175438596491,
+      "recall_at_5": 0.6267410951621478,
+      "variant": "hybrid"
+    },
+    {
+      "eligible_case_count": 22,
+      "hit_rate_at_1": 0.8636363636363636,
+      "hit_rate_at_10": 1.0,
+      "hit_rate_at_5": 1.0,
+      "mrr": 0.9318181818181818,
+      "ndcg_at_1": 0.7727272727272727,
+      "ndcg_at_10": 0.8422178723370745,
+      "ndcg_at_5": 0.8253153367054857,
+      "precision_at_1": 0.8636363636363636,
+      "precision_at_10": 0.3409090909090909,
+      "precision_at_5": 0.49090909090909096,
+      "recall_at_1": 0.3756246677299309,
+      "recall_at_10": 0.8135765550239235,
+      "recall_at_5": 0.6854465709728867,
+      "variant": "hybrid_rerank"
+    }
+  ],
+  "cases": [
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.4128758569211294,
+          "ndcg5": 0.38250073714724464,
+          "precision10": 0.3,
+          "precision5": 0.2,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.1111111111111111
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.45882794917001973,
+          "ndcg5": 0.46067715488476185,
+          "precision10": 0.4,
+          "precision5": 0.4,
+          "recall10": 0.4444444444444444,
+          "recall5": 0.2222222222222222
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.40771103702904055,
+          "ndcg5": 0.38250073714724464,
+          "precision10": 0.3,
+          "precision5": 0.2,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.1111111111111111
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.40771103702904055,
+          "ndcg5": 0.38250073714724464,
+          "precision10": 0.3,
+          "precision5": 0.2,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.1111111111111111
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.36448062487844707,
+          "ndcg5": 0.46067715488476185,
+          "precision10": 0.4,
+          "precision5": 0.4,
+          "recall10": 0.2222222222222222,
+          "recall5": 0.2222222222222222
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.42878830287327385,
+          "ndcg5": 0.48354229129334175,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.2222222222222222
+        }
+      },
+      "category": "Firefighting Tactics",
+      "cohort": "human_reviewed",
+      "ordinal": 1,
+      "positive_labels": 9,
+      "positive_retention": {
+        "BGE-10": 3,
+        "BGE-15": 4,
+        "BGE-20": 5,
+        "BGE-30": 7,
+        "BGE-5": 2,
+        "RRF": 7
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 4,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8630152897016883,
+          "ndcg5": 1.0,
+          "precision10": 0.8,
+          "precision5": 1.0,
+          "recall10": 0.42105263157894735,
+          "recall5": 0.2631578947368421
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8630152897016883,
+          "ndcg5": 1.0,
+          "precision10": 0.8,
+          "precision5": 1.0,
+          "recall10": 0.42105263157894735,
+          "recall5": 0.2631578947368421
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8630152897016883,
+          "ndcg5": 1.0,
+          "precision10": 0.8,
+          "precision5": 1.0,
+          "recall10": 0.42105263157894735,
+          "recall5": 0.2631578947368421
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9305687780632227,
+          "ndcg5": 1.0,
+          "precision10": 0.9,
+          "precision5": 1.0,
+          "recall10": 0.47368421052631576,
+          "recall5": 0.2631578947368421
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.5637884576902256,
+          "ndcg5": 0.8687949224876582,
+          "precision10": 0.8,
+          "precision5": 0.8,
+          "recall10": 0.21052631578947367,
+          "recall5": 0.21052631578947367
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8512360941594274,
+          "ndcg5": 0.8687949224876582,
+          "precision10": 0.8,
+          "precision5": 0.8,
+          "recall10": 0.42105263157894735,
+          "recall5": 0.21052631578947367
+        }
+      },
+      "category": "Fire Safety",
+      "cohort": "human_reviewed",
+      "ordinal": 2,
+      "positive_labels": 19,
+      "positive_retention": {
+        "BGE-10": 8,
+        "BGE-15": 10,
+        "BGE-20": 10,
+        "BGE-30": 14,
+        "BGE-5": 4,
+        "RRF": 14
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 5,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 4,
+        "RRF": 4
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.91311732856428,
+          "ndcg5": 0.8262346571285599,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 0.5
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.91311732856428,
+          "ndcg5": 0.8262346571285599,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 0.5
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9058464496821221,
+          "ndcg5": 0.8262346571285599,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 0.5
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8262346571285599,
+          "ndcg5": 0.8262346571285599,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 0.5,
+          "recall5": 0.5
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8262346571285599,
+          "ndcg5": 0.8262346571285599,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 0.5,
+          "recall5": 0.5
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9058464496821221,
+          "ndcg5": 0.8262346571285599,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 0.5
+        }
+      },
+      "category": "Firefighting Tactics",
+      "cohort": "assistant_only",
+      "ordinal": 3,
+      "positive_labels": 2,
+      "positive_retention": {
+        "BGE-10": 2,
+        "BGE-15": 2,
+        "BGE-20": 2,
+        "BGE-30": 2,
+        "BGE-5": 1,
+        "RRF": 2
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 4,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 4,
+        "RRF": 4
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9726097514324383,
+          "ndcg5": 0.9726097514324383,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9726097514324383,
+          "ndcg5": 0.9726097514324383,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9726097514324383,
+          "ndcg5": 0.9726097514324383,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9726097514324383,
+          "ndcg5": 0.9726097514324383,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9832184408687481,
+          "ndcg5": 0.9832184408687481,
+          "precision10": 0.6,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        }
+      },
+      "category": "Emergency Management",
+      "cohort": "human_reviewed",
+      "ordinal": 4,
+      "positive_labels": 3,
+      "positive_retention": {
+        "BGE-10": 3,
+        "BGE-15": 3,
+        "BGE-20": 3,
+        "BGE-30": 3,
+        "BGE-5": 3,
+        "RRF": 3
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 5,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 4,
+        "RRF": 4
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        }
+      },
+      "category": "Safety Management",
+      "cohort": "human_reviewed",
+      "ordinal": 5,
+      "positive_labels": 1,
+      "positive_retention": {
+        "BGE-10": 1,
+        "BGE-15": 1,
+        "BGE-20": 1,
+        "BGE-30": 1,
+        "BGE-5": 1,
+        "RRF": 1
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.36680070555131283,
+          "ndcg5": 0.34519134224686937,
+          "precision10": 0.4,
+          "precision5": 0.4,
+          "recall10": 0.16666666666666666,
+          "recall5": 0.08333333333333333
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.3596910069063418,
+          "ndcg5": 0.34519134224686937,
+          "precision10": 0.4,
+          "precision5": 0.4,
+          "recall10": 0.16666666666666666,
+          "recall5": 0.08333333333333333
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.42331179510529354,
+          "ndcg5": 0.34519134224686937,
+          "precision10": 0.5,
+          "precision5": 0.4,
+          "recall10": 0.20833333333333334,
+          "recall5": 0.08333333333333333
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.42331179510529354,
+          "ndcg5": 0.34519134224686937,
+          "precision10": 0.5,
+          "precision5": 0.4,
+          "recall10": 0.20833333333333334,
+          "recall5": 0.08333333333333333
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.22400556151517553,
+          "ndcg5": 0.34519134224686937,
+          "precision10": 0.4,
+          "precision5": 0.4,
+          "recall10": 0.08333333333333333,
+          "recall5": 0.08333333333333333
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.4595326231006953,
+          "ndcg5": 0.48522855511632257,
+          "precision10": 0.4,
+          "precision5": 0.4,
+          "recall10": 0.16666666666666666,
+          "recall5": 0.08333333333333333
+        }
+      },
+      "category": "Construction Materials",
+      "cohort": "human_reviewed",
+      "ordinal": 6,
+      "positive_labels": 24,
+      "positive_retention": {
+        "BGE-10": 4,
+        "BGE-15": 6,
+        "BGE-20": 8,
+        "BGE-30": 13,
+        "BGE-5": 2,
+        "RRF": 13
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 5,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7262287617954056,
+          "ndcg5": 0.7262287617954056,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.3333333333333333
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7262287617954056,
+          "ndcg5": 0.7262287617954056,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.3333333333333333
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7262287617954056,
+          "ndcg5": 0.7262287617954056,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.3333333333333333
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7262287617954056,
+          "ndcg5": 0.7262287617954056,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.3333333333333333
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7262287617954056,
+          "ndcg5": 0.7262287617954056,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.3333333333333333
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.45819933371607996,
+          "ndcg5": 0.45819933371607996,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 0.3333333333333333,
+          "recall5": 0.3333333333333333
+        }
+      },
+      "category": "Structural Engineering",
+      "cohort": "human_reviewed",
+      "ordinal": 7,
+      "positive_labels": 3,
+      "positive_retention": {
+        "BGE-10": 1,
+        "BGE-15": 1,
+        "BGE-20": 1,
+        "BGE-30": 2,
+        "BGE-5": 1,
+        "RRF": 2
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 5,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 4,
+        "RRF": 4
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.40995091484653445,
+          "ndcg5": 0.5296347172140421,
+          "precision10": 0.4,
+          "precision5": 0.6,
+          "recall10": 0.4,
+          "recall5": 0.3
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.5587148206871071,
+          "ndcg5": 0.6608397947263839,
+          "precision10": 0.6,
+          "precision5": 0.8,
+          "recall10": 0.6,
+          "recall5": 0.4
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.49246059723271807,
+          "ndcg5": 0.6608397947263839,
+          "precision10": 0.5,
+          "precision5": 0.8,
+          "recall10": 0.5,
+          "recall5": 0.4
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.49246059723271807,
+          "ndcg5": 0.6608397947263839,
+          "precision10": 0.5,
+          "precision5": 0.8,
+          "recall10": 0.5,
+          "recall5": 0.4
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.3436966913921454,
+          "ndcg5": 0.5296347172140421,
+          "precision10": 0.6,
+          "precision5": 0.6,
+          "recall10": 0.3,
+          "recall5": 0.3
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.39767223286316733,
+          "ndcg5": 0.5147714448836774,
+          "precision10": 0.4,
+          "precision5": 0.6,
+          "recall10": 0.4,
+          "recall5": 0.3
+        }
+      },
+      "category": "Fire Safety",
+      "cohort": "human_reviewed",
+      "ordinal": 8,
+      "positive_labels": 10,
+      "positive_retention": {
+        "BGE-10": 4,
+        "BGE-15": 7,
+        "BGE-20": 7,
+        "BGE-30": 7,
+        "BGE-5": 3,
+        "RRF": 7
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 4,
+        "RRF": 4
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        }
+      },
+      "category": "Resource Management",
+      "cohort": "assistant_only",
+      "ordinal": 9,
+      "positive_labels": 1,
+      "positive_retention": {
+        "BGE-10": 1,
+        "BGE-15": 1,
+        "BGE-20": 1,
+        "BGE-30": 1,
+        "BGE-5": 1,
+        "RRF": 1
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 3,
+        "BGE-15": 4,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        }
+      },
+      "category": "Fire Safety",
+      "cohort": "human_reviewed",
+      "ordinal": 10,
+      "positive_labels": 1,
+      "positive_retention": {
+        "BGE-10": 1,
+        "BGE-15": 1,
+        "BGE-20": 1,
+        "BGE-30": 1,
+        "BGE-5": 1,
+        "RRF": 1
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8724997542842517,
+          "ndcg5": 0.8724997542842517,
+          "precision10": 0.4,
+          "precision5": 0.8,
+          "recall10": 0.8,
+          "recall5": 0.8
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8724997542842517,
+          "ndcg5": 0.8724997542842517,
+          "precision10": 0.4,
+          "precision5": 0.8,
+          "recall10": 0.8,
+          "recall5": 0.8
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8434416557049629,
+          "ndcg5": 0.7714582001381546,
+          "precision10": 0.4,
+          "precision5": 0.6,
+          "recall10": 0.8,
+          "recall5": 0.6
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8434416557049629,
+          "ndcg5": 0.7714582001381546,
+          "precision10": 0.4,
+          "precision5": 0.6,
+          "recall10": 0.8,
+          "recall5": 0.6
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7943233365467345,
+          "ndcg5": 0.7943233365467345,
+          "precision10": 0.6,
+          "precision5": 0.6,
+          "recall10": 0.6,
+          "recall5": 0.6
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8663067921135428,
+          "ndcg5": 0.7943233365467345,
+          "precision10": 0.4,
+          "precision5": 0.6,
+          "recall10": 0.8,
+          "recall5": 0.6
+        }
+      },
+      "category": "Legal",
+      "cohort": "human_reviewed",
+      "ordinal": 11,
+      "positive_labels": 5,
+      "positive_retention": {
+        "BGE-10": 4,
+        "BGE-15": 4,
+        "BGE-20": 4,
+        "BGE-30": 4,
+        "BGE-5": 3,
+        "RRF": 4
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 4,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9832184408687481,
+          "ndcg5": 0.9832184408687481,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9832184408687481,
+          "ndcg5": 0.9832184408687481,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9832184408687481,
+          "ndcg5": 0.9832184408687481,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9832184408687481,
+          "ndcg5": 0.9832184408687481,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9832184408687481,
+          "ndcg5": 0.9832184408687481,
+          "precision10": 0.6,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        }
+      },
+      "category": "Emergency Management",
+      "cohort": "human_reviewed",
+      "ordinal": 12,
+      "positive_labels": 3,
+      "positive_retention": {
+        "BGE-10": 3,
+        "BGE-15": 3,
+        "BGE-20": 3,
+        "BGE-30": 3,
+        "BGE-5": 3,
+        "RRF": 3
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 4,
+        "RRF": 4
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.1,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 1.0
+        }
+      },
+      "category": "Safety Protocols",
+      "cohort": "human_reviewed",
+      "ordinal": 13,
+      "positive_labels": 1,
+      "positive_retention": {
+        "BGE-10": 1,
+        "BGE-15": 1,
+        "BGE-20": 1,
+        "BGE-30": 1,
+        "BGE-5": 1,
+        "RRF": 1
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 5,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.838201925440712,
+          "ndcg5": 0.7979168917078058,
+          "precision10": 0.9,
+          "precision5": 1.0,
+          "recall10": 1.0,
+          "recall5": 0.5555555555555556
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.838201925440712,
+          "ndcg5": 0.7979168917078058,
+          "precision10": 0.9,
+          "precision5": 1.0,
+          "recall10": 1.0,
+          "recall5": 0.5555555555555556
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.838201925440712,
+          "ndcg5": 0.7979168917078058,
+          "precision10": 0.9,
+          "precision5": 1.0,
+          "recall10": 1.0,
+          "recall5": 0.5555555555555556
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.838201925440712,
+          "ndcg5": 0.7979168917078058,
+          "precision10": 0.9,
+          "precision5": 1.0,
+          "recall10": 1.0,
+          "recall5": 0.5555555555555556
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.6312994777513529,
+          "ndcg5": 0.7979168917078058,
+          "precision10": 1.0,
+          "precision5": 1.0,
+          "recall10": 0.5555555555555556,
+          "recall5": 0.5555555555555556
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8358940041379461,
+          "ndcg5": 0.7979168917078058,
+          "precision10": 0.9,
+          "precision5": 1.0,
+          "recall10": 1.0,
+          "recall5": 0.5555555555555556
+        }
+      },
+      "category": "Firefighting Operations",
+      "cohort": "human_reviewed",
+      "ordinal": 14,
+      "positive_labels": 9,
+      "positive_retention": {
+        "BGE-10": 9,
+        "BGE-15": 9,
+        "BGE-20": 9,
+        "BGE-30": 9,
+        "BGE-5": 5,
+        "RRF": 9
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 5,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 5,
+        "RRF": 5
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8205574393360723,
+          "ndcg5": 0.7424693355471289,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 0.75,
+          "recall5": 0.5
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.815543009722474,
+          "ndcg5": 0.7424693355471289,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 0.75,
+          "recall5": 0.5
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.815543009722474,
+          "ndcg5": 0.7424693355471289,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 0.75,
+          "recall5": 0.5
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.815543009722474,
+          "ndcg5": 0.7424693355471289,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 0.75,
+          "recall5": 0.5
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7520764230169481,
+          "ndcg5": 0.7520764230169481,
+          "precision10": 0.4,
+          "precision5": 0.4,
+          "recall10": 0.5,
+          "recall5": 0.5
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.815543009722474,
+          "ndcg5": 0.7424693355471289,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 0.75,
+          "recall5": 0.5
+        }
+      },
+      "category": "Firefighting Operations",
+      "cohort": "assistant_only",
+      "ordinal": 15,
+      "positive_labels": 4,
+      "positive_retention": {
+        "BGE-10": 3,
+        "BGE-15": 4,
+        "BGE-20": 4,
+        "BGE-30": 4,
+        "BGE-5": 2,
+        "RRF": 4
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 5,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 4,
+        "RRF": 4
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9733360964168419,
+          "ndcg5": 0.9072836011519267,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 0.6666666666666666
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9733360964168419,
+          "ndcg5": 0.9072836011519267,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 0.6666666666666666
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9733360964168419,
+          "ndcg5": 0.9072836011519267,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 0.6666666666666666
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9733360964168419,
+          "ndcg5": 0.9072836011519267,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 0.6666666666666666
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9072836011519267,
+          "ndcg5": 0.9072836011519267,
+          "precision10": 0.4,
+          "precision5": 0.4,
+          "recall10": 0.6666666666666666,
+          "recall5": 0.6666666666666666
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9690945337173088,
+          "ndcg5": 0.9072836011519267,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 0.6666666666666666
+        }
+      },
+      "category": "Incident Management",
+      "cohort": "human_reviewed",
+      "ordinal": 16,
+      "positive_labels": 3,
+      "positive_retention": {
+        "BGE-10": 3,
+        "BGE-15": 3,
+        "BGE-20": 3,
+        "BGE-30": 3,
+        "BGE-5": 2,
+        "RRF": 3
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 5,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 4,
+        "RRF": 4
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.953598560896157,
+          "ndcg5": 0.8207820281163857,
+          "precision10": 0.5,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 0.6
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9465581828140457,
+          "ndcg5": 0.8207820281163857,
+          "precision10": 0.5,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 0.6
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9465581828140457,
+          "ndcg5": 0.8207820281163857,
+          "precision10": 0.5,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 0.6
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9465581828140457,
+          "ndcg5": 0.8207820281163857,
+          "precision10": 0.5,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 0.6
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8207820281163857,
+          "ndcg5": 0.8207820281163857,
+          "precision10": 0.6,
+          "precision5": 0.6,
+          "recall10": 0.6,
+          "recall5": 0.6
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9565156065410682,
+          "ndcg5": 0.8207820281163857,
+          "precision10": 0.5,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 0.6
+        }
+      },
+      "category": "Fire Science",
+      "cohort": "human_reviewed",
+      "ordinal": 17,
+      "positive_labels": 5,
+      "positive_retention": {
+        "BGE-10": 5,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 5
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 2,
+        "RRF": 2
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.5243358605596404,
+          "ndcg5": 0.4706617492287646,
+          "precision10": 0.4,
+          "precision5": 0.6,
+          "recall10": 0.8,
+          "recall5": 0.6
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7083344657790173,
+          "ndcg5": 0.6575375750262825,
+          "precision10": 0.5,
+          "precision5": 0.8,
+          "recall10": 1.0,
+          "recall5": 0.8
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7083344657790173,
+          "ndcg5": 0.6575375750262825,
+          "precision10": 0.5,
+          "precision5": 0.8,
+          "recall10": 1.0,
+          "recall5": 0.8
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7060101275298873,
+          "ndcg5": 0.6575375750262825,
+          "precision10": 0.5,
+          "precision5": 0.8,
+          "recall10": 1.0,
+          "recall5": 0.8
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.5664415584195445,
+          "ndcg5": 0.5664415584195445,
+          "precision10": 0.8,
+          "precision5": 0.8,
+          "recall10": 0.8,
+          "recall5": 0.8
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.47476776900380596,
+          "ndcg5": 0.47476776900380596,
+          "precision10": 0.4,
+          "precision5": 0.8,
+          "recall10": 0.8,
+          "recall5": 0.8
+        }
+      },
+      "category": "Definitions",
+      "cohort": "assistant_only",
+      "ordinal": 18,
+      "positive_labels": 5,
+      "positive_retention": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 4,
+        "RRF": 5
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 1.0,
+          "ndcg5": 1.0,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.878961873034099,
+          "ndcg5": 0.878961873034099,
+          "precision10": 0.4,
+          "precision5": 0.4,
+          "recall10": 0.6666666666666666,
+          "recall5": 0.6666666666666666
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9596539576780331,
+          "ndcg5": 0.878961873034099,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 0.6666666666666666
+        }
+      },
+      "category": "Fire Safety",
+      "cohort": "assistant_only",
+      "ordinal": 19,
+      "positive_labels": 3,
+      "positive_retention": {
+        "BGE-10": 3,
+        "BGE-15": 3,
+        "BGE-20": 3,
+        "BGE-30": 3,
+        "BGE-5": 2,
+        "RRF": 3
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.4671445995090871,
+          "ndcg5": 0.4671445995090871,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 0.75,
+          "recall5": 0.75
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8381840863879982,
+          "ndcg5": 0.8381840863879982,
+          "precision10": 0.4,
+          "precision5": 0.8,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8381840863879982,
+          "ndcg5": 0.8381840863879982,
+          "precision10": 0.4,
+          "precision5": 0.8,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8381840863879982,
+          "ndcg5": 0.8381840863879982,
+          "precision10": 0.4,
+          "precision5": 0.8,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.21922102252603518,
+          "ndcg5": 0.21922102252603518,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 0.25,
+          "recall5": 0.25
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "ndcg10": 0.27346170204051734,
+          "ndcg5": 0.1383130657200343,
+          "precision10": 0.3,
+          "precision5": 0.2,
+          "recall10": 0.75,
+          "recall5": 0.25
+        }
+      },
+      "category": "Emergency Response",
+      "cohort": "human_reviewed",
+      "ordinal": 20,
+      "positive_labels": 4,
+      "positive_retention": {
+        "BGE-10": 3,
+        "BGE-15": 4,
+        "BGE-20": 4,
+        "BGE-30": 4,
+        "BGE-5": 1,
+        "RRF": 4
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 2,
+        "RRF": 2
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8772153153380493,
+          "ndcg5": 0.8772153153380493,
+          "precision10": 0.2,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8772153153380493,
+          "ndcg5": 0.8772153153380493,
+          "precision10": 0.2,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8772153153380493,
+          "ndcg5": 0.8772153153380493,
+          "precision10": 0.2,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.8772153153380493,
+          "ndcg5": 0.8772153153380493,
+          "precision10": 0.2,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.6131471927654584,
+          "ndcg5": 0.6131471927654584,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 0.5,
+          "recall5": 0.5
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.7977228895450267,
+          "ndcg5": 0.6131471927654584,
+          "precision10": 0.2,
+          "precision5": 0.2,
+          "recall10": 1.0,
+          "recall5": 0.5
+        }
+      },
+      "category": "Safety Policy",
+      "cohort": "human_reviewed",
+      "ordinal": 21,
+      "positive_labels": 2,
+      "positive_retention": {
+        "BGE-10": 2,
+        "BGE-15": 2,
+        "BGE-20": 2,
+        "BGE-30": 2,
+        "BGE-5": 1,
+        "RRF": 2
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 4,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 2,
+        "RRF": 2
+      }
+    },
+    {
+      "arms": {
+        "BGE-10": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.940914767159646,
+          "ndcg5": 0.940914767159646,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "BGE-15": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9279589734052406,
+          "ndcg5": 0.8472668887613066,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 0.6666666666666666
+        },
+        "BGE-20": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9279589734052406,
+          "ndcg5": 0.8472668887613066,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 0.6666666666666666
+        },
+        "BGE-30": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9279589734052406,
+          "ndcg5": 0.8472668887613066,
+          "precision10": 0.3,
+          "precision5": 0.4,
+          "recall10": 1.0,
+          "recall5": 0.6666666666666666
+        },
+        "BGE-5": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.9515234565959557,
+          "ndcg5": 0.9515234565959557,
+          "precision10": 0.6,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        },
+        "RRF": {
+          "hit10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "ndcg10": 0.940914767159646,
+          "ndcg5": 0.940914767159646,
+          "precision10": 0.3,
+          "precision5": 0.6,
+          "recall10": 1.0,
+          "recall5": 1.0
+        }
+      },
+      "category": "Fire Safety",
+      "cohort": "assistant_only",
+      "ordinal": 22,
+      "positive_labels": 3,
+      "positive_retention": {
+        "BGE-10": 3,
+        "BGE-15": 3,
+        "BGE-20": 3,
+        "BGE-30": 3,
+        "BGE-5": 3,
+        "RRF": 3
+      },
+      "top5_overlap_bge30": {
+        "BGE-10": 4,
+        "BGE-15": 5,
+        "BGE-20": 5,
+        "BGE-30": 5,
+        "BGE-5": 3,
+        "RRF": 3
+      }
+    }
+  ],
+  "cohorts": {
+    "all": {
+      "BGE-10": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.9318181818181818
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.0694627721584671,
+            0.003977263075374054
+          ],
+          "delta_vs_30": -0.02787144649062018,
+          "mean": 0.8143464258464543
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            -0.06746172488707475,
+            0.0117351721625696
+          ],
+          "delta_vs_30": -0.022474134438378836,
+          "mean": 0.802841202267107
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.0409090909090909,
+            3.784851220313033e-18
+          ],
+          "delta_vs_30": -0.018181818181818177,
+          "mean": 0.32272727272727275
+        },
+        "precision5": {
+          "bootstrap_95": [
+            -0.04545454545454548,
+            0.02727272727272728
+          ],
+          "delta_vs_30": -0.0090909090909091,
+          "mean": 0.4818181818181818
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.05378787878787878,
+            0.05480462519936204
+          ],
+          "delta_vs_30": -0.00655901116427432,
+          "mean": 0.8070175438596491
+        },
+        "recall5": {
+          "bootstrap_95": [
+            -0.04545454545454546,
+            0.04545454545454546
+          ],
+          "delta_vs_30": -0.0007575757575757574,
+          "mean": 0.684688995215311
+        }
+      },
+      "BGE-15": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.9318181818181818
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.008688025280091638,
+            0.018550105537445533
+          ],
+          "delta_vs_30": 0.004748271240864587,
+          "mean": 0.8469661435779391
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            0.0,
+            0.02088534081424209
+          ],
+          "delta_vs_30": 0.008146271449255199,
+          "mean": 0.833461608154741
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.013636363636363634,
+            0.022727272727272735
+          ],
+          "delta_vs_30": 0.004545454545454548,
+          "mean": 0.34545454545454546
+        },
+        "precision5": {
+          "bootstrap_95": [
+            0.0,
+            0.04545454545454546
+          ],
+          "delta_vs_30": 0.018181818181818184,
+          "mean": 0.5090909090909091
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.004784688995215311,
+            0.08043593833067517
+          ],
+          "delta_vs_30": 0.028036948431685273,
+          "mean": 0.8416135034556087
+        },
+        "recall5": {
+          "bootstrap_95": [
+            0.0,
+            0.037373737373737385
+          ],
+          "delta_vs_30": 0.014141414141414144,
+          "mean": 0.6995879851143009
+        }
+      },
+      "BGE-20": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.9318181818181818
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.00900053584483379,
+            0.010961805268628026
+          ],
+          "delta_vs_30": 0.0006537564745980783,
+          "mean": 0.8428716288116725
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8253153367054858
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.013636363636363634,
+            0.013636363636363637
+          ],
+          "delta_vs_30": 1.261617073437678e-18,
+          "mean": 0.34090909090909094
+        },
+        "precision5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.4909090909090909
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.007177033492822966,
+            0.06818181818181818
+          ],
+          "delta_vs_30": 0.02033492822966507,
+          "mean": 0.8339114832535885
+        },
+        "recall5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.6854465709728867
+        }
+      },
+      "BGE-30": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.9318181818181818
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8422178723370745
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8253153367054858
+        },
+        "precision10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.34090909090909094
+        },
+        "precision5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.4909090909090909
+        },
+        "recall10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8135765550239235
+        },
+        "recall5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.6854465709728867
+        }
+      },
+      "BGE-5": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.9318181818181818
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.17572233963583425,
+            -0.05165098369557512
+          ],
+          "delta_vs_30": -0.10813007206153377,
+          "mean": 0.7340878002755408
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            -0.1206288518317035,
+            -0.0004833268601972781
+          ],
+          "delta_vs_30": -0.051457344824772794,
+          "mean": 0.773857991880713
+        },
+        "precision10": {
+          "bootstrap_95": [
+            0.05000000000000001,
+            0.15454545454545454
+          ],
+          "delta_vs_30": 0.10454545454545455,
+          "mean": 0.44545454545454544
+        },
+        "precision5": {
+          "bootstrap_95": [
+            -0.1181818181818182,
+            0.009090909090909094
+          ],
+          "delta_vs_30": -0.04545454545454546,
+          "mean": 0.44545454545454544
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.2734516214779373,
+            -0.1077020202020202
+          ],
+          "delta_vs_30": -0.18683545986177566,
+          "mean": 0.6267410951621478
+        },
+        "recall5": {
+          "bootstrap_95": [
+            -0.15503721424774056,
+            0.020707070707070705
+          ],
+          "delta_vs_30": -0.05870547581073897,
+          "mean": 0.6267410951621478
+        }
+      },
+      "RRF": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            -0.13636363636363635,
+            0.045454545454545456
+          ],
+          "delta_vs_30": -0.045454545454545456,
+          "mean": 0.8863636363636364
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.1170406233631808,
+            -0.0019518660094210514
+          ],
+          "delta_vs_30": -0.051711051061886545,
+          "mean": 0.7905068212751879
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            -0.1455240957554862,
+            0.00016316327790744857
+          ],
+          "delta_vs_30": -0.06414937918827378,
+          "mean": 0.761165957517212
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.0409090909090909,
+            3.784851220313033e-18
+          ],
+          "delta_vs_30": -0.018181818181818177,
+          "mean": 0.32272727272727275
+        },
+        "precision5": {
+          "bootstrap_95": [
+            -0.1181818181818182,
+            0.009090909090909094
+          ],
+          "delta_vs_30": -0.04545454545454546,
+          "mean": 0.44545454545454544
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.05378787878787878,
+            0.05480462519936204
+          ],
+          "delta_vs_30": -0.00655901116427432,
+          "mean": 0.8070175438596491
+        },
+        "recall5": {
+          "bootstrap_95": [
+            -0.15503721424774056,
+            0.020707070707070705
+          ],
+          "delta_vs_30": -0.05870547581073897,
+          "mean": 0.6267410951621478
+        }
+      }
+    },
+    "assistant_only": {
+      "BGE-10": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.08784209625712285,
+            0.04427707398679307
+          ],
+          "delta_vs_30": -0.012803562027753864,
+          "mean": 0.8664875659366065
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            -0.09343791289875897,
+            0.04682393919916966
+          ],
+          "delta_vs_30": -0.015537991233196435,
+          "mean": 0.8300467515106832
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.04999999999999999,
+            0.05
+          ],
+          "delta_vs_30": 4.625929269271485e-18,
+          "mean": 0.26666666666666666
+        },
+        "precision5": {
+          "bootstrap_95": [
+            -0.10000000000000003,
+            0.09999999999999998
+          ],
+          "delta_vs_30": -1.850371707708594e-17,
+          "mean": 0.43333333333333335
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.09999999999999998,
+            0.25
+          ],
+          "delta_vs_30": 0.05000000000000001,
+          "mean": 0.925
+        },
+        "recall5": {
+          "bootstrap_95": [
+            -0.10000000000000003,
+            0.16666666666666669
+          ],
+          "delta_vs_30": 0.022222222222222216,
+          "mean": 0.7666666666666666
+        }
+      },
+      "BGE-15": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            0.0,
+            0.04382872542604834
+          ],
+          "delta_vs_30": 0.014867834947474992,
+          "mean": 0.8941589629118353
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8455847427438796
+        },
+        "precision10": {
+          "bootstrap_95": [
+            0.0,
+            0.05
+          ],
+          "delta_vs_30": 0.016666666666666666,
+          "mean": 0.2833333333333333
+        },
+        "precision5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.43333333333333335
+        },
+        "recall10": {
+          "bootstrap_95": [
+            0.0,
+            0.25
+          ],
+          "delta_vs_30": 0.08333333333333333,
+          "mean": 0.9583333333333334
+        },
+        "recall5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.7444444444444445
+        }
+      },
+      "BGE-20": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            0.0,
+            0.04019328598496943
+          ],
+          "delta_vs_30": 0.013656021800448689,
+          "mean": 0.8929471497648089
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8455847427438796
+        },
+        "precision10": {
+          "bootstrap_95": [
+            0.0,
+            0.05
+          ],
+          "delta_vs_30": 0.016666666666666666,
+          "mean": 0.2833333333333333
+        },
+        "precision5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.43333333333333335
+        },
+        "recall10": {
+          "bootstrap_95": [
+            0.0,
+            0.25
+          ],
+          "delta_vs_30": 0.08333333333333333,
+          "mean": 0.9583333333333334
+        },
+        "recall5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.7444444444444445
+        }
+      },
+      "BGE-30": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8792911279643603
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8455847427438796
+        },
+        "precision10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.26666666666666666
+        },
+        "precision5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.43333333333333335
+        },
+        "recall10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.875
+        },
+        "recall5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.7444444444444445
+        }
+      },
+      "BGE-5": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.10053507016707591,
+            -0.002722936720682597
+          ],
+          "delta_vs_30": -0.05008479993184243,
+          "mean": 0.8292063280325179
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            -0.07410055167243697,
+            0.03854679572783807
+          ],
+          "delta_vs_30": -0.016378414711361793,
+          "mean": 0.8292063280325179
+        },
+        "precision10": {
+          "bootstrap_95": [
+            0.10000000000000002,
+            0.23333333333333336
+          ],
+          "delta_vs_30": 0.16666666666666669,
+          "mean": 0.43333333333333335
+        },
+        "precision5": {
+          "bootstrap_95": [
+            -0.09999999999999998,
+            0.09999999999999998
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.43333333333333335
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.24166666666666667,
+            -0.033333333333333326
+          ],
+          "delta_vs_30": -0.13055555555555556,
+          "mean": 0.7444444444444445
+        },
+        "recall5": {
+          "bootstrap_95": [
+            -0.16666666666666669,
+            0.16666666666666669
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.7444444444444445
+        }
+      },
+      "RRF": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            -0.25,
+            0.0
+          ],
+          "delta_vs_30": -0.08333333333333333,
+          "mean": 0.9166666666666666
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.1158012279447693,
+            0.03308155588978662
+          ],
+          "delta_vs_30": -0.029836802423346787,
+          "mean": 0.8494543255410135
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            -0.11155792417222178,
+            0.031215959466113108
+          ],
+          "delta_vs_30": -0.03502667576500637,
+          "mean": 0.8105580669788733
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.04999999999999999,
+            0.05
+          ],
+          "delta_vs_30": 4.625929269271485e-18,
+          "mean": 0.26666666666666666
+        },
+        "precision5": {
+          "bootstrap_95": [
+            -0.09999999999999998,
+            0.09999999999999998
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.43333333333333335
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.09999999999999998,
+            0.25
+          ],
+          "delta_vs_30": 0.05000000000000001,
+          "mean": 0.925
+        },
+        "recall5": {
+          "bootstrap_95": [
+            -0.16666666666666669,
+            0.16666666666666669
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.7444444444444445
+        }
+      }
+    },
+    "human_reviewed": {
+      "BGE-10": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.90625
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.08574465177879691,
+            -0.0005129634323987713
+          ],
+          "delta_vs_30": -0.03352190316419505,
+          "mean": 0.7947934983126472
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            -0.07965544134470749,
+            0.012630194268262146
+          ],
+          "delta_vs_30": -0.025075188140322235,
+          "mean": 0.7926391213007659
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.04999999999999999,
+            -0.006249999999999999
+          ],
+          "delta_vs_30": -0.024999999999999998,
+          "mean": 0.34375
+        },
+        "precision5": {
+          "bootstrap_95": [
+            -0.05000000000000002,
+            0.02500000000000001
+          ],
+          "delta_vs_30": -0.012500000000000004,
+          "mean": 0.5
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.06458333333333333,
+            -0.003289473684210526
+          ],
+          "delta_vs_30": -0.027768640350877193,
+          "mean": 0.7627741228070175
+        },
+        "recall5": {
+          "bootstrap_95": [
+            -0.053125000000000006,
+            0.031250000000000014
+          ],
+          "delta_vs_30": -0.009374999999999998,
+          "mean": 0.6539473684210526
+        }
+      },
+      "BGE-15": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.90625
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.01585373318280133,
+            0.015782063609973973
+          ],
+          "delta_vs_30": 0.0009534348508856844,
+          "mean": 0.829268836327728
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            0.0,
+            0.027288272594046623
+          ],
+          "delta_vs_30": 0.011201123242725899,
+          "mean": 0.8289154326838141
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.024999999999999994,
+            0.025
+          ],
+          "delta_vs_30": 3.469446951953614e-18,
+          "mean": 0.36875
+        },
+        "precision5": {
+          "bootstrap_95": [
+            0.0,
+            0.06250000000000001
+          ],
+          "delta_vs_30": 0.025000000000000005,
+          "mean": 0.5375
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.010736476608187138,
+            0.028499634502923973
+          ],
+          "delta_vs_30": 0.007300804093567249,
+          "mean": 0.797843567251462
+        },
+        "recall5": {
+          "bootstrap_95": [
+            0.0,
+            0.05000000000000002
+          ],
+          "delta_vs_30": 0.019444444444444448,
+          "mean": 0.6827668128654971
+        }
+      },
+      "BGE-20": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.90625
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.012666279067787702,
+            0.0
+          ],
+          "delta_vs_30": -0.0042220930225959005,
+          "mean": 0.8240933084542464
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8177143094410881
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.018749999999999996,
+            0.0
+          ],
+          "delta_vs_30": -0.006249999999999999,
+          "mean": 0.3625
+        },
+        "precision5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.5125
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.009868421052631578,
+            0.0
+          ],
+          "delta_vs_30": -0.003289473684210526,
+          "mean": 0.7872532894736842
+        },
+        "recall5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.6633223684210526
+        }
+      },
+      "BGE-30": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.90625
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8283154014768424
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.8177143094410881
+        },
+        "precision10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.36875
+        },
+        "precision5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.5125
+        },
+        "recall10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.7905427631578947
+        },
+        "recall5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.6633223684210526
+        }
+      },
+      "BGE-5": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 0.90625
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.21911769519307756,
+            -0.056812572858667636
+          ],
+          "delta_vs_30": -0.12989704911016803,
+          "mean": 0.6984183523666743
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            -0.15502962917777566,
+            0.00010390905891779004
+          ],
+          "delta_vs_30": -0.06461194361730192,
+          "mean": 0.7531023658237862
+        },
+        "precision10": {
+          "bootstrap_95": [
+            0.018749999999999996,
+            0.14375
+          ],
+          "delta_vs_30": 0.08125,
+          "mean": 0.45
+        },
+        "precision5": {
+          "bootstrap_95": [
+            -0.15000000000000002,
+            0.0125
+          ],
+          "delta_vs_30": -0.0625,
+          "mean": 0.45
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.32100694444444444,
+            -0.10625000000000001
+          ],
+          "delta_vs_30": -0.2079404239766082,
+          "mean": 0.5826023391812866
+        },
+        "recall5": {
+          "bootstrap_95": [
+            -0.19703947368421054,
+            0.00434941520467836
+          ],
+          "delta_vs_30": -0.08072002923976608,
+          "mean": 0.5826023391812866
+        }
+      },
+      "RRF": {
+        "hit10": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "hit5": {
+          "bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "delta_vs_30": 0.0,
+          "mean": 1.0
+        },
+        "mrr": {
+          "bootstrap_95": [
+            -0.125,
+            0.0625
+          ],
+          "delta_vs_30": -0.03125,
+          "mean": 0.875
+        },
+        "ndcg10": {
+          "bootstrap_95": [
+            -0.14508310297601054,
+            -6.317403380659212e-05
+          ],
+          "delta_vs_30": -0.059913894301338956,
+          "mean": 0.7684015071755034
+        },
+        "ndcg5": {
+          "bootstrap_95": [
+            -0.1822869369863352,
+            0.00869998365280535
+          ],
+          "delta_vs_30": -0.07507039297199906,
+          "mean": 0.7426439164690891
+        },
+        "precision10": {
+          "bootstrap_95": [
+            -0.04999999999999999,
+            -0.006249999999999999
+          ],
+          "delta_vs_30": -0.024999999999999998,
+          "mean": 0.34375
+        },
+        "precision5": {
+          "bootstrap_95": [
+            -0.15000000000000002,
+            0.0125
+          ],
+          "delta_vs_30": -0.0625,
+          "mean": 0.45
+        },
+        "recall10": {
+          "bootstrap_95": [
+            -0.06458333333333333,
+            -0.003289473684210526
+          ],
+          "delta_vs_30": -0.027768640350877193,
+          "mean": 0.7627741228070175
+        },
+        "recall5": {
+          "bootstrap_95": [
+            -0.19703947368421054,
+            0.00434941520467836
+          ],
+          "delta_vs_30": -0.08072002923976608,
+          "mean": 0.5826023391812866
+        }
+      }
+    }
+  },
+  "incident_lengths": [
+    31,
+    41,
+    368,
+    99,
+    111,
+    241,
+    188,
+    286,
+    104,
+    338,
+    132,
+    278,
+    19,
+    104,
+    175,
+    158,
+    150,
+    200,
+    234,
+    166,
+    406,
+    22,
+    86,
+    20,
+    71,
+    221,
+    238,
+    20,
+    297,
+    178
+  ],
+  "padding_projections": {
+    "consecutive16": {
+      "attention_proxy": 4474488,
+      "padding": 6590,
+      "padding_fraction": 0.5694780504666436,
+      "slots": 11572,
+      "widths": [
+        368,
+        406
+      ]
+    },
+    "sorted16": {
+      "attention_proxy": 2748600,
+      "padding": 3358,
+      "padding_fraction": 0.4026378896882494,
+      "slots": 8340,
+      "widths": [
+        166,
+        406
+      ]
+    },
+    "sorted2": {
+      "attention_proxy": 1257102,
+      "padding": 184,
+      "padding_fraction": 0.03561749903213318,
+      "slots": 5166,
+      "widths": [
+        20,
+        22,
+        41,
+        86,
+        104,
+        111,
+        150,
+        166,
+        178,
+        200,
+        234,
+        241,
+        286,
+        338,
+        406
+      ]
+    },
+    "sorted4": {
+      "attention_proxy": 1370000,
+      "padding": 486,
+      "padding_fraction": 0.08888076079005121,
+      "slots": 5468,
+      "widths": [
+        22,
+        86,
+        111,
+        166,
+        200,
+        241,
+        338,
+        406
+      ]
+    },
+    "sorted8": {
+      "attention_proxy": 1733280,
+      "padding": 1398,
+      "padding_fraction": 0.21912225705329152,
+      "slots": 6380,
+      "widths": [
+        86,
+        166,
+        241,
+        406
+      ]
+    }
+  },
+  "provenance": {
+    "14c": "perfrun_deb7a58e49d0f64496553a16c3edc3a5b517deec5ec1c9ddd76831fee79627ca",
+    "bge30": "evalhybrerank_770241211814412fbf8e28c28d5e3635",
+    "chunk_set": "chunkset_6d4925ea8d66e7dc599a884e96bc5f6b094e4288d565372d15e6002086c41da2",
+    "corpus": "corpus_040e49a1d261dba4e853939b36348dc40109551d6fdb49b38c7a9d896409eadb",
+    "gold": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
+    "input_hashes": {
+      "E_hybrid_rrf_full22.json": "04167b5342d2da4d71130505d552f572ff78d7988a94e83ccf5afd401d84c488",
+      "F_hybrid_rerank_full22.json": "cd4bcc5828df23a7a8a7e2038198368d900cbb42030636de2f45dc3b019c61ee",
+      "aggregate.json": "2b7083a58d61ca2b56d4bc5a1d5ebdcf4f399889eb918f99376ae2aa5a96f3a7",
+      "cases.jsonl": "cfdad88c2838fb1fa86912a5a7aca567e65d18aab627be76c17720802e161982",
+      "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172_adjudication_cohort_map_v1.json": "ad84ad9f2eb5a4b8ec8af3b0679b923d15887bc7c733fa4cb6efa8e01810ae8e",
+      "meta.json": "d1fc157e2c68d1b907224a9fd24a4f0c18669303390d2d715ea49d4041e616c9",
+      "seneca-four-results.log": "ff9f0ddf34ce9d32780b7962c87245c3a27e7f953212f92caee57aa8aca5bcb1"
+    },
+    "rrf": "evalhybretrieve_d15a9564963247cf8c514faf7aaaf0d4"
+  },
+  "vm_observations": [
+    {
+      "assembler_total_ms": 108507,
+      "candidate_count": 30,
+      "context_expand_ms": 668,
+      "context_token_count": 645,
+      "cpu_system_s": 11.152268000000001,
+      "cpu_user_s": 137.05300400000002,
+      "dense_ms": 46491,
+      "embedding_profile": "cpu_onnx_fp32_v1",
+      "evidence_unit_count": 5,
+      "fusion_ms": 0,
+      "lexical_ms": 684,
+      "pair_build_ms": 0,
+      "peak_rss_kib": 4389128,
+      "phase": "cold",
+      "process_wall_ms": 160442,
+      "profile": "2/2",
+      "rerank_infer_ms": 60661,
+      "reranker_device": "cpu",
+      "rss_after_bytes": 4096229376,
+      "rss_before_bytes": 369242112,
+      "sort_ms": 0
+    },
+    {
+      "assembler_total_ms": 58529,
+      "candidate_count": 30,
+      "context_expand_ms": 3,
+      "context_token_count": 645,
+      "cpu_system_s": 5.047177999999999,
+      "cpu_user_s": 112.04240300000001,
+      "dense_ms": 1426,
+      "embedding_profile": "cpu_onnx_fp32_v1",
+      "evidence_unit_count": 5,
+      "fusion_ms": 0,
+      "lexical_ms": 964,
+      "pair_build_ms": 0,
+      "peak_rss_kib": 4412096,
+      "phase": "warm",
+      "process_wall_ms": 218974,
+      "profile": "2/2",
+      "rerank_infer_ms": 56131,
+      "reranker_device": "cpu",
+      "rss_after_bytes": 4099010560,
+      "rss_before_bytes": 4096229376,
+      "sort_ms": 0
+    },
+    {
+      "assembler_total_ms": 76925,
+      "candidate_count": 30,
+      "context_expand_ms": 241,
+      "context_token_count": 645,
+      "cpu_system_s": 4.152062,
+      "cpu_user_s": 133.788056,
+      "dense_ms": 10645,
+      "embedding_profile": "cpu_onnx_fp32_v1",
+      "evidence_unit_count": 5,
+      "fusion_ms": 0,
+      "lexical_ms": 661,
+      "pair_build_ms": 0,
+      "peak_rss_kib": 4557460,
+      "phase": "cold",
+      "process_wall_ms": 115905,
+      "profile": "2/1",
+      "rerank_infer_ms": 65375,
+      "reranker_device": "cpu",
+      "rss_after_bytes": 4666839040,
+      "rss_before_bytes": 596283392,
+      "sort_ms": 0
+    },
+    {
+      "assembler_total_ms": 60934,
+      "candidate_count": 30,
+      "context_expand_ms": 3,
+      "context_token_count": 645,
+      "cpu_system_s": 0.44771300000000025,
+      "cpu_user_s": 121.60123999999999,
+      "dense_ms": 1160,
+      "embedding_profile": "cpu_onnx_fp32_v1",
+      "evidence_unit_count": 5,
+      "fusion_ms": 0,
+      "lexical_ms": 556,
+      "pair_build_ms": 0,
+      "peak_rss_kib": 4963092,
+      "phase": "warm",
+      "process_wall_ms": 176843,
+      "profile": "2/1",
+      "rerank_infer_ms": 59211,
+      "reranker_device": "cpu",
+      "rss_after_bytes": 5082206208,
+      "rss_before_bytes": 4666839040,
+      "sort_ms": 0
+    },
+    {
+      "assembler_total_ms": 72084,
+      "candidate_count": 30,
+      "context_expand_ms": 265,
+      "context_token_count": 645,
+      "cpu_system_s": 4.628412000000001,
+      "cpu_user_s": 239.83105400000002,
+      "dense_ms": 10554,
+      "embedding_profile": "cpu_onnx_fp32_v1",
+      "evidence_unit_count": 5,
+      "fusion_ms": 0,
+      "lexical_ms": 664,
+      "pair_build_ms": 0,
+      "peak_rss_kib": 4558680,
+      "phase": "cold",
+      "process_wall_ms": 108438,
+      "profile": "4/1",
+      "rerank_infer_ms": 60597,
+      "reranker_device": "cpu",
+      "rss_after_bytes": 4668088320,
+      "rss_before_bytes": 592150528,
+      "sort_ms": 0
+    },
+    {
+      "assembler_total_ms": 58291,
+      "candidate_count": 30,
+      "context_expand_ms": 5,
+      "context_token_count": 645,
+      "cpu_system_s": 0.739147,
+      "cpu_user_s": 228.479957,
+      "dense_ms": 1531,
+      "embedding_profile": "cpu_onnx_fp32_v1",
+      "evidence_unit_count": 5,
+      "fusion_ms": 0,
+      "lexical_ms": 568,
+      "pair_build_ms": 0,
+      "peak_rss_kib": 4957060,
+      "phase": "warm",
+      "process_wall_ms": 166739,
+      "profile": "4/1",
+      "rerank_infer_ms": 56183,
+      "reranker_device": "cpu",
+      "rss_after_bytes": 5076029440,
+      "rss_before_bytes": 4668088320,
+      "sort_ms": 0
+    }
+  ]
+}

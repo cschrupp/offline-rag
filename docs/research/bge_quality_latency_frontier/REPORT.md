@@ -1,0 +1,304 @@
+# The 59-Second Retrieval
+## Finding the Quality–Latency Frontier in CPU-Only RAG
+
+*An empirical investigation of candidate depth, length-aware batching, and the marginal value of neural reranking.*
+
+**Interim research report · Seneca**
+
+## Executive summary
+
+A simple recipe question exposed a costly part of Seneca’s retrieval pipeline.
+On the incident snapshot, a warm isolated run spent about 56 of 59 seconds
+scoring 30 passages with a cross-encoder. Switching the same checkpoint to
+ONNX FP32 preserved the selected evidence on that query, but yielded almost
+no warm latency improvement on four vCPUs at the faster ONNX setting while
+nearly doubling CPU time.
+
+Two alternatives address the workload itself. A replay of 16 human-reviewed
+development queries found that reranking the first 15 fused candidates
+retained the cohort’s mean nDCG@10 and Recall@10 relative to reranking 30.
+Five and ten candidates missed the preregistered exploratory quality screen.
+In the Recipes workload, sorting by token length and batching eight at a
+time would remove 5,192 of the 6,590 padded token positions. A bounded
+local synthetic pilot measured a 34.3% median paired reduction in forward
+wall time with exact rank parity. The original incident passages and
+evidence packing were outside that pilot.
+
+The quality and cost evidence come from distinct populations and cannot
+establish a common frontier for the new depths. Keep the current production
+policy and prioritize an exact-incident batching replication followed by
+a same-population quality and timing comparison of depths 15, 20, and 30.
+
+## 1. The 59-second question
+
+The browser displayed “Could not reach Seneca” after a user asked for the
+ingredients in a baked French-fries recipe. The selected PDF belonged to a
+published snapshot of 603 searchable passages. The server remained ready
+after the incident. The prior incident investigation reported ten traces
+ending in `model_abstain`, with context assembly taking 80.2–126.1 seconds
+and generation 0.6–3.9 seconds. The trace counts do not identify the client
+submission mechanism or establish automatic retries.
+
+The title refers to the isolated warm retrieval measurement, separate from
+the HTTP attempts and their generation outcomes. The first cold/warm study
+found 99.392 and 58.756 seconds respectively. Warm dense retrieval took
+1.903 seconds and BGE took 55.756 seconds (94.9% of assembly).
+
+## 2. Following the evidence
+
+A subsequent forward-pass diagnostic measured 59.224 seconds warm, of
+which BGE consumed 56.672 seconds. The two model forwards used 56.651
+seconds. Pair tokenization took about 20 ms and cold BGE load or wait about
+1.18 seconds. The 129.639-second cold run spent 45.530 seconds in dense
+retrieval and 82.316 seconds in BGE. First-use dense work mattered, and the
+forward computation remained substantial after warm-up.
+
+![Measured cold and warm assembler stages](figures/01-latency-breakdown.png)
+
+*Figure 1. Four-vCPU qualification run, PyTorch 2/2, one cold and one warm
+call on the Recipes snapshot. Other comprises the remaining assembler work.*
+
+The Torch thread experiment is a caution about single observations. Its
+warm 2/2 baseline took 74.494 seconds in BGE, versus 56.753 at 2/1 and
+54.417 at 4/1. The earlier independently observed 2/2 scorer took 56.672
+seconds. The 2/1 result matched all logits in its experiment. The 4/1
+result changed logits and failed that experiment’s exact-logit criterion
+despite unchanged ranks and selected evidence. The cause of the unusually
+slow baseline batch was unresolved.
+
+The later ONNX study used its own declared numerical tolerance. Both ONNX
+settings passed exact ranking, anchor, evidence and packed-context parity,
+including one observed near tie. The maximum absolute score difference was
+1.19e-5. The local synthetic feasibility study had shown a wall-time gain at
+8/1 versus PyTorch 2/2 on a 16-logical-CPU host, with a larger CPU budget.
+That result did not transfer to the four-vCPU deployment:
+
+| Runtime | Cold/warm BGE (s) | Cold/warm assembly (s) | Warm assembler (CPU-s) | Peak process RSS (GiB) |
+|---|---:|---:|---:|---:|
+| Torch 2/2 | 60.661 / 56.132 | 108.507 / 58.529 | 117.09 | 4.21 |
+| ONNX 2/1 | 65.375 / 59.211 | 76.925 / 60.934 | 122.05 | 4.73 |
+| ONNX 4/1 | 60.597 / 56.184 | 72.084 / 58.291 | 229.22 | 4.73 |
+
+*Table 1. Same snapshot and query, one cold and warm call per backend. The
+ONNX arms’ shorter cold totals coincided with shorter dense retrieval in
+the sequential first-use runs.*
+
+![Warm CPU time versus wall time](figures/02-backend-cost.png)
+
+*Figure 2. Warm process CPU-seconds versus wall seconds. The 4/1 arm
+averaged 3.93 effective cores across assembly.*
+
+## 3. Reframing the problem
+
+Corpus search produces candidates. Reciprocal rank fusion (RRF) combines
+dense and lexical rankings by summing reciprocal rank terms of the form
+1/(constant + rank). BGE then reads each query–passage pair jointly and
+emits a scalar logit. Once the candidate list is full, the size of the
+source corpus tells us little about the cross-encoder’s forward workload.
+The two practical levers are the number of pairs entering BGE and the
+batch width required by their token lengths. [Original RRF paper](https://cormack.uwaterloo.ca/cormack/cormacksigir09-rrf.pdf) · [Passage Re-ranking with BERT](https://arxiv.org/abs/1901.04085)
+
+Depth reduction can remove judged positives before scoring. It can also
+exclude a distractor that BGE previously promoted above a positive.
+Length grouping keeps the candidate set and changes tensor shapes. It can
+alter floating-point logits, so restoring original score association and
+checking ranking and evidence remain necessary.
+
+## 4. Experimental methodology
+
+The [preregistered protocol](design/PROTOCOL.md) fixes hypotheses, nulls,
+endpoints, tolerances, and exploratory screens. The research branch starts
+at deployed source `9c92e706c4b9e9d9ac0816a655bdf131cc63fca1`. ONNX
+qualification `1d1f9aec`, thread diagnostic `9066e62f`, and instrumentation
+`c3b72ac7` are evidence subjects with separate histories.
+
+| Asset | Admissible use | Limitation |
+|---|---|---|
+| Slice 9 retrieval validation fixture | Verify harness semantics | Synthetic fixture excluded from relevance analysis |
+| Slice 9H-P RRF/BGE-30 and matching GoldDataset v1 | Prefix replay on 16 human-reviewed primary cases, with 6 assistant-only cases for sensitivity | 22 development queries in `ics_modules`, no raw BGE logits in these results |
+| Corrected Slice 14C | Historical two-arm paired quality and measured latency | 44 variant-cases, 440 measured observations, 88 warm-ups, zero failures or exclusions. Saved ranks are top 10, insufficient for independent prefix replay |
+| Recipes incident and isolated VM diagnostics | Stage, CPU, padding and backend comparisons | One query, no verified Gold labels or locally available original passage payload |
+| Level-C and Slice 10E | Generation boundary and evaluation design | Different objectives and populations, no paired depth treatment |
+
+The Gold dataset, corpus, chunk set and historical input hashes appear in
+[observations.json](executed/observations.json). The human-reviewed cohort
+contains 102 positive judgments across 16 cases. The assistant-only cohort
+has 18 across six. The frozen legacy results and adjudication map retain
+their original dispositions. In particular, human review here is development
+provenance and does not establish a publication-grade independent benchmark.
+
+For each replay, the first *k* candidates came from the original fused order.
+The 30 BGE output IDs formed a complete permutation of those same inputs on
+all 22 cases. Filtering that permutation by prefix membership is equivalent
+to sorting the prefix by its retained score order and tie-break. It does not
+establish numerical parity for a fresh forward pass at a different batch shape.
+The score replay therefore reports neither seconds saved nor evidence-unit
+parity. Top-five candidate overlap is reported separately.
+
+Recall@k divides retrieved judged positives by known positives. Precision@k
+divides by the smaller of the returned list length and the cutoff. A
+five-result arm therefore has the same Precision@5 and Precision@10.
+HitRate@k records whether any positive is present and MRR averages reciprocal
+first-positive ranks. Seneca nDCG uses graded gains and logarithmic discounts
+relative to an ideal ordering from the Gold judgments. It does not establish
+exhaustive relevance outside the judged pool. The analysis calls the canonical
+Slice 9 metric implementation directly. The descriptive bootstrap resamples
+paired queries, not individual timing repetitions. [Cumulated Gain-Based Evaluation of IR Techniques](https://www.fi.muni.cz/~xkohout7/Research/clanky_cizi/evaluation/p422-jarvelin.pdf)
+
+## 5. Experimental results
+
+### Candidate depth
+
+| Treatment | nDCG@5 | nDCG@10 | Recall@5 | Recall@10 | MRR | Mean top-five overlap with BGE-30 |
+|---|---:|---:|---:|---:|---:|---:|
+| RRF | .743 | .768 | .583 | .763 | .875 | 3.31 |
+| BGE-5 | .753 | .698 | .583 | .583 | .906 | 3.31 |
+| BGE-10 | .793 | .795 | .654 | .763 | .906 | 4.44 |
+| BGE-15 | .829 | .829 | .683 | .798 | .906 | 4.81 |
+| BGE-20 | .818 | .824 | .663 | .787 | .906 | 5.00 |
+| BGE-30 | .818 | .828 | .663 | .790 | .906 | 5.00 |
+
+*Table 2. Canonical metrics on the same 16 human-reviewed queries at each
+depth. HitRate@5 was 1.0 throughout, leaving that endpoint unable to
+discriminate the arms. Precision and all cohort results are in the data.*
+
+![Depth and retrieval metrics](figures/04-prefix-quality.png)
+
+*Figure 3. Depth replay on the human-review cohort. Cost savings from
+scoring fewer candidates were not timed.*
+
+BGE-15 and BGE-20 passed the exploratory mean-loss screen. The BGE-15
+paired nDCG@10 change relative to BGE-30 was +.0010 with descriptive 95%
+bootstrap interval [−.0159, +.0158]. The BGE-10 change was −.0335 and it
+missed the nDCG margin. BGE-5 also lost Recall@10. BGE-15 retained 81.6%
+of known positives across its entire returned list, versus 88.9% at
+depth 30, even though its Recall@10 was slightly higher. The 22-case
+sensitivity run ranked BGE-15 at .847 nDCG@10 versus .842 for BGE-30.
+The six assistant-only cases yielded .894 versus .879 and cannot resolve
+uncertainty in the human-reviewed stratum.
+
+### Padding and forward cost
+
+![Incident token lengths and padding](figures/03-batch-padding.png)
+
+*Figure 4. Observed lengths in the original 30-pair order. Gray shows
+padding to the maximum width within each consecutive batch.*
+
+| Batch plan | Batches | Padded positions | Padding fraction | Squared-width proxy |
+|---|---:|---:|---:|---:|
+| Consecutive 16+14 | 2 | 6,590 | 56.95% | 4,474,488 |
+| Sorted 16 | 2 | 3,358 | 40.26% | 2,748,600 |
+| Sorted 8 | 4 | 1,398 | 21.91% | 1,733,280 |
+| Sorted 4 | 8 | 486 | 8.89% | 1,370,000 |
+| Sorted 2 | 15 | 184 | 3.56% | 1,257,102 |
+
+*Table 3. Arithmetic projections from 4,982 active token positions.
+Padded positions are the sum of batch size × batch width minus active
+positions. The proxy sums batch size × squared batch width. It excludes
+feed-forward layers, batching overhead, and kernel efficiency.*
+
+![Local forward-time pilot](figures/05-local-forward-pilot.png)
+
+*Figure 5. Two measured, counterordered blocks on an Intel i9-10885H,
+PyTorch FP32 2/2, following one warm-up per strategy. The model saw
+synthetic pairs with the same 30 tokenized lengths as the incident.*
+
+| Measured block | Consecutive forward (s) | Sorted-8 forward (s) | Reduction | Consecutive / sorted-8 (CPU-s) |
+|---|---:|---:|---:|---:|
+| 1 | 74.224 | 44.501 | 40.0% | 150.56 / 89.44 |
+| 2 | 63.981 | 45.736 | 28.5% | 130.13 / 91.93 |
+
+*Table 4. Forward times are sums of individual batch timings.
+CPU time includes all process threads during those forward calls.*
+
+The median paired reduction was 34.3%, above the 20% local pilot screen.
+Every pair had identical unpadded IDs across arms, and both blocks passed
+the predefined logit tolerance with a maximum difference of 1.76e-5.
+After restoring original score association, all 30 ranks matched. Evidence
+selection is unevaluable on this synthetic input. The local pilot provides
+a measured reason to replicate length grouping on the original snapshot.
+It does not establish the incident or deployment latency reduction.
+
+### The observed frontier
+
+![Slice 14C descriptive quality–latency frontier](figures/06-14c-descriptive-frontier.png)
+
+*Figure 6. Same-suite Slice 14C points. Quality uses 22 development cases.
+Each median uses 220 valid warm observations per arm. The dotted line
+connects the two known configurations and does not imply interpolation.*
+
+The accepted 14C medians were 5.617 s for hybrid and 7.413 s for hybrid
+plus BGE, at macro nDCG@10 of .791 and .842 respectively. The p95 rose
+from 8.312 to 13.533 s. Both points are nondominated among the two observed
+arms. The historical 62.455 s rerank maximum remains in the evidence.
+The 9H-P replay and the Recipes timings cannot put a measured BGE-15 point
+on this chart. There is no measured adaptive-depth frontier.
+
+## 6. What the model earns
+
+Compared with RRF alone, BGE-30 improved nDCG@10 on 7 human-reviewed
+queries, worsened it on 6, and tied on 3. The macro gain was +.060, with
+large positive changes concentrated in a few cases. For example, one
+emergency response case rose by .565 and a structural engineering case
+rose by .268. A construction materials case fell by .036. These examples
+refer to recorded metric changes and omit source and query text.
+Most categories have one or two cases, so category-specific depth rules
+would overfit this sample.
+
+The Recipes run packed five evidence units into 645 tokens. The retained
+research materials establish identical packing between tested backends, but
+do not establish that the requested ingredients appeared in the retrieved
+passages, moved up after BGE, or were sufficiently represented in the
+packed context. `model_abstain` identifies a recorded generation outcome.
+It does not establish the cause of the abstention. Determining that cause
+would require a source-bound evidence audit and, for a causal comparison,
+paired answer evaluation with an independently judged endpoint.
+
+Level-C supplies a separate operational example: 20 of 25 measured
+attempts answered, while five were parse failures on one repeated case
+that reached the output ceiling. That is a generation-path finding on a
+different population and does not explain Recipes. Slice 10E provides the
+accepted distinction between evidence sufficiency and generator behavior.
+Neither dataset establishes that better ranking would improve the original
+answer or prevent its abstention.
+
+## 7. Engineering implications
+
+On the four-vCPU VM, ONNX 4/1 saturated nearly the full CPU allocation on
+a single request and added about .52 GiB to process peak RSS plus a
+2.12 GiB model bundle. It provided no useful warm wall gain. Resource
+testing for any new candidate should account for the concurrent Qwen3
+session, Docker memory limits, and multiple overlapping requests.
+This study measured isolated latency rather than request capacity.
+
+Length sorting is a reversible scorer experiment: keep the original 30
+pairs, regroup by measured length, and restore the original score
+association before canonical ranking. A candidate-depth policy needs
+stronger evidence because it changes which passages BGE can see.
+A dynamic policy would also need to justify its features and evaluate a
+frozen policy on an independent population before considering rollout.
+No production defaults or scientific contracts changed.
+
+## 8. Conclusion and next decisions
+
+BGE forward computation explains most of the 59-second warm run. Backend
+substitution at the tested settings did not solve that CPU workload.
+Length grouping reduces padded work on the incident shape. Fifteen and
+twenty candidates preserved the exploratory quality screen on the
+human-reviewed fixture. The study provides no causal estimate of answer
+benefit and no qualification for a production depth or batching change.
+
+The next controlled execution requires separate VM authority or an
+approved local snapshot export. Run the original 30-pair incident workload
+with consecutive 16+14 and sorted eight, one warm-up per arm and at least
+three paired measured blocks with alternating order, fixed Torch 2/2
+and no generation. Record actual per-batch forward wall/CPU time, peak
+RSS, encoded input and position parity, raw logits, rank, selected evidence
+and packed text identity. Follow with same-host trials at depth 15, 20 and
+30 on a separately adjudicated population, including longer passages and
+multiple query categories. Measure the cost and relevance of each arm
+on that same population before selecting a frontier or training an
+adaptive policy.
+
+See [reproducibility instructions](REPRODUCE.md), [authorization](design/AUTHORIZATION.md),
+and the [protocol](design/PROTOCOL.md).
