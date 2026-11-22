@@ -173,7 +173,7 @@ def _latency_int(diagnostics: dict[str, Any] | None, key: str) -> int | None:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -386,6 +386,7 @@ def run_bound_snapshot_query(
     control: OperationHandle | None = None,
     document_ids: frozenset[str] | None = None,
     source_scope: ProductTraceSourceScope | None = None,
+    claim_terminal: bool = False,
 ) -> BoundSnapshotQueryOutcome:
     """Execute the canonical grounded query against an already-resolved snapshot.
 
@@ -458,12 +459,16 @@ def run_bound_snapshot_query(
             stage_breadcrumb = "projection"
             if control is not None:
                 control.checkpoint("pre_project")
-            status, answer, citations, answer_blocks, abstention_reason = _project_success(
-                result,
-                snapshot=snapshot,
-                binding=binding,
-                document_ids=document_ids,
+            status, answer, citations, answer_blocks, abstention_reason = (
+                _project_success(
+                    result,
+                    snapshot=snapshot,
+                    binding=binding,
+                    document_ids=document_ids,
+                )
             )
+            if claim_terminal and control is not None:
+                runtime.operations.claim_query_terminal(control)
         except AppError as exc:
             caught_fault = exc
             mapped_error = exc
@@ -496,7 +501,10 @@ def run_bound_snapshot_query(
 
         if mapped_error is not None:
             internal_failure: ProductTraceInternalFailure | None = None
-            if mapped_error.code == ErrorCode.INTERNAL_ERROR and caught_fault is not None:
+            if (
+                mapped_error.code == ErrorCode.INTERNAL_ERROR
+                and caught_fault is not None
+            ):
                 internal_failure = classify_grounded_query_failure(
                     caught_fault,
                     stage_breadcrumb=stage_breadcrumb,
@@ -519,9 +527,7 @@ def run_bound_snapshot_query(
                 execution=_execution_summary(result),
                 internal_failure=internal_failure,
             )
-            _commit_terminal_trace(
-                store, record, stage_breadcrumb=stage_breadcrumb
-            )
+            _commit_terminal_trace(store, record, stage_breadcrumb=stage_breadcrumb)
             raise AppError(
                 mapped_error.code,
                 message=mapped_error.message,
@@ -736,7 +742,10 @@ def run_workspace_query(
         control.checkpoint("pre_validate")
     store = WorkspaceStore(runtime.settings)
     record = store.get(workspace_id)
-    if record.status is not WorkspaceStatus.ACTIVE or record.current_snapshot_id is None:
+    if (
+        record.status is not WorkspaceStatus.ACTIVE
+        or record.current_snapshot_id is None
+    ):
         raise AppError(
             ErrorCode.WORKSPACE_NOT_READY,
             details=SafeErrorDetails(
@@ -802,9 +811,7 @@ def run_workspace_query(
     )
 
 
-def get_product_trace(
-    runtime: ApplicationRuntime, trace_id: str
-) -> dict[str, Any]:
+def get_product_trace(runtime: ApplicationRuntime, trace_id: str) -> dict[str, Any]:
     """Cheap durable trace read — unknown/expired/malformed → trace_unknown."""
     runtime.require_ready()
     store = ProductTraceStore(runtime.settings)

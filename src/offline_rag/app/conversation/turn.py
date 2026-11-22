@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -26,9 +27,16 @@ from offline_rag.app.query import (
     run_bound_snapshot_query,
 )
 from offline_rag.app.runtime import ApplicationRuntime
-from offline_rag.app.snapshot import PRODUCT_MODE_GROUNDED_V1
-from offline_rag.app.workspace.models import WorkspaceRevision, WorkspaceStatus
+from offline_rag.app.snapshot import PRODUCT_MODE_GROUNDED_V1, CorpusReadSnapshot
+from offline_rag.app.traces import ProductTraceSourceScope
+from offline_rag.app.workspace.models import (
+    WorkspaceRecord,
+    WorkspaceRevision,
+    WorkspaceStatus,
+)
 from offline_rag.app.workspace.store import WorkspaceStore
+
+logger = logging.getLogger(__name__)
 
 ConversationSuccessStatus = Literal[
     "answered",
@@ -86,38 +94,52 @@ def _commit_conversation_trace(
     try:
         store.commit(record)
     except AppError:
+        logger.warning(
+            "conversation trace persistence failed trace=%s",
+            record.conversation_trace_id,
+        )
         raise AppError(ErrorCode.INTERNAL_ERROR)
     except Exception as exc:
+        logger.warning(
+            "conversation trace persistence failed trace=%s",
+            record.conversation_trace_id,
+        )
         raise AppError(ErrorCode.INTERNAL_ERROR) from exc
 
 
-def run_conversation_turn(
+@dataclass(frozen=True, slots=True)
+class PreparedConversationTurn:
+    question: str
+    prior_turns: tuple[PriorTurn, ...]
+    record: WorkspaceRecord
+    snapshot: CorpusReadSnapshot
+    source_scope: ProductTraceSourceScope
+    selected_logical: frozenset[str]
+    document_scope: frozenset[str]
+
+
+def validate_conversation_request(
+    question: str, prior_turns: object
+) -> tuple[str, tuple[PriorTurn, ...]]:
+    validated_prior = validate_prior_turns(prior_turns)
+    return normalize_product_question(question), validated_prior
+
+
+def prepare_conversation_turn(
     runtime: ApplicationRuntime,
     *,
     workspace_id: str,
-    question: str,
-    prior_turns: object = None,
-    source_ids: list[str] | None = None,
+    validated: tuple[str, tuple[PriorTurn, ...]],
+    source_ids: list[str] | None,
     control: OperationHandle | None = None,
-) -> ConversationTurnResponse:
-    """Execute one conversation turn under A2-D05 / A2-D05b admission order.
-
-    Mutation after admission does **not** upgrade the bound snapshot and is not
-    ``workspace_conflict`` — the turn continues on admitted scientific state.
-    """
-    # 1. Validate request (before resolver / admission).
-    if control is not None:
-        control.checkpoint("pre_validate")
-    validated_prior: tuple[PriorTurn, ...] = validate_prior_turns(prior_turns)
-    normalized_question = normalize_product_question(question)
-
-    # 2. Require runtime ready.
-    runtime.require_ready()
-
+) -> PreparedConversationTurn:
     # 3–4. Resolve + validate workspace.
     store = WorkspaceStore(runtime.settings)
     record = store.get(workspace_id)
-    if record.status is not WorkspaceStatus.ACTIVE or record.current_snapshot_id is None:
+    if (
+        record.status is not WorkspaceStatus.ACTIVE
+        or record.current_snapshot_id is None
+    ):
         raise AppError(
             ErrorCode.WORKSPACE_NOT_READY,
             details=SafeErrorDetails(
@@ -129,7 +151,6 @@ def run_conversation_turn(
         )
 
     # 5–6. Capture admitted revision + snapshot (immutable for this turn).
-    admitted_revision = record.revision
     admitted_snapshot_id = record.current_snapshot_id
 
     # 7–8. Resolve logical sources → document scope against admitted record.
@@ -144,6 +165,26 @@ def run_conversation_turn(
         record.backing_corpus_name, admitted_snapshot_id
     )
 
+    return PreparedConversationTurn(
+        *validated, record, snapshot, source_scope, selected_logical, document_scope
+    )
+
+
+def execute_prepared_conversation_turn(
+    runtime: ApplicationRuntime,
+    prepared: PreparedConversationTurn,
+    *,
+    control: OperationHandle | None = None,
+    owned: bool = False,
+) -> ConversationTurnResponse:
+    normalized_question, validated_prior = prepared.question, prepared.prior_turns
+    record, snapshot = prepared.record, prepared.snapshot
+    workspace_id = record.workspace_id
+    admitted_revision = record.revision
+    admitted_snapshot_id = snapshot.snapshot_id
+    source_scope = prepared.source_scope
+    selected_logical = prepared.selected_logical
+    document_scope = prepared.document_scope
     # 10. Allocate conversation orchestration trace (admission complete).
     conversation_trace_id = allocate_conversation_trace_id()
     created_at = datetime.now(tz=UTC)
@@ -162,7 +203,12 @@ def run_conversation_turn(
         current_question=normalized_question,
     )
 
+    if control is not None:
+        control.checkpoint("post_resolver")
+
     if resolver.outcome == "clarification_required":
+        if owned and control is not None:
+            runtime.operations.claim_query_terminal(control)
         _commit_conversation_trace(
             cstore,
             ConversationTraceRecord(
@@ -218,13 +264,22 @@ def run_conversation_turn(
         control=control,
         document_ids=document_scope,
         source_scope=source_scope,
+        claim_terminal=owned,
     )
-    citations = _enrich_workspace_citations(
-        outcome.citations,
-        record=record,
-        require_mapping=outcome.status == "answered",
-        selected_source_ids=selected_logical,
-    )
+    try:
+        citations = _enrich_workspace_citations(
+            outcome.citations,
+            record=record,
+            require_mapping=outcome.status == "answered",
+            selected_source_ids=selected_logical,
+        )
+    except AppError:
+        logger.warning(
+            "conversation citation projection failed conversation_trace=%s query_trace=%s",
+            conversation_trace_id,
+            outcome.trace_id,
+        )
+        raise
 
     resolver_outcome_status = (
         "bypassed" if not resolver.resolver_invoked else "resolved"
@@ -269,3 +324,27 @@ def run_conversation_turn(
         answer_blocks=outcome.answer_blocks,
         citations=citations,
     )
+
+
+def run_conversation_turn(
+    runtime: ApplicationRuntime,
+    *,
+    workspace_id: str,
+    question: str,
+    prior_turns: object = None,
+    source_ids: list[str] | None = None,
+    control: OperationHandle | None = None,
+) -> ConversationTurnResponse:
+    """Execute a direct caller's turn using the same preparation and execution."""
+    if control is not None:
+        control.checkpoint("pre_validate")
+    validated = validate_conversation_request(question, prior_turns)
+    runtime.require_ready()
+    prepared = prepare_conversation_turn(
+        runtime,
+        workspace_id=workspace_id,
+        validated=validated,
+        source_ids=source_ids,
+        control=control,
+    )
+    return execute_prepared_conversation_turn(runtime, prepared, control=control)

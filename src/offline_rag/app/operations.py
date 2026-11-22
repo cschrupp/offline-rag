@@ -43,7 +43,8 @@ class OperationHandle:
     cancel_event: threading.Event = field(default_factory=threading.Event)
     cancel_reason: CancelReason = CancelReason.NONE
     ingest_lifecycle: IngestLifecycle | None = None
-    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
+    _terminal_claimed: bool = field(default=False, init=False, repr=False)
     _released: bool = field(default=False, repr=False)
 
     @property
@@ -66,6 +67,8 @@ class OperationHandle:
         if reason is CancelReason.NONE:
             return
         with self._lock:
+            if self._terminal_claimed:
+                return
             if self.kind in {
                 OperationKind.GOLD_BOOTSTRAP,
                 OperationKind.MANAGED_INGEST,
@@ -100,6 +103,14 @@ class OperationHandle:
             if self.cancel_reason is CancelReason.NONE:
                 self.cancel_reason = reason
             self.cancel_event.set()
+
+    def claim_query_terminal(self) -> None:
+        """Order cancellation and timeout against the start of terminal persistence."""
+        with self._lock:
+            if self.kind is not OperationKind.QUERY or self._terminal_claimed:
+                raise RuntimeError("invalid query terminal claim")
+            self.checkpoint("pre_terminal_commit")
+            self._terminal_claimed = True
 
     def complete_lease_acquire(self) -> None:
         """Atomic PRE_LEASE → POST_LEASE after lease.acquire().
@@ -173,10 +184,7 @@ class OperationHandle:
                     code,
                     details=SafeErrorDetails(reason="shutdown_abort", stage="publish"),
                 )
-            if (
-                self._has_request_deadline()
-                and time.monotonic() >= self.deadline_mono
-            ):
+            if self._has_request_deadline() and time.monotonic() >= self.deadline_mono:
                 raise AppError(
                     ErrorCode.REQUEST_TIMEOUT,
                     details=SafeErrorDetails(
@@ -295,6 +303,7 @@ class OperationRegistry:
     gold_bootstrap_capacity: CapacityGate
     _lock: threading.RLock = field(default_factory=threading.RLock, init=False)
     _active: dict[str, OperationHandle] = field(default_factory=dict, init=False)
+    _query_preflights: set[str] = field(default_factory=set, init=False)
     _idle: threading.Condition = field(init=False)
     _draining: bool = field(default=False, init=False)
     grace_exhausted: bool = field(default=False, init=False)
@@ -360,6 +369,58 @@ class OperationRegistry:
             self._active[handle.op_id] = handle
             return handle
 
+    def start_query_preflight(self) -> OperationHandle:
+        """Own publication reads without reserving a query execution slot."""
+        with self._idle:
+            if self._draining:
+                raise AppError(ErrorCode.RUNTIME_NOT_READY)
+            if len(self._query_preflights) >= self.settings.api.max_concurrent_query:
+                raise AppError(
+                    ErrorCode.SERVICE_OVERLOADED,
+                    details=SafeErrorDetails(
+                        reason="query_preflight_capacity_exhausted"
+                    ),
+                )
+            handle = OperationHandle(
+                op_id=f"opq_{uuid.uuid4().hex}",
+                kind=OperationKind.QUERY,
+                deadline_mono=time.monotonic()
+                + self.settings.api.query_deadline_seconds,
+            )
+            self._active[handle.op_id] = handle
+            self._query_preflights.add(handle.op_id)
+            return handle
+
+    def promote_query_preflight(self, handle: OperationHandle) -> None:
+        """Replace preparation ownership with a shared query slot without an idle gap."""
+        with self._idle, handle._lock:
+            if self._draining:
+                handle.signal_cancel(CancelReason.SHUTDOWN)
+            handle.checkpoint("pre_admit")
+            if self._active.get(handle.op_id) is not handle or (
+                handle.op_id not in self._query_preflights
+            ):
+                raise RuntimeError("query preflight is not active")
+            if not self.query_capacity.try_acquire():
+                raise AppError(
+                    ErrorCode.SERVICE_OVERLOADED,
+                    details=SafeErrorDetails(reason="query_capacity_exhausted"),
+                )
+            self._query_preflights.remove(handle.op_id)
+            handle.deadline_mono = (
+                time.monotonic() + self.settings.api.query_deadline_seconds
+            )
+
+    def claim_query_terminal(self, handle: OperationHandle) -> None:
+        with self._idle:
+            if self._active.get(handle.op_id) is not handle or (
+                handle.op_id in self._query_preflights
+            ):
+                raise RuntimeError("query execution is not admitted")
+            if self._draining:
+                handle.signal_cancel(CancelReason.SHUTDOWN)
+            handle.claim_query_terminal()
+
     def admit_query(self, *, deadline_seconds: float | None = None) -> OperationHandle:
         return self._admit(
             kind=OperationKind.QUERY,
@@ -414,7 +475,10 @@ class OperationRegistry:
             handle.mark_terminal()
             self._active.pop(handle.op_id, None)
             if handle.kind is OperationKind.QUERY:
-                self.query_capacity.release()
+                if handle.op_id in self._query_preflights:
+                    self._query_preflights.remove(handle.op_id)
+                else:
+                    self.query_capacity.release()
             elif handle.kind in {
                 OperationKind.INGEST,
                 OperationKind.MANAGED_INGEST,

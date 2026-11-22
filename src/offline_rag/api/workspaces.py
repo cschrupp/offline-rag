@@ -19,6 +19,7 @@ from pydantic import (
     model_validator,
 )
 
+from offline_rag.api.workers import run_owned_worker
 from offline_rag.api.workspace_views import (
     operation_view,
     source_view,
@@ -26,11 +27,15 @@ from offline_rag.api.workspace_views import (
 )
 from offline_rag.app.conversation import (
     run_conversation_action,
-    run_conversation_turn,
 )
 from offline_rag.app.conversation.actions import (
     ConversationActionOperation,
     TranslationLanguage,
+)
+from offline_rag.app.conversation.turn import (
+    execute_prepared_conversation_turn,
+    prepare_conversation_turn,
+    validate_conversation_request,
 )
 from offline_rag.app.errors import (
     AppError,
@@ -108,7 +113,7 @@ def _source_content_http_response(payload: SourceContentPayload) -> Response:
     safe = quote(filename)
     headers = {
         "Content-Disposition": (
-            f'inline; filename="{filename}"; filename*=UTF-8\'\'{safe}'
+            f"inline; filename=\"{filename}\"; filename*=UTF-8''{safe}"
         ),
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-store",
@@ -577,11 +582,7 @@ def patch_source(
         idempotency_key=key,
         display_name=body.display_name,
     )
-    revision = (
-        op.result.workspace_revision
-        if op.result is not None
-        else expected
-    )
+    revision = op.result.workspace_revision if op.result is not None else expected
     return _etag_response(view, revision=int(revision))
 
 
@@ -624,9 +625,7 @@ async def delete_source(
 
 
 @router.get("/v1/workspaces/{workspace_id}/sources/{source_id}/content")
-def get_source_content(
-    request: Request, workspace_id: str, source_id: str
-) -> Response:
+def get_source_content(request: Request, workspace_id: str, source_id: str) -> Response:
     runtime = _runtime(request)
     runtime.require_ready()
     payload = load_active_source_content(
@@ -672,22 +671,64 @@ def workspace_query(
     return result.as_dict()
 
 
-@router.post("/v1/workspaces/{workspace_id}/conversation/turn")
-def workspace_conversation_turn(
+@router.post("/v1/workspaces/{workspace_id}/conversation/turn", response_model=None)
+async def workspace_conversation_turn(
     request: Request, workspace_id: str, body: ConversationTurnRequest
-) -> dict[str, Any]:
-    # A2-D05b: conversation bounds/sequence validation runs inside
-    # run_conversation_turn *before* require_ready / admission. Do not call
-    # require_ready() here — that would let unready runtimes mask request_invalid.
+) -> dict[str, Any] | Response:
     runtime = _runtime(request)
-    result = run_conversation_turn(
-        runtime,
-        workspace_id=workspace_id,
-        question=body.question,
-        prior_turns=[turn.model_dump() for turn in body.prior_turns],
-        source_ids=body.source_ids,
+    validated = validate_conversation_request(
+        body.question, [turn.model_dump() for turn in body.prior_turns]
     )
-    return result.as_dict()
+    runtime.require_ready()
+    operation = runtime.operations.start_query_preflight()
+
+    def worker() -> dict[str, Any]:
+        prepared = prepare_conversation_turn(
+            runtime,
+            workspace_id=workspace_id,
+            validated=validated,
+            source_ids=body.source_ids,
+            control=operation,
+        )
+        runtime.operations.promote_query_preflight(operation)
+        result = execute_prepared_conversation_turn(
+            runtime,
+            prepared,
+            control=operation,
+            owned=True,
+        )
+        logger.info(
+            "workspace turn completed operation=%s conversation_trace=%s query_trace=%s",
+            operation.op_id,
+            result.conversation_trace_id,
+            result.query_trace_id,
+        )
+        return result.as_dict()
+
+    try:
+        return await run_owned_worker(
+            request=request,
+            operation=operation,
+            worker=worker,
+            watch_disconnect=True,
+            retain_on_repeated_cancel=True,
+        )
+    except AppError as exc:
+        logger.info(
+            "workspace turn failed operation=%s code=%s query_trace=%s stage=%s",
+            operation.op_id,
+            exc.code,
+            exc.trace_id,
+            (exc.details or {}).get("stage"),
+        )
+        if exc.code == ErrorCode.REQUEST_CANCELLED and await request.is_disconnected():
+            return Response(status_code=204)
+        raise
+    except asyncio.CancelledError:
+        logger.info("workspace turn transport canceled operation=%s", operation.op_id)
+        raise
+    finally:
+        runtime.operations.release(operation)
 
 
 @router.post("/v1/workspaces/{workspace_id}/conversation/action")

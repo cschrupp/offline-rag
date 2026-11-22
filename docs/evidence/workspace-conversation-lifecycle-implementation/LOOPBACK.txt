@@ -1,0 +1,8 @@
+normal: 200
+competing: 503 while original worker held; invalid scope retained precedence
+disconnect: two independent contenders got 503 before release; next turn answered
+deadline: capacity still owned before scorer release; 504 at next checkpoint
+shutdown beyond transport grace: exit -15 conversation traces 3
+operation registry active counts at held scorer entries: ['1', '1', '1', '1']
+
+Expected server log: ERROR:    Cancel 1 running task(s), timeout graceful shutdown exceeded

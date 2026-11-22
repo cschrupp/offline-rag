@@ -1,0 +1,11 @@
+Candidate: 8 failed, 100 passed, 1 warning in 42.48s
+Exact base (legacy 15F suite): 8 failed, 14 passed, 1 warning in 28.43s
+Identical failing test identities:
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_query_overload_and_independent_capacity_classes
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_cancel_keeps_capacity_until_worker_ends
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_short_deadline_maps_to_request_timeout
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_generation_timeout_when_deadline_not_expired
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_query_disconnect_records_request_cancelled
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_grace_expiry_does_not_fabricate_request_timeout
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_health_live_responsive_during_drain_and_held_query
+FAILED tests/unit/app/test_slice15f_admission_deadlines_shutdown.py::test_product_query_passes_control_checkpoint_into_orchestrator
