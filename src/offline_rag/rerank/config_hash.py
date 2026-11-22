@@ -7,7 +7,7 @@ from offline_rag.core.ids import reranker_config_hash
 
 
 def build_reranker_config_hash(settings: AppSettings | RerankerSettings) -> str:
-    """Hash ranking-policy semantics only (not output_k, device, or paths)."""
+    """Hash ranking-policy semantics, excluding device and batching strategy."""
     rrk = settings.reranker if isinstance(settings, AppSettings) else settings
     return reranker_config_hash(
         {

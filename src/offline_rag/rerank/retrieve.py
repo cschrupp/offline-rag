@@ -222,7 +222,9 @@ class HybridRerankRetriever:
         try:
             pairs = self._input_builder.build(query=query, candidates=pool)
         except Exception as exc:
-            raise HybridRerankRetrievalError(f"pair construction failed: {exc}") from exc
+            raise HybridRerankRetrievalError(
+                f"pair construction failed: {exc}"
+            ) from exc
         pair_build_s = time.perf_counter() - t_pairs
         pair_build_ms = int(pair_build_s * 1000)
 
@@ -307,6 +309,11 @@ class HybridRerankRetriever:
                 "hybrid_breakdown": hybrid_breakdown_s,
             },
         }
+        if isinstance(self._reranker, CrossEncoderReranker):
+            metadata["reranker_execution"] = {
+                "batching_strategy": self._reranker.batching_strategy,
+                "device": self._reranker.device,
+            }
         return HybridRerankRetrievalResult(
             query=query.strip(),
             method="hybrid-rerank",

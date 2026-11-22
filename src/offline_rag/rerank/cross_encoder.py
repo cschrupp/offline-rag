@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from threading import Lock
 
-from offline_rag.config.models import AppSettings
+from offline_rag.config.models import AppSettings, RerankerBatchingStrategy
 from offline_rag.core.ids import (
     RAW_LOGIT_SCORE_CONTRACT,
     SEQ_TRUNC_1024_PASSAGE_RIGHT,
@@ -50,6 +50,7 @@ class CrossEncoderReranker:
         score_transform: str = RAW_LOGIT_SCORE_CONTRACT,
         device: str = "auto",
         batch_size: int = 16,
+        batching_strategy: RerankerBatchingStrategy = "consecutive",
         local_files_only: bool = True,
         trust_remote_code: bool = False,
     ) -> None:
@@ -69,6 +70,9 @@ class CrossEncoderReranker:
         if batch_size < 1:
             raise CrossEncoderRerankerError("batch_size must be >= 1")
 
+        if batching_strategy not in ("consecutive", "length_sorted_8"):
+            raise CrossEncoderRerankerError("unsupported reranker batching strategy")
+
         self.model_path = Path(model_path).expanduser().resolve()
         self.model_id = model_id
         self.model_revision = model_revision
@@ -78,9 +82,11 @@ class CrossEncoderReranker:
         self.score_transform = score_transform
         self.device = _resolve_device(device)
         self.batch_size = int(batch_size)
+        self.batching_strategy = batching_strategy
         self.local_files_only = True
         self.trust_remote_code = False
         self._load_lock = Lock()
+        self._tokenizer_lock = Lock()
         self._loaded: tuple[object, object] | None = None
 
         require_reranker_artifacts(
@@ -107,6 +113,7 @@ class CrossEncoderReranker:
             score_transform=rrk.score_transform,
             device=rrk.device,
             batch_size=rrk.batch_size,
+            batching_strategy=rrk.batching_strategy,
             local_files_only=rrk.model.local_files_only,
             trust_remote_code=rrk.model.trust_remote_code,
         )
@@ -173,48 +180,75 @@ class CrossEncoderReranker:
         if not pairs:
             return []
 
+        for pair in pairs:
+            if not isinstance(pair, RerankerPair) or any(
+                not isinstance(text, str) or not text.strip()
+                for text in (pair.chunk_id, pair.query_text, pair.passage_text)
+            ):
+                raise CrossEncoderRerankerError("invalid reranker pair")
+
         import torch
 
         tokenizer, model = self._load()
-        seen_queries: set[str] = set()
-        for pair in pairs:
-            if pair.query_text not in seen_queries:
-                self._assert_query_fits(tokenizer, pair.query_text)
-                seen_queries.add(pair.query_text)
+        with self._tokenizer_lock:
+            seen_queries: set[str] = set()
+            for pair in pairs:
+                if pair.query_text not in seen_queries:
+                    self._assert_query_fits(tokenizer, pair.query_text)
+                    seen_queries.add(pair.query_text)
 
-        scores: list[float] = []
-        for start in range(0, len(pairs), self.batch_size):
-            batch = pairs[start : start + self.batch_size]
-            queries = [pair.query_text for pair in batch]
-            passages = [pair.passage_text for pair in batch]
-            encoded = tokenizer(
-                text=queries,
-                text_pair=passages,
-                truncation="only_second",
-                max_length=self.max_length,
-                padding=True,
-                return_tensors="pt",
-            )
+        order = list(range(len(pairs)))
+        batch_size = self.batch_size
+        if self.batching_strategy == "length_sorted_8":
+            with self._tokenizer_lock:
+                unpadded = tokenizer(
+                    text=[pair.query_text for pair in pairs],
+                    text_pair=[pair.passage_text for pair in pairs],
+                    truncation="only_second",
+                    max_length=self.max_length,
+                    padding=False,
+                    return_attention_mask=False,
+                )["input_ids"]
+            if len(unpadded) != len(pairs) or any(
+                not 0 < len(ids) <= self.max_length for ids in unpadded
+            ):
+                raise CrossEncoderRerankerError("invalid reranker length prepass")
+            order.sort(key=lambda ordinal: (len(unpadded[ordinal]), ordinal))
+            batch_size = 8
+
+        # Index by caller ordinal to preserve candidate identity across batches.
+        scores: dict[int, float] = {}
+        for start in range(0, len(order), batch_size):
+            ordinals = order[start : start + batch_size]
+            with self._tokenizer_lock:
+                encoded = tokenizer(
+                    text=[pairs[i].query_text for i in ordinals],
+                    text_pair=[pairs[i].passage_text for i in ordinals],
+                    truncation="only_second",
+                    max_length=self.max_length,
+                    padding=True,
+                    return_tensors="pt",
+                )
             encoded = {key: value.to(self.device) for key, value in encoded.items()}
             with torch.inference_mode():
                 logits = model(**encoded).logits
-                if logits.ndim != 2 or logits.shape[-1] != 1:
+                if logits.shape != (len(ordinals), 1):
                     raise CrossEncoderRerankerError(
                         "expected single raw logit per pair "
                         f"(got logits shape {tuple(logits.shape)})"
                     )
                 values = logits.view(-1).detach().cpu().tolist()
 
-            for value in values:
+            for ordinal, value in zip(ordinals, values, strict=True):
                 score = float(value)
                 if not math.isfinite(score):
                     raise CrossEncoderRerankerError(
                         f"non-finite reranker logit: {score!r}"
                     )
-                scores.append(score)
+                if ordinal in scores:
+                    raise CrossEncoderRerankerError("duplicate reranker score ordinal")
+                scores[ordinal] = score
 
-        if len(scores) != len(pairs):
-            raise CrossEncoderRerankerError(
-                f"score count mismatch: got {len(scores)} for {len(pairs)} pairs"
-            )
-        return scores
+        if scores.keys() != set(range(len(pairs))):
+            raise CrossEncoderRerankerError("missing or invalid reranker score ordinal")
+        return [scores[ordinal] for ordinal in range(len(pairs))]

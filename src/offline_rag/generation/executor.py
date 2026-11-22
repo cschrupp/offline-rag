@@ -34,13 +34,13 @@ from offline_rag.generation.openai_compatible import (
     OpenAICompatibleGenerator,
     OpenAICompatibleGeneratorError,
 )
+from offline_rag.generation.projection_v2 import project_plain_answer
 from offline_rag.generation.prompt import (
     build_prompt_grounded_answer_v2,
     build_prompt_grounded_provenance_v2,
     build_prompt_grounded_v1,
 )
 from offline_rag.generation.prompt_evidence import PromptEvidence
-from offline_rag.generation.projection_v2 import project_plain_answer
 from offline_rag.generation.protocol import Generator, GeneratorRequest
 from offline_rag.generation.schema import parse_grounded_answer_v1
 from offline_rag.generation.schema_v2 import parse_grounded_answer_v2
@@ -94,6 +94,7 @@ class GenerationContextProvenance:
     chunk_set_id: str | None = None
     context_latency_ms: int = 0
     context_breakdown: dict[str, Any] | None = None
+    reranker_execution: dict[str, str] | None = None
 
 
 class GroundedGenerationExecutor:
@@ -372,6 +373,11 @@ class GroundedGenerationExecutor:
                         "validation": val_ms,
                         "total": total_ms,
                         "context_breakdown": provenance.context_breakdown,
+                        **(
+                            {"reranker_execution": provenance.reranker_execution}
+                            if provenance.reranker_execution is not None
+                            else {}
+                        ),
                     },
                 },
                 metadata={
@@ -434,6 +440,11 @@ class GroundedGenerationExecutor:
                     "validation": val_ms,
                     "total": total_ms,
                     "context_breakdown": provenance.context_breakdown,
+                    **(
+                        {"reranker_execution": provenance.reranker_execution}
+                        if provenance.reranker_execution is not None
+                        else {}
+                    ),
                 },
             },
             metadata={
@@ -598,7 +609,9 @@ class GroundedGenerationExecutor:
             total_ms = context_ms + prompt_ms + gen_ms + val_ms
             failure = parsed.failure_reason or "output_schema_invalid"
             status = (
-                "citation_invalid" if failure == "citation_invalid" else "generation_failed"
+                "citation_invalid"
+                if failure == "citation_invalid"
+                else "generation_failed"
             )
             return self._failed(
                 query=query_text,
@@ -657,6 +670,11 @@ class GroundedGenerationExecutor:
                         "validation": val_ms,
                         "total": total_ms,
                         "context_breakdown": provenance.context_breakdown,
+                        **(
+                            {"reranker_execution": provenance.reranker_execution}
+                            if provenance.reranker_execution is not None
+                            else {}
+                        ),
                     },
                 },
                 metadata={
@@ -714,6 +732,11 @@ class GroundedGenerationExecutor:
                     "validation": val_ms,
                     "total": total_ms,
                     "context_breakdown": provenance.context_breakdown,
+                    **(
+                        {"reranker_execution": provenance.reranker_execution}
+                        if provenance.reranker_execution is not None
+                        else {}
+                    ),
                 },
             },
             metadata={
@@ -899,6 +922,11 @@ class GroundedGenerationExecutor:
                     "validation": 0,
                     "total": total_ms,
                     "context_breakdown": provenance.context_breakdown,
+                    **(
+                        {"reranker_execution": provenance.reranker_execution}
+                        if provenance.reranker_execution is not None
+                        else {}
+                    ),
                 },
             },
             metadata={
@@ -930,6 +958,11 @@ class GroundedGenerationExecutor:
             "latency_ms": {
                 **latency,
                 "context_breakdown": provenance.context_breakdown,
+                **(
+                    {"reranker_execution": provenance.reranker_execution}
+                    if provenance.reranker_execution is not None
+                    else {}
+                ),
             },
         }
         if sufficiency is not None:
