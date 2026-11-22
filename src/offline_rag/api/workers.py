@@ -7,12 +7,15 @@ runs. Callers always wait for the future to complete before release.
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
 from concurrent.futures import Future
 
 from starlette.requests import Request
 
 from offline_rag.app.operations import CancelReason, OperationHandle
+
+logger = logging.getLogger(__name__)
 
 
 async def run_owned_worker[T](
@@ -21,6 +24,7 @@ async def run_owned_worker[T](
     operation: OperationHandle,
     worker: Callable[[], T],
     watch_disconnect: bool,
+    retain_on_repeated_cancel: bool = False,
 ) -> T:
     """Run ``worker`` in a thread; optionally signal cancel on disconnect.
 
@@ -37,9 +41,14 @@ async def run_owned_worker[T](
         while not stop_watch.is_set() and not future.done():
             try:
                 disconnected = await request.is_disconnected()
-            except (RuntimeError, AttributeError):
+            except RuntimeError, AttributeError:
                 return
             if disconnected:
+                if retain_on_repeated_cancel:
+                    logger.info(
+                        "owned worker transport disconnected operation=%s",
+                        operation.op_id,
+                    )
                 operation.signal_cancel(CancelReason.CLIENT_DISCONNECT)
                 return
             try:
@@ -49,11 +58,22 @@ async def run_owned_worker[T](
 
     watcher = asyncio.create_task(_disconnect_watch())
     try:
+        if retain_on_repeated_cancel:
+            await asyncio.wait({future})
+            return future.result()
         # Shield so HTTP-task cancellation cannot abandon the worker wait.
         return await asyncio.shield(asyncio.wrap_future(future))
     except asyncio.CancelledError:
         operation.signal_cancel(CancelReason.CLIENT_DISCONNECT)
-        if not future.done():
+        if retain_on_repeated_cancel:
+            while not future.done():
+                try:
+                    await asyncio.wait({future})
+                except asyncio.CancelledError:
+                    continue
+            if not future.cancelled():
+                future.exception()
+        elif not future.done():
             await asyncio.wrap_future(future)
         raise
     finally:
