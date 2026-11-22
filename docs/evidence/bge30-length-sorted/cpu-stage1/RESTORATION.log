@@ -1,0 +1,4 @@
+true sha256:3bc83208a7526a49abed1b9bd9586b5ae4fd041771732e03030c3ac20419e692 unless-stopped
+live 200
+ready 200
+RESTORATION PASS: original container running, live=200 ready=200, original image/mounts/restart policy, both workspace revisions/snapshots/source inventories/publication pointers unchanged; diagnostic removed

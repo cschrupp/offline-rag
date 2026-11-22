@@ -1,0 +1,21 @@
+Assembler calls started: 16
+
+Recipes: 8/8 completed, 4/4 parity pairs
+1 ('A', 60.374, 120.329, 58.411, 58.389) ('B', 33.722, 67.543, 31.728, 31.705)
+2 ('A', 60.04, 119.466, 58.197, 58.177) ('B', 33.757, 66.686, 31.685, 31.662)
+3 ('A', 60.616, 120.726, 58.236, 58.216) ('B', 33.357, 66.439, 31.588, 31.565)
+Parity: True; max absolute logit delta: 3.8146973e-06
+assembler_s paired median reduction: 44.15%
+forward_s paired median reduction: 45.70%
+cpu_s paired median reduction: 44.18%
+Performance screen: True
+
+Rich: 8/8 completed, 4/4 parity pairs
+1 ('A', 26.69, 54.335, 26.239, 26.218) ('B', 27.026, 54.918, 26.602, 26.557)
+2 ('A', 27.208, 55.364, 26.676, 26.659) ('B', 45.731, 90.208, 45.136, 45.098)
+3 ('A', 26.798, 54.684, 26.237, 26.206) ('B', 26.755, 54.72, 26.117, 26.089)
+Parity: True; max absolute logit delta: 2.6226044e-06
+assembler_s paired median reduction: -1.26%
+forward_s paired median reduction: -1.29%
+cpu_s paired median reduction: -1.07%
+Performance screen: False
