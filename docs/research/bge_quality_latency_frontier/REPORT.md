@@ -709,3 +709,101 @@ separate and was not run here.
 [All 20 trials and paired gates](evidence/rich-small-pool-execution/SUMMARY.json) ·
 [Raw measurements](evidence/rich-small-pool-execution/MEASUREMENTS.log) ·
 [Execution and restoration evidence](evidence/rich-small-pool-execution/EXECUTION.md)
+
+## 13. Recipes — measuring the BGE-15 and batching interaction
+
+The four-vCPU matrix pairs depth reduction with the previous sorted-eight
+strategy on the same Recipes input. A and C use the original BGE-30
+snapshot. B and D use a separately validated BGE-15 publication in the
+isolated store. The same dense and lexical artifacts, source scope,
+embedding runtime and BGE weights back all four arms. Ordinary validation
+rejected both attempts to resolve a snapshot under the other depth's
+settings. No re-ingestion was needed in the copy.
+
+The actual depth-15 input was the top 15 of the original fused RRF order
+on every call. A used 16+14, B one batch of 15, C length-sorted 8+8+8+6
+and D length-sorted 8+7. Results were returned to original pool order
+before canonical ranking. The study ran four warm-ups and four measured
+counterbalanced blocks A/B/D/C, B/C/A/D, C/D/B/A and D/A/C/B. Each arm uses
+the comparator from the same block. See the [frozen protocol](evidence/bge15-cpu/PROTOCOL.md)
+and [execution record](evidence/bge15-four-arm-execution/EXECUTION.md).
+
+**Result.** All three treatments cleared the preregistered performance
+screen against A on this query. Sorted-eight passed batching parity at
+each depth. Depth 15 changed selected evidence, so its production quality
+gate remains open.
+
+| Arm | Median warm forward (s) | Median warm assembler (s) | Median forward CPU-s | Median assembler CPU-s | Padded positions | Median end RSS (MiB) |
+|---|---:|---:|---:|---:|---:|---:|
+| A · 30 consecutive | 58.241 | 60.361 | 115.832 | 119.968 | 6,590 | 3,935.7 |
+| B · 15 consecutive | 27.396 | 29.346 | 54.276 | 58.369 | 3,005 | 3,936.2 |
+| C · 30 sorted-eight | 31.838 | 33.950 | 63.465 | 67.525 | 1,398 | 3,940.6 |
+| D · 15 sorted-eight | 18.199 | 20.491 | 36.203 | 40.608 | 1,117 | 3,940.5 |
+
+*Per-arm medians across four measured blocks. These summarize the arms.
+The paired contrasts below are computed within block before taking medians.*
+
+| Comparison | Median paired forward wall reduction | Median paired assembler wall reduction | Median paired assembler CPU reduction |
+|---|---:|---:|---:|
+| B vs A · change depth | 52.9% | 51.0% | 50.9% |
+| C vs A · change batching | 45.7% | 43.9% | 44.0% |
+| D vs A · change both | 68.8% | 66.7% | 66.6% |
+| D vs B · change batching at depth 15 | 33.6% | 31.5% | 31.2% |
+| D vs C · change depth with sorted batching | 42.5% | 39.7% | 39.9% |
+
+Positive values indicate a reduction. All four comparisons per row
+favored the treatment on both wall endpoints. Assembler times by block
+show why individual timings remain important.
+
+| Block | A (s) | B (s) | C (s) | D (s) |
+|---|---:|---:|---:|---:|
+| 1 | 60.633 | 29.306 | 33.919 | 20.149 |
+| 2 | 60.089 | 29.386 | 34.200 | 20.073 |
+| 3 | 68.078 | 55.526 | 33.982 | 20.833 |
+| 4 | 59.558 | 29.208 | 33.508 | 27.179 |
+
+![Paired BGE-15 four-arm comparisons](figures/10-bge15-four-arm-paired.png)
+
+*Figure 10. Paired wall and CPU reductions. Each colored point is one
+matched block and the dark mark is the paired median.*
+
+Adding sorting at depth 15 helped less on median than adding it at depth
+30. The blockwise log assembler difference-in-differences
+`log(D/B) − log(C/A)` was +0.206, +0.182, −0.285 and +0.503, with
+median +0.194. The sign reversal reflects variation in the independent
+contrasts on this single request. It does not support a general interaction
+estimate. RSS at call end was similar across arms. The shared process peak
+was 4.25 GiB and the minimum sampled host available RAM was 4.57 GiB.
+The shared process cannot assign peak memory to an individual arm, and
+transient memory observations do not establish a source of timing variance.
+
+### Parity and evidence
+
+All five C/A and all five D/B comparisons passed the planned numerical
+and scientific gates, including warm-up. Maximum absolute raw-logit
+difference was 3.81e-6 at either depth. Ordered candidates, active model
+inputs, positions, rank with tie-breaking, anchors, evidence and packed
+context matched within each depth. The baseline's candidate order, rank,
+anchors, evidence and packed-context identity also match the earlier
+exact-incident baseline.
+
+Depth reduction preserved the order of the 15 common ranked IDs but
+changed one of five top candidates, one of five anchors, and one of five
+evidence units. Packed context changed from 645 to 569 tokens in each
+paired cross-depth comparison. The shorter context could help or hurt
+answer quality. This Recipes question has no independent labels and the
+generator was not called. The labeled development replay still contains
+the **Fire Safety nDCG@10 regression of −0.0676** and the
+**Construction Materials regression of −0.0636**. Those outcomes are
+retained as query-level warning signs despite the similar cohort means.
+
+**Decision.** The depth-30 batching option preserves evidence on this case
+and warrants review for broader execution qualification. Depth 15 is fast
+enough here to justify the planned separate held-out quality campaign. It
+is premature to propose a production migration with the present quality
+evidence. The isolated four-arm result supports neither a production p95
+claim nor a deployment decision.
+
+[All trials and paired gates](evidence/bge15-four-arm-execution/SUMMARY.json) ·
+[Raw measurements](evidence/bge15-four-arm-execution/MEASUREMENTS.log) ·
+[Execution and restoration](evidence/bge15-four-arm-execution/EXECUTION.md)
