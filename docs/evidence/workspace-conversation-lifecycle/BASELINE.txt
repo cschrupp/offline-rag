@@ -1,0 +1,6 @@
+normal: 200
+competing: 200 200
+disconnect: second request entered before abandoned worker returned; both traces persisted
+shutdown: response 200 exit -15 trace count 6
+shutdown: lifespan closed scorer after fixture release
+operation registry active counts at held scorer entries: ['0', '0', '0', '0', '0']
