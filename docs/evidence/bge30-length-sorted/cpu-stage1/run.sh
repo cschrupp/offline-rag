@@ -96,22 +96,21 @@ while IFS= read -r path; do
 done < files.txt
 # Retain the original effective environment but never print it or export it off-host.
 # Network isolation prevents any provider or model-download traffic.
-python3 - <<'PY'
-import json, subprocess
-from pathlib import Path
-env = json.loads(subprocess.check_output(["docker","inspect","seneca-review"]))[0]["Config"]["Env"]
-if any("\r" in line or "\n" in line for line in env):
-    raise SystemExit("Unsupported multiline environment")
-Path("runtime.env").write_text("\n".join(env)+"\n")
-PY
-docker run --detach --name "$name" --network none --memory 6g --memory-swap 6g \
-    --env-file runtime.env -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
+# Pipe the environment directly to Docker. No credential file is created.
+python3 - <<'PY' | docker run --detach --name "$name" --network none --memory 6g --memory-swap 6g \
+    --env-file /dev/stdin -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
     --mount "type=bind,src=$prefix/data,dst=/data" \
     --mount type=bind,src=/srv/seneca/models,dst=/models,readonly \
     --mount "type=bind,src=$prefix/probe.py,dst=/diagnostic/probe.py,readonly" \
     --mount "type=bind,src=$prefix/before.json,dst=/diagnostic/before.json,readonly" \
     "${mounts[@]}" --entrypoint timeout "$image" --signal=KILL 2400 python -B /diagnostic/probe.py measure >/dev/null
-unlink runtime.env
+import json, subprocess
+import sys
+env = json.loads(subprocess.check_output(["docker","inspect","seneca-review"]))[0]["Config"]["Env"]
+if any("\r" in line or "\n" in line for line in env):
+    raise SystemExit("Unsupported multiline environment")
+sys.stdout.write("\n".join(env) + "\n")
+PY
 (
     while [[ $(docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null) == true ]]; do
         available=$(awk '$1=="MemAvailable:" {print $2}' /proc/meminfo)
