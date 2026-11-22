@@ -134,7 +134,7 @@ describe("16H-A/K — cross-surface shell integration", () => {
 
     await user.click(within(nav).getByRole("link", { name: /^Engineering$/i }));
     expect(
-      await screen.findByRole("heading", { name: /Engineering summary/i }),
+      await screen.findByRole("heading", { name: "Engineering", level: 1 }),
     ).toBeInTheDocument();
     expect(
       mock.calls.some((c) => c.url.startsWith("/eval/")),
