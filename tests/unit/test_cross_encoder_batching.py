@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, Lock
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -205,3 +207,37 @@ def test_sorted_strategy_preserves_canonical_ranking_and_packed_evidence(scorer)
         "batching_strategy": "length_sorted_8",
         "device": "cpu",
     }
+
+
+@pytest.mark.parametrize("strategy", ["consecutive", "length_sorted_8"])
+def test_shared_tokenizer_serializes_while_model_forward_can_overlap(scorer, strategy):
+    first_tokenization = Barrier(2)
+    forwards = Barrier(2)
+    tokenizer_active = Lock()
+    first_tokenization_seen = False
+
+    class SharedTokenizer(Tokenizer):
+        def __call__(self, **kwargs):
+            nonlocal first_tokenization_seen
+            assert scorer._tokenizer_lock.locked()
+            assert tokenizer_active.acquire(blocking=False)
+            try:
+                if not first_tokenization_seen:
+                    first_tokenization_seen = True
+                    first_tokenization.wait(timeout=5)
+                return super().__call__(**kwargs)
+            finally:
+                tokenizer_active.release()
+
+    def model(input_ids, **_):
+        forwards.wait(timeout=5)
+        return SimpleNamespace(logits=input_ids[:, 3:4].float())
+
+    scorer._loaded = (SharedTokenizer(), model)
+    scorer.batching_strategy = strategy
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(scorer.score_pairs, [RerankerPair("a", "query", "0 17")])
+        first_tokenization.wait(timeout=5)
+        second = pool.submit(scorer.score_pairs, [RerankerPair("b", "query", "7 1")])
+        assert first.result(timeout=10) == [10.0]
+        assert second.result(timeout=10) == [17.0]
