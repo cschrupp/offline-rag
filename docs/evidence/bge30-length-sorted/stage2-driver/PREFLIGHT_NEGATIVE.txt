@@ -1,0 +1,2 @@
+Insufficient STOP window rejected (exit 1).
+Missing publication in read-only scratch rejected (exit 1).

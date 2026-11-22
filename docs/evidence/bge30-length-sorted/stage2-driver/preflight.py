@@ -1,0 +1,456 @@
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+
+from offline_rag.app.publication import (
+    ProductPublicationRegistry,
+    snapshot_manifest_path,
+)
+from offline_rag.app.query import (
+    _resolve_workspace_source_scope,
+    normalize_product_question,
+)
+from offline_rag.app.snapshot import CanonicalSnapshotManifest, compute_snapshot_id
+from offline_rag.app.workspace.store import WorkspaceStore
+from offline_rag.config.loader import load_settings
+from offline_rag.context.store import load_structure_store_for_chunk_manifest
+from offline_rag.dense.persistence import load_index_manifest
+
+stage = "settings"
+
+
+def require(ok, message):
+    if not ok:
+        raise ValueError(message)
+
+
+def recipes(settings):
+    global stage
+    question = normalize_product_question(
+        "What ingredients are needed for the baked French fries?"
+    )
+    digest = hashlib.sha256(question.encode()).hexdigest()
+    stage = "incident_trace_scope"
+    matches = []
+    for path in (settings.paths.traces / "conversation").glob("*.json"):
+        c = json.loads(path.read_bytes())
+        if c.get("question_sha256") == digest and c["created_at"].startswith(
+            "2026-11-21T04:"
+        ):
+            q = json.loads(
+                (settings.paths.traces / (c["query_trace_id"] + ".json")).read_bytes()
+            )
+            require(
+                q["request"]["question_sha256"] == digest and not c["resolver_invoked"],
+                "question mismatch",
+            )
+            require(
+                q["request"]["source_scope"] == c["source_scope"]
+                and q["snapshot_id"] == c["snapshot_id"],
+                "trace scope mismatch",
+            )
+            matches.append(c)
+    require(len(matches) == 10, "expected ten matching incident traces")
+    scope = matches[0]["source_scope"]
+    wsid = matches[0]["workspace_id"]
+    sid = matches[0]["snapshot_id"]
+    require(
+        all(
+            (x["workspace_id"], x["snapshot_id"], x["source_scope"])
+            == (wsid, sid, scope)
+            for x in matches
+        ),
+        "incident scopes differ",
+    )
+    require(
+        scope["mode"] == "selected" and len(scope["document_ids"]) == 1,
+        "expected selected document",
+    )
+    store = WorkspaceStore(settings)
+    ws = store.get(wsid)
+    require(
+        ws.status == "active" and ws.current_snapshot_id == sid,
+        "workspace no longer at incident snapshot",
+    )
+    actual, _, docids = _resolve_workspace_source_scope(
+        ws, source_ids=scope["source_ids"]
+    )
+    require(actual.model_dump(mode="json") == scope, "workspace source scope drift")
+    stage = "snapshot_artifacts"
+    m = CanonicalSnapshotManifest.model_validate_json(
+        snapshot_manifest_path(
+            settings.paths.corpora, ws.backing_corpus_name, sid
+        ).read_bytes()
+    )
+    require(compute_snapshot_id(m) == sid, "snapshot hash mismatch")
+    for root, name in (
+        (settings.paths.manifests, m.corpus_manifest),
+        (settings.paths.chunk_manifests, m.chunk_manifest),
+        (settings.paths.index_manifests, m.dense_index_manifest),
+        (settings.paths.lexical_index_manifests, m.lexical_index_manifest),
+    ):
+        require((root / Path(name).name).is_file(), "snapshot manifest missing")
+    dense = load_index_manifest(
+        settings.paths.index_manifests / Path(m.dense_index_manifest).name
+    )
+    require(
+        dense.expected_child_count == dense.indexed_child_count == 603,
+        "unexpected passage population",
+    )
+    require(
+        (settings.paths.qdrant_storage / "collection" / dense.collection_name).is_dir(),
+        "dense storage missing",
+    )
+    load_structure_store_for_chunk_manifest(settings, Path(m.chunk_manifest).name)
+    stage = "managed_operations"
+    active = 0
+    for path in settings.paths.workspaces.glob("*/operations/by_id/*.json"):
+        status = json.loads(path.read_bytes())["status"]
+        if status not in (
+            "succeeded",
+            "failed",
+            "canceled",
+            "cancelled",
+            "interrupted",
+        ):
+            active += 1
+    require(active == 0, "managed operation not terminal")
+    pointer_id = ProductPublicationRegistry(settings).published_snapshot_id(
+        ws.backing_corpus_name
+    )
+    require(pointer_id == sid, "baseline corpus pointer drift")
+    manifest_bytes = snapshot_manifest_path(
+        settings.paths.corpora, ws.backing_corpus_name, sid
+    ).read_bytes()
+    result = {
+        "published_pointer": pointer_id,
+        "snapshot_manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+        "workspace_id": wsid,
+        "workspace_revision": ws.revision,
+        "snapshot_id": sid,
+        "source_inventory_sha256": hashlib.sha256(
+            store.workspace_path(wsid).read_bytes()
+        ).hexdigest(),
+        "document_id": next(iter(docids)),
+        "passages": dense.indexed_child_count,
+        "identities": m.model_dump(
+            mode="json",
+            exclude={
+                "corpus_manifest",
+                "chunk_manifest",
+                "dense_index_manifest",
+                "lexical_index_manifest",
+            },
+        ),
+        "science_settings_hash": hashlib.sha256(
+            json.dumps(
+                {
+                    k: getattr(settings, k).model_dump(
+                        mode="json",
+                        exclude={"batching_strategy"} if k == "reranker" else None,
+                    )
+                    for k in (
+                        "dense",
+                        "reranker",
+                        "fusion",
+                        "context",
+                        "lexical",
+                        "indexing",
+                    )
+                },
+                sort_keys=True,
+            ).encode()
+        ).hexdigest(),
+    }
+    require(
+        result["workspace_revision"] == 4
+        and sid
+        == "snap_89eb8d5cfc93c444b970ee8da72b177967009d22ba059f12e318efb45a422196",
+        "previous publication mismatch",
+    )
+    require(
+        result["science_settings_hash"]
+        == "5dce337dc1875b2aa615d62ee771a0ae384559c2da14be384e067ded035f5417",
+        "previous retrieval settings mismatch",
+    )
+    return result, ws.backing_corpus_name, actual.source_ids
+
+
+def rich(settings):
+    global stage
+    question = normalize_product_question("Describe the naturalistic decision method")
+    digest = hashlib.sha256(question.encode()).hexdigest()
+    stage = "historical_trace_scope"
+    historical = json.loads(
+        (
+            settings.paths.traces
+            / "conversation"
+            / "trace_5c7bcd76773a49a7a5ede5e0a32a4d30.json"
+        ).read_bytes()
+    )
+    historical_query_id = "trace_4c701509255f474990998e3209ff620f"
+    require(
+        historical["query_trace_id"] == historical_query_id
+        and historical["question_sha256"] == digest,
+        "historical conversation binding mismatch",
+    )
+    historical_query = json.loads(
+        (settings.paths.traces / (historical_query_id + ".json")).read_bytes()
+    )
+    historical_hash = historical["retrieval_question_sha256"]
+    require(
+        historical_hash == historical_query["request"]["question_sha256"],
+        "historical retrieval hash binding mismatch",
+    )
+    require(
+        historical["prior_turn_count"] == 2
+        and historical["resolver_invoked"]
+        and historical_query["status"] == "answered",
+        "historical request identity mismatch",
+    )
+    scope = historical["source_scope"]
+    wsid = historical["workspace_id"]
+    sid = historical["snapshot_id"]
+    require(
+        wsid == "ws_73a29d6defb545e8958746d78ac80775"
+        and scope["mode"] == "all_active"
+        and len(scope["document_ids"]) == 1
+        and historical_query["request"]["source_scope"] == scope
+        and historical_query["snapshot_id"] == sid,
+        "historical scope mismatch",
+    )
+    store = WorkspaceStore(settings)
+    ws = store.get(wsid)
+    require(
+        ws.status == "active" and ws.current_snapshot_id == sid,
+        "workspace no longer at incident snapshot",
+    )
+    actual, _, docids = _resolve_workspace_source_scope(ws, source_ids=None)
+    require(actual.model_dump(mode="json") == scope, "workspace source scope drift")
+    stage = "snapshot_artifacts"
+    m = CanonicalSnapshotManifest.model_validate_json(
+        snapshot_manifest_path(
+            settings.paths.corpora, ws.backing_corpus_name, sid
+        ).read_bytes()
+    )
+    require(compute_snapshot_id(m) == sid, "snapshot hash mismatch")
+    for root, name in (
+        (settings.paths.manifests, m.corpus_manifest),
+        (settings.paths.chunk_manifests, m.chunk_manifest),
+        (settings.paths.index_manifests, m.dense_index_manifest),
+        (settings.paths.lexical_index_manifests, m.lexical_index_manifest),
+    ):
+        require((root / Path(name).name).is_file(), "snapshot manifest missing")
+    dense = load_index_manifest(
+        settings.paths.index_manifests / Path(m.dense_index_manifest).name
+    )
+    require(
+        dense.expected_child_count == dense.indexed_child_count == 10,
+        "unexpected passage population",
+    )
+    require(
+        (settings.paths.qdrant_storage / "collection" / dense.collection_name).is_dir(),
+        "dense storage missing",
+    )
+    load_structure_store_for_chunk_manifest(settings, Path(m.chunk_manifest).name)
+    stage = "managed_operations"
+    active = 0
+    for path in settings.paths.workspaces.glob("*/operations/by_id/*.json"):
+        status = json.loads(path.read_bytes())["status"]
+        if status not in (
+            "succeeded",
+            "failed",
+            "canceled",
+            "cancelled",
+            "interrupted",
+        ):
+            active += 1
+    require(active == 0, "managed operation not terminal")
+    pointer_id = ProductPublicationRegistry(settings).published_snapshot_id(
+        ws.backing_corpus_name
+    )
+    require(pointer_id == sid, "Rich publication pointer drift")
+    result = {
+        "published_pointer": pointer_id,
+        "workspace_id": wsid,
+        "workspace_revision": ws.revision,
+        "question_sha256": digest,
+        "historical_retrieval_question_sha256": historical_hash,
+        "historical_retrieval_matches": historical_hash == digest,
+        "historical_context_ms": historical_query["execution"]["context_latency_ms"],
+        "snapshot_id": sid,
+        "source_inventory_sha256": hashlib.sha256(
+            store.workspace_path(wsid).read_bytes()
+        ).hexdigest(),
+        "document_id": next(iter(docids)),
+        "passages": dense.indexed_child_count,
+        "identities": m.model_dump(
+            mode="json",
+            exclude={
+                "corpus_manifest",
+                "chunk_manifest",
+                "dense_index_manifest",
+                "lexical_index_manifest",
+            },
+        ),
+        "science_settings_hash": hashlib.sha256(
+            json.dumps(
+                {
+                    k: getattr(settings, k).model_dump(
+                        mode="json",
+                        exclude={"batching_strategy"} if k == "reranker" else None,
+                    )
+                    for k in (
+                        "dense",
+                        "reranker",
+                        "fusion",
+                        "context",
+                        "lexical",
+                        "indexing",
+                    )
+                },
+                sort_keys=True,
+            ).encode()
+        ).hexdigest(),
+    }
+    require(
+        result["workspace_revision"] == 2
+        and sid
+        == "snap_62fce56e749ccf0e7b3bad46f82c153c4d0ba032f500509a1da37755babc97ca",
+        "previous publication mismatch",
+    )
+    require(
+        result["science_settings_hash"]
+        == "5dce337dc1875b2aa615d62ee771a0ae384559c2da14be384e067ded035f5417",
+        "previous retrieval settings mismatch",
+    )
+    return result, ws.backing_corpus_name, actual.source_ids
+
+
+def digest(path):
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def verify_models(settings, workloads):
+    from offline_rag.rerank.provision import resolve_reranker_model_dir
+
+    models = workloads["models"]
+    bge = resolve_reranker_model_dir(
+        reranker_artifacts_root=settings.paths.reranker_artifacts,
+        model_path=settings.reranker.model.model_path,
+    )
+    require(
+        settings.reranker.model.revision == models["reranker"]["revision"],
+        "BGE revision",
+    )
+    onnx = Path("/models/embeddings/qwen3-embedding-0.6b/representations/onnx_fp32_v1")
+    onnx /= models["embedding"]["representation_dir"]
+    for root, expected in (
+        (bge, models["reranker"]["sha256"]),
+        (onnx, models["embedding"]["local_reference_sha256"]),
+    ):
+        for name, sha in expected.items():
+            require(digest(root / name) == sha, "artifact digest mismatch")
+
+
+def main():
+    mode = sys.argv[1]
+    require(mode in {"metadata", "isolated"}, "unsupported preflight mode")
+    manifest_path, bindings_path = map(Path, sys.argv[2:])
+    manifest = json.loads(manifest_path.read_text())
+    require(
+        digest(bindings_path) == manifest["stage1_binding_file_sha256"],
+        "binding digest mismatch",
+    )
+    frozen = json.loads(bindings_path.read_text())
+    require(
+        set(os.listdir("/sys/class/net")) == {"lo"}, "network isolation unavailable"
+    )
+    require(
+        bool(os.statvfs("/models").f_flag & os.ST_RDONLY), "model mount is writable"
+    )
+    data_read_only = bool(os.statvfs("/data").f_flag & os.ST_RDONLY)
+    require(data_read_only == (mode == "metadata"), "data mount mode mismatch")
+    settings = load_settings()
+    require(
+        settings.api.max_concurrent_query == 1
+        and settings.api.query_deadline_seconds == 180
+        and settings.api.shutdown_grace_seconds == 30,
+        "operation settings drift",
+    )
+    require(
+        settings.reranker.input_k == 30
+        and settings.reranker.batch_size == 16
+        and settings.reranker.max_length == 1024,
+        "scorer settings drift",
+    )
+    actual = {"Recipes": recipes(settings), "Rich": rich(settings)}
+    require(
+        all(binding == frozen[label] for label, (binding, _, _) in actual.items()),
+        "binding drift",
+    )
+    verify_models(settings, manifest)
+    if mode == "isolated":
+        import torch
+
+        from offline_rag.app.runtime import default_resource_factories
+        from offline_rag.dense.st_onnx_runtime import (
+            FROZEN_ORT_INTER_OP_THREADS,
+            FROZEN_ORT_INTRA_OP_THREADS,
+        )
+
+        require(
+            os.environ.get("SENECA_ISOLATED_COPY") == "verified",
+            "isolated host gate required",
+        )
+        require(
+            len(os.sched_getaffinity(0)) == 4 and torch.version.cuda is None,
+            "CPU policy drift",
+        )
+        require(
+            (FROZEN_ORT_INTRA_OP_THREADS, FROZEN_ORT_INTER_OP_THREADS) == (8, 1),
+            "ORT policy drift",
+        )
+        torch.set_num_threads(2)
+        torch.set_num_interop_threads(2)
+        require(
+            (torch.get_num_threads(), torch.get_num_interop_threads()) == (2, 2),
+            "Torch policy drift",
+        )
+        backend = default_resource_factories().qdrant(settings)
+        try:
+            registry = ProductPublicationRegistry(settings, qdrant=backend)
+            for binding, corpus, _ in actual.values():
+                require(
+                    registry.resolve_snapshot(
+                        corpus, binding["snapshot_id"]
+                    ).snapshot_id
+                    == binding["snapshot_id"],
+                    "backing resolution mismatch",
+                )
+        finally:
+            backend.close()
+    print(
+        json.dumps(
+            {
+                "mode": mode,
+                "strategies": settings.reranker.batching_strategy,
+                "bindings": {
+                    label: {"snapshot": b["snapshot_id"], "source_ids": ids}
+                    for label, (b, _, ids) in actual.items()
+                },
+                "scientific_settings": {
+                    label: b["science_settings_hash"]
+                    for label, (b, _, _) in actual.items()
+                },
+            },
+            sort_keys=True,
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()

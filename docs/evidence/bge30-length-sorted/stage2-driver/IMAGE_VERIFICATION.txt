@@ -1,0 +1,2 @@
+Image ID=sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04OCI descriptor=sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04RepoDigests=['seneca-stage2-diagnostic@sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04']
+402 source digests, fixture, Python/dependencies and scientific fingerprint verified
