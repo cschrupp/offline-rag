@@ -807,3 +807,29 @@ claim nor a deployment decision.
 [All trials and paired gates](evidence/bge15-four-arm-execution/SUMMARY.json) ·
 [Raw measurements](evidence/bge15-four-arm-execution/MEASUREMENTS.log) ·
 [Execution and restoration](evidence/bge15-four-arm-execution/EXECUTION.md)
+
+## 14. From isolated experiments to a production decision
+
+The Recipes four-arm experiment is accepted as exploratory scientific and
+performance evidence. Its warm median assembly times remain **60.361 s**
+for BGE-30 consecutive, **29.346 s** for BGE-15 consecutive, **33.950 s**
+for BGE-30 sorted-eight, and **20.491 s** for BGE-15 sorted-eight. The
+blockwise outliers, resource samples and exact parity observations remain
+in section 13 and its linked evidence. Rich's ten-pair experiment remains
+a separate workload: every tested smaller consecutive batch passed parity,
+and none cleared the 20% performance gate.
+
+BGE-30 sorted-eight is the lowest-risk candidate for broader evaluation
+because it preserves the candidate pool. Multi-query parity, load and
+cancellation validation remain open. BGE-15 sorted-eight had the largest
+measured benefit but changed one of five anchors and evidence units on
+Recipes. The two depth-15 development regressions remain unresolved for
+a general production decision. They are Fire Safety (−0.0676 nDCG@10)
+and Construction Materials (−0.0636). Independent held-out judging needs
+to establish quality and query-level harm before any candidate-depth change.
+
+The [decision memorandum](evidence/production-qualification/DECISION_MEMO.md)
+links the fixed-depth experiment, held-out population and adjudication plan,
+distinct deployment and rollback designs, and exact proposed execution
+authorizations. The deployment remains consecutive BGE-30. Neither plan
+has been executed under this revision.
