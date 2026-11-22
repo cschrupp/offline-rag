@@ -361,6 +361,9 @@ class RerankerModelSettings(BaseModel):
     trust_remote_code: bool = False
 
 
+RerankerBatchingStrategy = Literal["consecutive", "length_sorted_8"]
+
+
 class RerankerSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -376,6 +379,7 @@ class RerankerSettings(BaseModel):
     tie_break: NonEmptyStr = CHUNK_ID_ASC_TIE_BREAK
     device: NonEmptyStr = "auto"
     batch_size: PositiveInt = 16
+    batching_strategy: RerankerBatchingStrategy = "consecutive"
 
     @model_validator(mode="after")
     def _validate_sequence_contract(self) -> RerankerSettings:

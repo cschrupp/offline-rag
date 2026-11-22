@@ -102,6 +102,7 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "EMBEDDING_PRECISION": ("indexing", "embedding", "precision"),
     "EMBEDDING_BATCH_SIZE": ("indexing", "embedding", "batch_size"),
     "RERANKER_ARTIFACTS_PATH": ("paths", "reranker_artifacts"),
+    "RERANKER_BATCHING_STRATEGY": ("reranker", "batching_strategy"),
     "EVAL_RESULTS": ("paths", "eval_results"),
     "LOG_LEVEL": ("logging", "level"),
     "LOG_STRUCTURED": ("logging", "structured"),

@@ -258,6 +258,9 @@ class GroundedAnswerOrchestrator:
             chunk_set_id=(active_context.metadata or {}).get("chunk_set_id"),
             context_latency_ms=active_context_ms,
             context_breakdown=(active_context.metadata or {}).get("latency_ms"),
+            reranker_execution=(active_context.metadata or {}).get(
+                "reranker_execution"
+            ),
         )
         _cp("before_generation")
         scoped_names = source_name_by_document_id
