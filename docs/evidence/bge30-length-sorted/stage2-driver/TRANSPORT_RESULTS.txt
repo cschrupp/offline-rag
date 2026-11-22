@@ -1,0 +1,3 @@
+actual socket send and correlated rejection passed
+missing terminal evidence failed closed; send marker retained
+SIGTERM-ignoring fixture removed after bounded Docker stop
