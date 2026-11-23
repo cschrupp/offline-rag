@@ -26,14 +26,35 @@ class Fixture:
         self.started.set()
         if self.held:
             assert self.released.wait(4)
+        lifecycle = {
+            "disconnect_before": (
+                "cancelled",
+                "client_disconnect",
+                None,
+                "client_disconnected",
+            ),
+            "disconnect_during": (
+                "cancelled",
+                "client_disconnect",
+                None,
+                "client_disconnected",
+            ),
+            "deadline": ("timed_out", "query_deadline_exceeded", 504, "response"),
+            "drain": ("cancelled", "shutdown", 500, "response"),
+        }
+        terminal, reason, status, transport = lifecycle.get(
+            case.case, ("completed", None, 200, "response")
+        )
         return {
             "ordinal": case.ordinal,
             "settled": not self.incomplete,
             "admission": "accepted",
             "operation": f"synthetic-{case.ordinal}",
-            "terminal": "completed",
+            "terminal": terminal,
+            "reason": reason,
             "worker_returned": True,
-            "http_status": 200,
+            "http_status": status,
+            "transport": transport,
         }
 
     def abort(self):
@@ -112,7 +133,7 @@ def test_resource_floor_aborts_independent_process():
 
 
 def test_forward_hooks_preserve_native_result_and_are_removed():
-    import torch
+    torch = pytest.importorskip("torch")
     from forward_observer import observe_forward
 
     class Native(torch.nn.Module):
@@ -146,23 +167,29 @@ def test_rejection_uses_exact_reason(admission, reason):
         "admission": admission,
         "reason": reason,
         "http_status": 503,
+        "terminal": None if admission == "preflight_rejected" else "failed",
+        "operation": None if admission == "preflight_rejected" else "opq_fixture",
+        "worker_returned": admission == "query_rejected",
+        "scientific_trace_ids": [],
     }
     validate_outcome(record, case)
-    with pytest.raises(RuntimeError, match="ambiguous rejection"):
+    with pytest.raises(RuntimeError, match="ambiguous"):
         validate_outcome(record | {"reason": "other"}, case)
 
 
 def test_client_disconnect_alone_cannot_settle_worker():
     from driver import validate_outcome
 
-    case = next(schedule())[0]
+    case = next(wave[0] for wave in schedule() if wave[0].case == "disconnect_before")
     record = {
         "ordinal": case.ordinal,
         "settled": True,
         "admission": "accepted",
         "operation": "fixture",
         "terminal": "cancelled",
+        "reason": "client_disconnect",
         "http_status": None,
+        "transport": "client_disconnected",
         "worker_returned": False,
     }
     with pytest.raises(RuntimeError, match="still owns capacity"):

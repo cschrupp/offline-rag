@@ -42,13 +42,25 @@ def validate_outcome(record, case):
     operation = record.get("operation")
     terminal = record.get("terminal")
     status = record.get("http_status")
-    if admission in {"preflight_rejected", "query_rejected"}:
-        expected = {
-            "preflight_rejected": "query_preflight_capacity_exhausted",
-            "query_rejected": "query_capacity_exhausted",
-        }[admission]
-        if status != 503 or record.get("reason") != expected or terminal is not None:
-            raise RuntimeError("ambiguous rejection")
+    if admission == "preflight_rejected":
+        if (
+            status != 503
+            or record.get("reason") != "query_preflight_capacity_exhausted"
+            or terminal is not None
+            or operation is not None
+            or record.get("worker_returned") is not False
+            or record.get("scientific_trace_ids") != []
+        ):
+            raise RuntimeError("ambiguous preflight rejection")
+    elif admission == "query_rejected":
+        if (
+            status != 503
+            or record.get("reason") != "query_capacity_exhausted"
+            or terminal != "failed"
+            or record.get("worker_returned") is not True
+            or record.get("scientific_trace_ids") != []
+        ):
+            raise RuntimeError("ambiguous query-capacity rejection")
     elif admission == "accepted":
         if not operation or terminal not in {
             "completed",
@@ -63,6 +75,37 @@ def validate_outcome(record, case):
         raise RuntimeError("unknown admission outcome")
     if status is not None and not isinstance(status, int):
         raise RuntimeError("invalid HTTP status")
+    if case.case == "load":
+        if admission == "accepted" and (terminal != "completed" or status != 200):
+            raise RuntimeError("accepted load did not complete with HTTP 200")
+        return
+    if admission != "accepted":
+        raise RuntimeError("lifecycle case was rejected before operation ownership")
+    if case.case == "disconnect_before":
+        if (
+            terminal != "cancelled"
+            or record.get("reason") != "client_disconnect"
+            or record.get("transport") != "client_disconnected"
+        ):
+            raise RuntimeError("pre-rerank disconnect outcome mismatch")
+    elif case.case == "disconnect_during":
+        if (
+            terminal != "cancelled"
+            or record.get("reason") != "client_disconnect"
+            or record.get("transport") != "client_disconnected"
+        ):
+            raise RuntimeError("held-forward disconnect outcome mismatch")
+    elif case.case == "deadline":
+        if (
+            terminal != "timed_out"
+            or record.get("reason") != "query_deadline_exceeded"
+            or status != 504
+        ):
+            raise RuntimeError("cooperative deadline outcome mismatch")
+    elif case.case == "drain" and (
+        terminal != "cancelled" or record.get("reason") != "shutdown"
+    ):
+        raise RuntimeError("drain cancellation outcome mismatch")
 
 
 class Driver:
@@ -84,7 +127,7 @@ class Driver:
             while not self.stop.wait(self.watchdog):
                 try:
                     safe = monotonic() < deadline and self.host_safe()
-                except OSError, ValueError:
+                except (OSError, ValueError):
                     safe = False
                 if not safe:
                     with self.lock:

@@ -1,0 +1,134 @@
+import json
+
+import pytest
+from docker_adapter import project_submission, wait_for_event
+from driver import Submission
+
+
+def accepted_events():
+    ordinal = 1
+    operation = "opq_fixture"
+    return [
+        {
+            "event": "http_received",
+            "ordinal": ordinal,
+            "method": "POST",
+            "path": "/v1/workspaces/ws_fixture/conversation/turn",
+        },
+        {"event": "preflight_admitted", "ordinal": ordinal, "operation_id": operation},
+        {"event": "query_admitted", "ordinal": ordinal, "operation_id": operation},
+        {"event": "worker_started", "ordinal": ordinal, "operation_id": operation},
+        {
+            "event": "worker_returned",
+            "ordinal": ordinal,
+            "operation_id": operation,
+            "result_status": "answered",
+            "query_trace_id": "qt_fixture",
+            "query_trace_present": True,
+            "conversation_trace_present": True,
+        },
+        {
+            "event": "slot_released",
+            "ordinal": ordinal,
+            "operation_id": operation,
+            "worker_returned": True,
+            "operation_released": True,
+            "global_query_capacity_empty": True,
+            "active_count": 0,
+            "query_capacity_held": 0,
+        },
+        {"event": "http_response", "ordinal": ordinal, "status": 200},
+    ]
+
+
+def case():
+    return Submission(1, "consecutive", "Recipes", 1, "load")
+
+
+def transport():
+    return {"transport": "response", "http_status": 200, "body": {}}
+
+
+def test_complete_correlated_http_worker_and_release_passes():
+    result = project_submission(
+        case(),
+        transport(),
+        accepted_events(),
+        "/v1/workspaces/ws_fixture/conversation/turn",
+    )
+    assert result["terminal"] == "completed"
+    assert result["scientific_trace_ids"] == ["qt_fixture"]
+    assert result["slot_released"] is True
+
+
+def test_missing_worker_terminal_fails_closed():
+    rows = accepted_events()
+    rows = [row for row in rows if row["event"] != "worker_returned"]
+    with pytest.raises(RuntimeError, match="worker/release event"):
+        project_submission(
+            case(), transport(), rows, "/v1/workspaces/ws_fixture/conversation/turn"
+        )
+
+
+def test_duplicate_http_correlation_fails_closed():
+    rows = accepted_events()
+    rows.append(dict(rows[0]))
+    with pytest.raises(RuntimeError, match="duplicate HTTP request correlation"):
+        project_submission(
+            case(), transport(), rows, "/v1/workspaces/ws_fixture/conversation/turn"
+        )
+
+
+def test_mismatched_operation_correlation_fails_closed():
+    rows = accepted_events()
+    rows.append({"event": "query_admitted", "ordinal": 1, "operation_id": "opq_other"})
+    with pytest.raises(RuntimeError, match="operation correlation mismatch"):
+        project_submission(
+            case(), transport(), rows, "/v1/workspaces/ws_fixture/conversation/turn"
+        )
+
+
+def test_premature_query_slot_release_fails_closed():
+    rows = accepted_events()
+    release = next(row for row in rows if row["event"] == "slot_released")
+    returned = next(row for row in rows if row["event"] == "worker_returned")
+    rows.remove(release)
+    rows.insert(rows.index(returned), release)
+    with pytest.raises(RuntimeError, match="capacity release preceded"):
+        project_submission(
+            case(), transport(), rows, "/v1/workspaces/ws_fixture/conversation/turn"
+        )
+
+
+def test_wrong_route_path_fails_closed():
+    with pytest.raises(RuntimeError, match="unexpected route"):
+        project_submission(
+            case(),
+            transport(),
+            accepted_events(),
+            "/v1/workspaces/ws_other/conversation/turn",
+        )
+
+
+def test_event_wait_ignores_prior_arm_lifecycle_events(tmp_path):
+    (tmp_path / "events.jsonl").write_text(
+        json.dumps(
+            {"event": "drain_grace_exhausted", "ordinal": None, "monotonic_ns": 10}
+        )
+        + "\n"
+        + json.dumps(
+            {"event": "drain_grace_exhausted", "ordinal": None, "monotonic_ns": 20}
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    assert (
+        wait_for_event(
+            tmp_path,
+            None,
+            "drain_grace_exhausted",
+            0.1,
+            after_monotonic_ns=15,
+        )["monotonic_ns"]
+        == 20
+    )

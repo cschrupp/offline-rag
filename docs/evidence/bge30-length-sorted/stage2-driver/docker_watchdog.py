@@ -19,7 +19,7 @@ def supervise(*, name, session, deadline, done, abort, restore, verify):
     while not done.exists():
         try:
             safe = monotonic() < deadline and available_kib() >= 2 * 1024 * 1024
-        except OSError, ValueError:
+        except (OSError, ValueError):
             safe = False
         if not safe:
             abort.touch()

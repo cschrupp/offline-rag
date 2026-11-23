@@ -8,9 +8,14 @@ mode=${1:?metadata or isolated}
 data=$(realpath -e "${2:?data path}")
 models=$(realpath -e "${3:?models path}")
 cpuset=${4:?four-CPU set}
-stop_epoch=${5:?verified automatic STOP epoch}
-[[ $stop_epoch =~ ^[0-9]+$ ]]
-(( stop_epoch - $(date +%s) >= 4800 ))
+if [[ $mode == isolated ]]; then
+    stop_epoch=${5:?verified automatic STOP epoch}
+    [[ $stop_epoch =~ ^[0-9]+$ ]]
+    (( stop_epoch - $(date +%s) >= 4800 ))
+elif [[ $mode != metadata ]]; then
+    printf 'mode must be metadata or isolated\n' >&2
+    exit 2
+fi
 awk '/^MemAvailable:/ {found=1; if ($2 < 2097152) exit 1} END {if (!found) exit 1}' /proc/meminfo
 [[ -d "$data" && -d "$models" && "$data" != "$models" ]]
 image=seneca-stage2-diagnostic:1f79eca0e30e

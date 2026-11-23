@@ -5,6 +5,7 @@ import json
 import socket
 import sys
 from pathlib import Path
+from time import monotonic, sleep
 
 
 def submit(spec):
@@ -22,6 +23,16 @@ def submit(spec):
         connection.sendall(head + payload)
         with (journal / f"{ordinal}.sent").open("x") as sent:
             sent.write("socket send complete\n")
+        if spec.get("disconnect_at"):
+            marker = journal / f"{ordinal}.{spec['disconnect_at']}"
+            deadline = monotonic() + spec.get("barrier_timeout", 30)
+            while not marker.exists():
+                if monotonic() >= deadline:
+                    raise TimeoutError("server did not reach requested barrier")
+                sleep(0.01)
+            connection.close()
+            (journal / f"{ordinal}.transport_closed").touch(exist_ok=False)
+            return {"transport": "client_disconnected", "http_status": None}
         response = http.client.HTTPResponse(connection)
         response.begin()
         body = response.read(1024 * 1024 + 1)
@@ -30,7 +41,7 @@ def submit(spec):
         return {
             "transport": "response",
             "http_status": response.status,
-            "body": json.loads(body),
+            "body": json.loads(body) if body else {},
         }
     except (TimeoutError, OSError, http.client.HTTPException) as exc:
         return {"transport": type(exc).__name__, "http_status": None}

@@ -1,12 +1,17 @@
-"""Diagnostic transport. Missing server evidence fails closed."""
+"""Fail-closed Docker/socket adapter for the disposable Stage 2 app."""
+
+from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
+import threading
 from pathlib import Path
-from time import monotonic, sleep
+from time import monotonic, monotonic_ns, sleep
 
 IMAGE = "sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04"
+SOURCE = "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e"
 LABEL = "io.seneca.stage2.session"
 
 
@@ -35,107 +40,738 @@ def owned_container(name, session):
     if len(ids) != 1:
         raise RuntimeError("ambiguous diagnostic ownership")
     (item,) = json.loads(docker("inspect", ids[0]))
-    if item["Name"] != "/" + name or item["Config"]["Labels"][LABEL] != session:
+    if item["Name"] != "/" + name or item["Config"]["Labels"].get(LABEL) != session:
         raise RuntimeError("diagnostic identity mismatch")
     return item
 
 
+def session_containers(session):
+    ids = docker("ps", "-aq", "--filter", f"label={LABEL}={session}").split()
+    if not ids:
+        return []
+    return json.loads(docker("inspect", *ids))
+
+
 def terminate(name, session):
+    """Stop and remove only the exact session-owned container."""
     item = owned_container(name, session)
     if item is None:
         return
     container = item["Id"]
     if item["State"]["Running"]:
         try:
-            docker("stop", "--timeout", "5", container, timeout=10)
-        except subprocess.TimeoutExpired, subprocess.CalledProcessError:
+            docker("stop", "--timeout", "3", container, timeout=8)
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             current = owned_container(name, session)
             if current and current["State"]["Running"]:
-                docker("kill", container, timeout=10)
+                docker("kill", container, timeout=8)
     current = owned_container(name, session)
+    if current and current["State"]["Running"]:
+        docker("kill", container, timeout=8)
+        current = owned_container(name, session)
     if current and current["State"]["Running"]:
         raise RuntimeError("diagnostic container did not terminate")
     if current:
-        docker("rm", container)
+        docker("rm", container, timeout=8)
     if owned_container(name, session):
         raise RuntimeError("diagnostic container still present")
 
 
+def copy_seeded_worktree(*, source: Path, target: Path, session: str) -> None:
+    """Copy the synthetic arm input as its owning UID, preserving file modes."""
+    if session_containers(session):
+        raise RuntimeError("refusing to copy while an app container is active")
+    if any(target.iterdir()):
+        raise RuntimeError("target arm directory is not empty")
+    os.chmod(target, 0o777)
+    docker(
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--user",
+        "10001:10001",
+        "--cpus",
+        "1",
+        "--memory",
+        "512m",
+        "--label",
+        f"{LABEL}={session}",
+        "--mount",
+        f"type=bind,src={source},dst=/copy-source,readonly",
+        "--mount",
+        f"type=bind,src={target},dst=/copy-target",
+        "--entrypoint",
+        "python",
+        IMAGE,
+        "-B",
+        "-c",
+        "from pathlib import Path; import shutil; s=Path('/copy-source'); d=Path('/copy-target'); shutil.copytree(s/'data', d/'data'); shutil.copytree(s/'models', d/'models'); shutil.copy2(s/'bindings.json', d/'bindings.json')",
+        timeout=120,
+    )
+    for required in (target / "data", target / "models", target / "bindings.json"):
+        if not required.exists():
+            raise RuntimeError("second arm copy is incomplete")
+
+
+def read_events(journal: Path) -> list[dict]:
+    path = journal / "events.jsonl"
+    if not path.exists():
+        return []
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            row = json.loads(line)
+            if not isinstance(row, dict) or not isinstance(row.get("event"), str):
+                raise RuntimeError("malformed server event")
+            rows.append(row)
+    return rows
+
+
+def events_for(journal: Path, ordinal: int) -> list[dict]:
+    return [row for row in read_events(journal) if row.get("ordinal") == ordinal]
+
+
+def wait_for_event(
+    journal: Path,
+    ordinal: int | None,
+    name: str,
+    timeout: float,
+    *,
+    after_monotonic_ns: int | None = None,
+):
+    deadline = monotonic() + timeout
+    while monotonic() < deadline:
+        matches = [
+            row
+            for row in read_events(journal)
+            if row.get("event") == name
+            and row.get("ordinal") == ordinal
+            and (
+                after_monotonic_ns is None
+                or row.get("monotonic_ns", 0) > after_monotonic_ns
+            )
+        ]
+        if matches:
+            if len(matches) != 1:
+                raise RuntimeError(f"duplicate {name} event for {ordinal}")
+            return matches[0]
+        sleep(0.01)
+    raise TimeoutError(f"missing {name} for ordinal {ordinal}")
+
+
+def project_submission(case, transport, events, expected_path):
+    """Create a canonical envelope only from corroborated server evidence."""
+    ordinal = case.ordinal
+    if sum(row["event"] == "http_received" for row in events) != 1:
+        raise RuntimeError("missing or duplicate HTTP request correlation")
+    responses = [row for row in events if row["event"] == "http_response"]
+    if len(responses) > 1:
+        raise RuntimeError("duplicate server HTTP response correlation")
+    receive = next(row for row in events if row["event"] == "http_received")
+    if receive.get("method") != "POST" or receive.get("path") != expected_path:
+        raise RuntimeError("request reached an unexpected route")
+
+    preflight_ok = [row for row in events if row["event"] == "preflight_admitted"]
+    preflight_no = [row for row in events if row["event"] == "preflight_rejected"]
+    if len(preflight_ok) + len(preflight_no) != 1:
+        raise RuntimeError("missing or duplicate preflight decision")
+
+    if preflight_no:
+        row = preflight_no[0]
+        forbidden = {
+            "query_admitted",
+            "worker_started",
+            "worker_returned",
+            "worker_failed",
+            "turn_result",
+            "scorer_entered",
+            "forward_entered",
+            "synthetic_generator_invoked",
+        }
+        if any(item["event"] in forbidden for item in events):
+            raise RuntimeError("preflight rejection reached execution")
+        if row.get("reason") != "query_preflight_capacity_exhausted":
+            raise RuntimeError("unexpected preflight rejection reason")
+        if not responses or responses[0].get("status") != 503:
+            raise RuntimeError("preflight rejection lacks HTTP 503")
+        body = transport.get("body") or {}
+        if (body.get("details") or {}).get("reason") != row["reason"]:
+            raise RuntimeError("client did not receive the server preflight reason")
+        result = {
+            "ordinal": ordinal,
+            "settled": True,
+            "admission": "preflight_rejected",
+            "operation": None,
+            "terminal": None,
+            "reason": row["reason"],
+            "http_status": 503,
+            "server_http_status": 503,
+            "transport": transport["transport"],
+            "worker_returned": False,
+            "slot_released": False,
+            "scientific_trace_ids": [],
+            "server_events": events,
+        }
+    else:
+        operation_id = preflight_ok[0].get("operation_id")
+        if not isinstance(operation_id, str) or not operation_id.startswith("opq_"):
+            raise RuntimeError("preflight event has no operation identity")
+        linked = [
+            row
+            for row in events
+            if row.get("operation_id") == operation_id
+            and row["event"]
+            in {
+                "query_admitted",
+                "terminal_claimed",
+                "worker_started",
+                "worker_returned",
+                "worker_failed",
+                "slot_released",
+                "cancel_signaled",
+            }
+        ]
+        operation_events = {
+            "query_admitted",
+            "terminal_claimed",
+            "worker_started",
+            "worker_returned",
+            "worker_failed",
+            "slot_released",
+            "cancel_signaled",
+        }
+        observed_operation_rows = [
+            row for row in events if row["event"] in operation_events
+        ]
+        if any(
+            row.get("operation_id") != operation_id for row in observed_operation_rows
+        ):
+            raise RuntimeError("operation correlation mismatch")
+        worker_terms = [
+            row
+            for row in linked
+            if row["event"] in {"worker_returned", "worker_failed"}
+        ]
+        releases = [row for row in linked if row["event"] == "slot_released"]
+        if len(worker_terms) != 1 or len(releases) != 1:
+            raise RuntimeError("accepted operation lacks unique worker/release event")
+        worker_index = events.index(worker_terms[0])
+        release_index = events.index(releases[0])
+        if release_index <= worker_index:
+            raise RuntimeError("capacity release preceded actual worker return")
+        admitted = any(row["event"] == "query_admitted" for row in linked)
+        if (
+            releases[0].get("worker_returned") is not True
+            or releases[0].get("operation_released") is not True
+        ):
+            raise RuntimeError("operation release was not independently observed")
+        if admitted and releases[0].get("global_query_capacity_empty") is not True:
+            raise RuntimeError(
+                "query capacity remained held after admitted worker return"
+            )
+        status = responses[0].get("status") if responses else None
+        if worker_terms[0]["event"] == "worker_returned":
+            terminal = "completed"
+            admission = "accepted"
+            trace_ids = [worker_terms[0].get("query_trace_id")]
+            if (
+                worker_terms[0].get("result_status") != "answered"
+                or worker_terms[0].get("query_trace_present") is not True
+                or worker_terms[0].get("conversation_trace_present") is not True
+            ):
+                raise RuntimeError("completed result lacks durable trace evidence")
+            if status != 200:
+                raise RuntimeError("completed operation lacks matching HTTP 200")
+            if transport.get("http_status") != status:
+                raise RuntimeError("client/server HTTP status mismatch")
+            reason = None
+            worker_returned = True
+        else:
+            worker = worker_terms[0]
+            reason = worker.get("reason")
+            if reason is None and worker.get("error_code") == "request_cancelled":
+                signals = [row for row in linked if row["event"] == "cancel_signaled"]
+                if len(signals) == 1:
+                    reason = signals[0].get("reason")
+            trace_id = worker.get("trace_id")
+            trace_ids = [trace_id] if trace_id else []
+            if trace_id and worker.get("query_trace_present") is not True:
+                raise RuntimeError("error trace identity is not persisted")
+            if reason in {"client_disconnect", "shutdown", "shutdown_abort"}:
+                terminal = "cancelled"
+            elif reason == "query_deadline_exceeded":
+                terminal = "timed_out"
+            else:
+                terminal = "failed"
+            if admitted:
+                admission = "accepted"
+            elif reason == "query_capacity_exhausted":
+                admission = "query_rejected"
+            else:
+                admission = "preparation_failed"
+            if transport["transport"] != "client_disconnected" and status is None:
+                raise RuntimeError("server response missing for connected client")
+            worker_returned = True
+
+        if transport["transport"] == "client_disconnected":
+            # Server response attempt and client delivery are separate facts.
+            client_status = None
+        else:
+            client_status = transport.get("http_status")
+        if not admitted and admission == "query_rejected":
+            if status != 503 or reason != "query_capacity_exhausted":
+                raise RuntimeError("query-slot rejection is not correctly classified")
+            if trace_ids:
+                raise RuntimeError("query-slot rejection allocated a scientific trace")
+            body = transport.get("body") or {}
+            if (body.get("details") or {}).get("reason") != reason:
+                raise RuntimeError("client/server query-slot rejection differs")
+        result = {
+            "ordinal": ordinal,
+            "settled": True,
+            "admission": admission,
+            "operation": operation_id,
+            "terminal": terminal,
+            "reason": reason,
+            "http_status": client_status,
+            "server_http_status": status,
+            "transport": transport["transport"],
+            "worker_returned": worker_returned,
+            "slot_released": releases[0].get("operation_released") is True,
+            "global_query_capacity_empty": releases[0].get(
+                "global_query_capacity_empty"
+            ),
+            "scientific_trace_ids": trace_ids,
+            "server_events": events,
+        }
+
+    if (
+        transport.get("http_status") is not None
+        and result["server_http_status"] != transport["http_status"]
+    ):
+        raise RuntimeError("client/server response status differs")
+    return result
+
+
 class DockerHTTPAdapter:
-    def __init__(self, *, session, journal, launch, bindings):
+    """Bounded exact-image app launcher with single-send HTTP submissions."""
+
+    def __init__(
+        self,
+        *,
+        session,
+        journal,
+        control,
+        inputs,
+        driver_dir,
+        work_roots,
+        bindings=None,
+    ):
         if not re.fullmatch(r"[a-f0-9]{16}", session):
             raise ValueError("invalid diagnostic session identity")
         self.session = session
         self.name = "seneca-stage2-" + session
         self.journal = Path(journal).resolve(strict=True)
-        self.launch = launch
-        self.bindings = bindings
+        self.control = Path(control).resolve(strict=True)
+        self.inputs = Path(inputs).resolve(strict=True)
+        self.driver_dir = Path(driver_dir).resolve(strict=True)
+        self.work_roots = work_roots
+        self.bindings = bindings or {}
         self.container = None
+        self.strategy = None
+        self._send_lock = threading.Lock()
+        self._sent: set[int] = set()
 
     def open(self, strategy):
         if strategy not in {"consecutive", "length_sorted_8"}:
             raise ValueError("unsupported strategy")
+        if strategy == "length_sorted_8":
+            source = Path(self.work_roots["consecutive"]).resolve(strict=True)
+            target = Path(self.work_roots[strategy]).resolve(strict=True)
+            if not (target / "bindings.json").exists():
+                if not (source / "bindings.json").is_file():
+                    raise RuntimeError("baseline synthetic bindings missing")
+                copy_seeded_worktree(source=source, target=target, session=self.session)
         if owned_container(self.name, self.session):
             raise RuntimeError("diagnostic name already occupied")
-        self.launch(self.name, self.session, strategy)
+        work_root = Path(self.work_roots[strategy]).resolve(strict=True)
+        allowed_cpus = sorted(os.sched_getaffinity(0))
+        if len(allowed_cpus) < 4:
+            raise RuntimeError("host does not expose four allowed CPUs")
+        cpuset = ",".join(str(cpu) for cpu in allowed_cpus[:4])
+        os.chmod(work_root, 0o777)
+        os.chmod(self.journal, 0o777)
+        os.chmod(self.control, 0o777)
+        docker(
+            "run",
+            "-d",
+            "--network",
+            "none",
+            "--cpus",
+            "4",
+            "--cpuset-cpus",
+            cpuset,
+            "--memory",
+            "6g",
+            "--memory-swap",
+            "6g",
+            "--label",
+            f"{LABEL}={self.session}",
+            "--name",
+            self.name,
+            "--env",
+            "OFFLINE_RAG_CONFIG=/app/config/base.yaml",
+            "--mount",
+            f"type=bind,src={self.journal},dst=/stage2-journal",
+            "--mount",
+            f"type=bind,src={self.control},dst=/stage2-control",
+            "--mount",
+            f"type=bind,src={self.inputs},dst=/review/inputs,readonly",
+            "--mount",
+            f"type=bind,src={self.driver_dir},dst=/review/driver,readonly",
+            "--mount",
+            f"type=bind,src={work_root},dst=/stage2-work",
+            "--entrypoint",
+            "python",
+            IMAGE,
+            "-B",
+            "/review/driver/stage2_app_server.py",
+            "--strategy",
+            strategy,
+        )
         item = owned_container(self.name, self.session)
-        if not item or not item["State"]["Running"]:
-            raise RuntimeError("diagnostic launch did not produce a running container")
-        if item["Image"] != IMAGE or item["HostConfig"]["NetworkMode"] != "none":
-            raise RuntimeError("diagnostic image or network differs")
+        if (
+            not item
+            or not item["State"]["Running"]
+            or item["Image"] != IMAGE
+            or item["HostConfig"]["NetworkMode"] != "none"
+            or item["HostConfig"]["NanoCpus"] != 4_000_000_000
+            or item["HostConfig"]["CpusetCpus"] != cpuset
+            or item["HostConfig"]["Memory"] != 6 * 1024**3
+        ):
+            terminate(self.name, self.session)
+            raise RuntimeError("diagnostic container isolation mismatch")
         self.container = item["Id"]
+        self.strategy = strategy
+        deadline = monotonic() + 120
+        while True:
+            identities = [
+                row
+                for row in read_events(self.journal)
+                if row["event"] == "server_ready_identity"
+                and row.get("strategy") == strategy
+            ]
+            if identities:
+                if len(identities) != 1:
+                    raise RuntimeError("duplicate server-ready identity")
+                break
+            current = owned_container(self.name, self.session)
+            if current is None or not current["State"]["Running"]:
+                try:
+                    logs = docker("logs", self.container, timeout=5)
+                except (OSError, subprocess.SubprocessError) as exc:
+                    logs = f"unavailable ({type(exc).__name__})"
+                raise RuntimeError(
+                    f"diagnostic app exited before ready: {logs[-2000:]}"
+                )
+            if monotonic() >= deadline:
+                raise TimeoutError("server readiness identity missing")
+            sleep(0.02)
+        deadline = monotonic() + 30
+        while monotonic() < deadline:
+            try:
+                docker(
+                    "exec",
+                    self.container,
+                    "python",
+                    "-B",
+                    "-c",
+                    "import urllib.request; assert urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=1).status == 200",
+                    timeout=3,
+                )
+                break
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                sleep(0.05)
+        else:
+            raise TimeoutError("real app did not become ready")
+        identity = identities[0]
+        if identity.get("strategy") != strategy or identity.get("effective_cpus") != 4:
+            raise RuntimeError("effective server identity mismatch")
+        bindings_path = self.journal / "bindings.json"
+        deadline = monotonic() + 30
+        while not bindings_path.exists() and monotonic() < deadline:
+            sleep(0.02)
+        if not bindings_path.exists():
+            raise RuntimeError("synthetic workspace bindings missing")
+        self.bindings = json.loads(bindings_path.read_text(encoding="utf-8"))
 
     def submit(self, case, timeout):
-        if case.case != "load":
-            raise RuntimeError("lifecycle control adapter is not wired")
-        if self.container is None:
-            raise RuntimeError("diagnostic session is not open")
+        if self.container is None or self.strategy != case.strategy:
+            raise RuntimeError("submission has no matching active session")
+        with self._send_lock:
+            if case.ordinal in self._sent or len(self._sent) >= 36:
+                raise RuntimeError("duplicate or over-budget adapter send")
+            self._sent.add(case.ordinal)
+        if case.case not in {
+            "load",
+            "disconnect_before",
+            "disconnect_during",
+            "deadline",
+            "drain",
+        }:
+            raise RuntimeError("unsupported diagnostic case")
+
         binding = self.bindings[case.workload]
         workspace = binding["workspace_id"]
         if not re.fullmatch(r"ws_[a-f0-9]{32}", workspace):
-            raise ValueError("malformed workspace identity")
+            raise ValueError("malformed synthetic workspace identity")
+        body = {
+            "question": (
+                "What ingredients are needed for the baked French fries?"
+                if case.workload == "Recipes"
+                else "Describe the naturalistic decision method"
+            ),
+            "prior_turns": [],
+            "source_ids": binding["source_ids"],
+        }
+        mode = "response"
+        disconnect_at = None
+        hold = None
+        if case.case == "disconnect_before":
+            mode, disconnect_at, hold = (
+                "disconnect",
+                "checkpoint_entered",
+                "before_rerank",
+            )
+        elif case.case == "disconnect_during":
+            mode, disconnect_at, hold = "disconnect", "forward_entered", "forward"
+        elif case.case in {"deadline", "drain"}:
+            hold = "forward"
+
+        if hold:
+            (self.control / f"{case.ordinal}.json").write_text(
+                json.dumps(
+                    {"case": case.case, "hold": hold, "strategy": case.strategy}
+                ),
+                encoding="utf-8",
+            )
         spec = {
             "ordinal": case.ordinal,
             "path": f"/v1/workspaces/{workspace}/conversation/turn",
-            "body": binding["body"],
+            "body": body,
             "timeout": timeout,
+            "disconnect_at": disconnect_at,
+            "mode": mode,
         }
-        raw = docker(
-            "exec",
-            "-i",
-            self.container,
-            "python",
-            "-B",
-            "/review/socket_client.py",
-            timeout=timeout + 5,
-            input_text=json.dumps(spec),
+        client = subprocess.Popen(
+            [
+                "docker",
+                "exec",
+                "-i",
+                self.container,
+                "python",
+                "-B",
+                "/review/driver/socket_client.py",
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
         )
-        transport = json.loads(raw)
-        marker = self.journal / f"{case.ordinal}.sent"
-        if not marker.is_file():
-            raise RuntimeError("socket send was not attested")
-        deadline = monotonic() + 5
-        path = self.journal / f"{case.ordinal}.terminal.json"
-        while not path.is_file() and monotonic() < deadline:
-            sleep(0.025)
-        if not path.is_file():
-            raise RuntimeError("missing canonical worker settlement")
-        record = json.loads(path.read_text())
-        if (
-            record["ordinal"] != case.ordinal
-            or record["http_status"] != transport["http_status"]
-        ):
-            raise RuntimeError("worker and socket records disagree")
-        if (
-            record["admission"] == "accepted"
-            and record.get("slot_released") is not True
-        ):
-            raise RuntimeError("query capacity release was not attested")
-        return record | {"transport": transport["transport"]}
+        assert client.stdin is not None
+        client.stdin.write(json.dumps(spec))
+        client.stdin.close()
+        client.stdin = None
+
+        try:
+            if case.case in {"disconnect_before", "disconnect_during"}:
+                entered = (
+                    "checkpoint_hold_entered"
+                    if case.case == "disconnect_before"
+                    else "forward_entered"
+                )
+                wait_for_event(self.journal, case.ordinal, entered, 10)
+                wait_for_path(self.journal / f"{case.ordinal}.transport_closed", 10)
+                wait_for_event(self.journal, case.ordinal, "cancel_signaled", 10)
+                if case.case == "disconnect_before":
+                    if any(
+                        row["event"]
+                        in {
+                            "scorer_entered",
+                            "forward_entered",
+                            "synthetic_generator_invoked",
+                        }
+                        for row in events_for(self.journal, case.ordinal)
+                    ):
+                        raise RuntimeError("pre-rerank disconnect executed inference")
+                else:
+                    rows = events_for(self.journal, case.ordinal)
+                    forward = next(
+                        row for row in rows if row["event"] == "forward_entered"
+                    )
+                    if forward.get("query_capacity_held") != 1:
+                        raise RuntimeError("held forward did not retain query capacity")
+                    if any(row["event"] == "slot_released" for row in rows):
+                        raise RuntimeError("query slot released while forward was held")
+                (self.journal / f"{case.ordinal}.release").touch(exist_ok=False)
+            elif case.case == "deadline":
+                admitted = wait_for_event(
+                    self.journal, case.ordinal, "query_admitted", 10
+                )
+                wait_for_event(self.journal, case.ordinal, "forward_entered", 10)
+                remaining = float(admitted["deadline_mono"]) - monotonic()
+                if remaining > 0:
+                    sleep(remaining + 0.05)
+                (self.journal / f"{case.ordinal}.release").touch(exist_ok=False)
+            elif case.case == "drain":
+                wait_for_event(self.journal, case.ordinal, "forward_entered", 10)
+                drain_requested_after = monotonic_ns()
+                drain = subprocess.Popen(
+                    [
+                        "docker",
+                        "exec",
+                        self.container,
+                        "python",
+                        "-B",
+                        "-c",
+                        "import urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/__stage2/drain', method='POST'); print(urllib.request.urlopen(req, timeout=30).read().decode())",
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                grace = wait_for_event(
+                    self.journal,
+                    None,
+                    "drain_grace_exhausted",
+                    5,
+                    after_monotonic_ns=drain_requested_after,
+                )
+                if (
+                    grace.get("active_count") != 1
+                    or grace.get("query_capacity_held") != 1
+                    or grace.get("resources_open") is not True
+                ):
+                    raise RuntimeError("drain did not preserve owned resources")
+                if any(
+                    row["event"] == "resources_closed"
+                    and row["monotonic_ns"] > grace["monotonic_ns"]
+                    for row in read_events(self.journal)
+                ):
+                    raise RuntimeError("resources closed before held worker returned")
+                (self.journal / f"{case.ordinal}.release").touch(exist_ok=False)
+                _drain_out, drain_err = drain.communicate(timeout=20)
+                if drain.returncode != 0:
+                    raise RuntimeError(f"diagnostic drain failed: {drain_err}")
+
+            stdout, stderr = client.communicate(timeout=timeout + 10)
+            if client.returncode != 0:
+                raise RuntimeError(f"socket client failed: {stderr[-1000:]}")
+            transport = json.loads(stdout)
+            if not (self.journal / f"{case.ordinal}.sent").is_file():
+                raise RuntimeError("actual socket send marker missing")
+            wait_for_event(self.journal, case.ordinal, "http_received", 5)
+            if case.case not in {"disconnect_before", "disconnect_during"} and not any(
+                row["event"]
+                in {"worker_returned", "worker_failed", "preflight_rejected"}
+                for row in events_for(self.journal, case.ordinal)
+            ):
+                raise RuntimeError("no backend terminal worker evidence")
+            wait_for_event(self.journal, case.ordinal, "http_response", 5)
+            if case.case == "drain":
+                wait_for_event(
+                    self.journal,
+                    None,
+                    "runtime_stopped",
+                    5,
+                    after_monotonic_ns=grace["monotonic_ns"],
+                )
+                full_events = read_events(self.journal)
+                case_events = events_for(self.journal, case.ordinal)
+                if any(
+                    row["event"] == "resource_close_while_owned"
+                    and row["monotonic_ns"] > grace["monotonic_ns"]
+                    for row in full_events
+                ):
+                    raise RuntimeError(
+                        "runtime closed resources while operation active"
+                    )
+                drain_worker = [
+                    row
+                    for row in case_events
+                    if row["event"] in {"worker_returned", "worker_failed"}
+                ]
+                drain_release = [
+                    row for row in case_events if row["event"] == "slot_released"
+                ]
+                later_events = [
+                    row
+                    for row in full_events
+                    if row["monotonic_ns"] > grace["monotonic_ns"]
+                ]
+                closed = [
+                    row for row in later_events if row["event"] == "resources_closed"
+                ]
+                stopped = [
+                    row for row in later_events if row["event"] == "runtime_stopped"
+                ]
+                if (
+                    len(drain_worker) != 1
+                    or len(drain_release) != 1
+                    or len(closed) != 1
+                    or len(stopped) != 1
+                    or not (
+                        case_events.index(drain_worker[0])
+                        < case_events.index(drain_release[0])
+                    )
+                    or not (
+                        drain_release[0]["monotonic_ns"]
+                        < closed[0]["monotonic_ns"]
+                        < stopped[0]["monotonic_ns"]
+                    )
+                ):
+                    raise RuntimeError(
+                        "drain did not retain resources through worker release"
+                    )
+            events = events_for(self.journal, case.ordinal)
+            result = project_submission(case, transport, events, spec["path"])
+            if case.case == "deadline":
+                if result["reason"] != "query_deadline_exceeded":
+                    raise RuntimeError("cooperative deadline was not recognized")
+                if any(row["event"] == "synthetic_generator_invoked" for row in events):
+                    raise RuntimeError("generator ran after expired deadline")
+            self._record_terminal(result)
+            return result
+        except BaseException:
+            if client.poll() is None:
+                client.kill()
+                client.wait(timeout=5)
+            raise
+
+    def _record_terminal(self, result):
+        path = self.journal / f"{result['ordinal']}.terminal.json"
+        with path.open("x", encoding="utf-8") as stream:
+            json.dump(result, stream, sort_keys=True, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
 
     def abort(self):
-        terminate(self.name, self.session)
-        self.container = None
+        if self.container is not None:
+            terminate(self.name, self.session)
+            self.container = None
+            if session_containers(self.session):
+                raise RuntimeError("diagnostic session container remains after abort")
 
     def close(self):
         self.abort()
+
+
+def wait_for_path(path: Path, timeout: float):
+    deadline = monotonic() + timeout
+    while monotonic() < deadline:
+        if path.exists():
+            return
+        sleep(0.01)
+    raise TimeoutError(f"missing marker {path.name}")
