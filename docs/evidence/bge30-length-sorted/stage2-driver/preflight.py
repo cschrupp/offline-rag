@@ -358,9 +358,32 @@ def verify_models(settings, workloads):
 
 def main():
     mode = sys.argv[1]
-    require(mode in {"metadata", "isolated"}, "unsupported preflight mode")
-    manifest_path, bindings_path = map(Path, sys.argv[2:])
+    require(mode in {"metadata", "isolated", "native"}, "unsupported preflight mode")
+    if len(sys.argv) not in {4, 5}:
+        raise ValueError(
+            "expected mode, workload manifest, bindings, and optional output"
+        )
+    manifest_path = Path(sys.argv[2])
+    bindings_path = Path(sys.argv[3])
+    output_bindings = Path(sys.argv[4]) if len(sys.argv) == 5 else None
+    require(
+        (output_bindings is None and mode != "native")
+        or (output_bindings is not None and mode == "native"),
+        "native mode requires its binding output and other modes forbid it",
+    )
     manifest = json.loads(manifest_path.read_text())
+    native_manifest_path = manifest_path.parent / "NATIVE_SETTINGS_MANIFEST.json"
+    if mode == "native":
+        from native_contract import (
+            load_manifest,
+            validate_scientific_settings,
+            verify_config_file,
+        )
+
+        native_settings = load_manifest(manifest_path.parent)
+        verify_config_file(
+            native_settings, Path(os.environ.get("OFFLINE_RAG_CONFIG", ""))
+        )
     require(
         digest(bindings_path) == manifest["stage1_binding_file_sha256"],
         "binding digest mismatch",
@@ -388,12 +411,54 @@ def main():
         "scorer settings drift",
     )
     actual = {"Recipes": recipes(settings), "Rich": rich(settings)}
+    if mode == "native":
+        validate_scientific_settings(
+            {label: binding for label, (binding, _, _) in actual.items()},
+            native_settings,
+        )
     require(
         all(binding == frozen[label] for label, (binding, _, _) in actual.items()),
         "binding drift",
     )
     verify_models(settings, manifest)
-    if mode == "isolated":
+    if mode == "native":
+        require(
+            settings.project.strict_offline is True
+            and settings.deployment.qdrant_mode == "local"
+            and settings.indexing.embedding.device == "auto"
+            and settings.indexing.embedding.precision == "native"
+            and settings.indexing.embedding.revision
+            == "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+            "native scientific execution configuration mismatch",
+        )
+    if output_bindings is not None:
+        output_bindings.parent.mkdir(parents=True, exist_ok=True)
+        resolved = {}
+        for label, (binding, _corpus, source_ids) in actual.items():
+            spec = manifest["workloads"][label]
+            resolved[label] = {
+                "workspace_id": binding["workspace_id"],
+                "revision": binding["workspace_revision"],
+                "snapshot_id": binding["snapshot_id"],
+                "document_id": binding["document_id"],
+                "source_mode": spec["source_mode"],
+                "source_ids": None if source_ids is None else sorted(source_ids),
+            }
+        native_bindings = {
+            "schema": "seneca-stage2-native-bindings-v1",
+            "workloads_sha256": digest(manifest_path),
+            "stage1_bindings_sha256": digest(bindings_path),
+            "native_settings_manifest_sha256": digest(native_manifest_path),
+            "workloads": resolved,
+        }
+        output_bindings.write_text(
+            json.dumps(native_bindings, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        # Contains only workspace/snapshot/source identifiers, no content or
+        # credentials; host driver and same-UID app container must both read it.
+        os.chmod(output_bindings, 0o644)
+    if mode in {"isolated", "native"}:
         import torch
 
         from offline_rag.app.runtime import default_resource_factories
@@ -439,7 +504,17 @@ def main():
                 "mode": mode,
                 "strategies": settings.reranker.batching_strategy,
                 "bindings": {
-                    label: {"snapshot": b["snapshot_id"], "source_ids": ids}
+                    label: {
+                        "workspace_id": b["workspace_id"],
+                        "workspace_revision": b["workspace_revision"],
+                        "snapshot_id": b["snapshot_id"],
+                        "document_id": b["document_id"],
+                        "source_mode": manifest["workloads"][label]["source_mode"],
+                        "source_ids": ids,
+                        "source_inventory_sha256": b["source_inventory_sha256"],
+                        "snapshot_manifest_sha256": b["snapshot_manifest_sha256"],
+                        "published_pointer": b["published_pointer"],
+                    }
                     for label, (b, _, ids) in actual.items()
                 },
                 "scientific_settings": {

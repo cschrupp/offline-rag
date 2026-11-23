@@ -1,5 +1,6 @@
 import json
 
+import docker_adapter as adapter_module
 import pytest
 from docker_adapter import project_submission, wait_for_event
 from driver import Submission
@@ -132,3 +133,27 @@ def test_event_wait_ignores_prior_arm_lifecycle_events(tmp_path):
         )["monotonic_ns"]
         == 20
     )
+
+
+def test_native_teardown_preserves_thirty_second_application_grace(monkeypatch):
+    name = "seneca-stage2-0123456789abcdef"
+    session = "0123456789abcdef"
+    running = {"Id": "container-id", "State": {"Running": True}}
+    stopped = {"Id": "container-id", "State": {"Running": False}}
+    owned_rows = iter((running, stopped, None))
+    docker_calls = []
+
+    monkeypatch.setattr(
+        adapter_module, "owned_container", lambda _name, _session: next(owned_rows)
+    )
+    monkeypatch.setattr(
+        adapter_module,
+        "docker",
+        lambda *args, **kwargs: docker_calls.append((args, kwargs)) or "",
+    )
+
+    adapter_module.terminate(name, session, stop_timeout=30)
+
+    assert docker_calls[0][0] == ("stop", "--timeout", "30", "container-id")
+    assert docker_calls[0][1]["timeout"] == 35
+    assert docker_calls[1][0] == ("rm", "container-id")

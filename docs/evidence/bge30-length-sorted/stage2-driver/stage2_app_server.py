@@ -1,14 +1,17 @@
-"""Disposable Stage 2 ASGI server using the integrated app and synthetic models."""
+"""Stage 2 ASGI server with isolated synthetic and native diagnostic modes."""
 
 from __future__ import annotations
 
 import argparse
 import contextvars
+import hashlib
 import json
 import os
 import shutil
+import sys
 import threading
 import time
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -23,9 +26,11 @@ from offline_rag.app.runtime import (
     ApplicationRuntime,
     ProcessResources,
     ResourceFactories,
+    default_resource_factories,
 )
 from offline_rag.app.traces import ProductTraceStore
 from offline_rag.config import load_settings
+from offline_rag.core.ids import CHUNK_ID_ASC_TIE_BREAK
 from offline_rag.dense.embedder import FakeEmbedder
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
 from offline_rag.generation.fake import FakeGenerator
@@ -34,11 +39,15 @@ from offline_rag.rerank.cross_encoder import CrossEncoderReranker
 
 EVENTS = Path("/stage2-journal/events.jsonl")
 CONTROL = Path("/stage2-control")
+DIAGNOSTIC_IMAGE_DIGEST = (
+    "sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04"
+)
 _event_lock = threading.Lock()
 _ordinal = contextvars.ContextVar("stage2_ordinal", default=None)
 _operation_ordinals: dict[str, int] = {}
 _operation_lock = threading.Lock()
 _runtime: ApplicationRuntime | None = None
+_native_model_verified = False
 _held_preflights: list[object] = []
 _held_query_slots: list[object] = []
 _held_lock = threading.Lock()
@@ -74,7 +83,9 @@ class Stage2RequestObserver:
         raw = headers.get(b"x-stage2-ordinal")
         try:
             ordinal = None if raw is None else int(raw.decode("ascii"))
-        except (UnicodeDecodeError, ValueError):
+        except UnicodeDecodeError:
+            ordinal = -1
+        except ValueError:
             ordinal = -1
         token = _ordinal.set(ordinal)
         response_status = None
@@ -405,7 +416,7 @@ def seed_workspaces(settings, factories) -> dict[str, dict[str, object]]:
     return result
 
 
-def install_observers(app, runtime, counters):
+def install_observers(app, runtime, counters, *, native_mode=False, strategy=None):
     from offline_rag.api import workspaces as workspaces_api
     from offline_rag.app.errors import AppError
     from offline_rag.app.operations import OperationHandle, OperationRegistry
@@ -445,7 +456,9 @@ def install_observers(app, runtime, counters):
         originals["promote"](self, handle)
         ordinal = operation_ordinal(handle.op_id)
         control = current_control(ordinal)
-        local_deadline_override_s = 2 if control.get("case") == "deadline" else None
+        local_deadline_override_s = (
+            2 if not native_mode and control.get("case") == "deadline" else None
+        )
         if local_deadline_override_s is not None:
             # Only the explicit local deadline lifecycle case is accelerated.
             # All ordinary load requests retain the accepted 180-second value.
@@ -636,6 +649,28 @@ def install_observers(app, runtime, counters):
                 query_trace_id=response.query_trace_id,
                 status=response.status,
             )
+            if native_mode and response.query_trace_id:
+                trace = ProductTraceStore(runtime.settings).get(response.query_trace_id)
+                if trace is not None:
+                    citation_chunk_ids = trace.execution.citation_chunk_ids
+                    citation_evidence_unit_ids = (
+                        trace.execution.citation_evidence_unit_ids
+                    )
+                    if not citation_chunk_ids or not citation_evidence_unit_ids:
+                        raise RuntimeError(
+                            "native provider fixture produced no citations"
+                        )
+                    event(
+                        "native_citations",
+                        ordinal,
+                        query_trace_id=response.query_trace_id,
+                        citation_chunk_ids_sha256=hash_json(citation_chunk_ids),
+                        citation_evidence_unit_ids_sha256=hash_json(
+                            citation_evidence_unit_ids
+                        ),
+                        citation_chunk_count=len(citation_chunk_ids),
+                        citation_evidence_unit_count=len(citation_evidence_unit_ids),
+                    )
         return response
 
     def begin_drain(self):
@@ -726,37 +761,403 @@ def install_observers(app, runtime, counters):
         event("test_query_slot_released", None, operation_id=handle.op_id)
         return JSONResponse({"released": True})
 
+    @app.get("/__stage2/identity")
+    async def diagnostic_identity():
+        if native_mode:
+            return JSONResponse(native_identity(runtime.settings, strategy))
+        return JSONResponse(
+            {
+                "mode": "synthetic",
+                "strategy": strategy,
+                "source_revision": "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e",
+            }
+        )
+
     return originals
+
+
+def load_native_bindings(path: Path) -> dict[str, dict[str, object]]:
+    """Load only preflight-produced identities for existing workspaces."""
+    from native_contract import validate_bindings
+
+    return validate_bindings(
+        json.loads(path.read_text(encoding="utf-8")),
+        inputs=Path("/review/inputs"),
+    )
+
+
+def validate_native_settings(settings, strategy: str) -> None:
+    """Fail closed unless native execution matches the frozen Stage 2 profile."""
+    from offline_rag.dense.st_onnx_runtime import (
+        FROZEN_ORT_INTER_OP_THREADS,
+        FROZEN_ORT_INTRA_OP_THREADS,
+    )
+
+    rrk = settings.reranker
+    api = settings.api
+    embedding = settings.indexing.embedding
+    if (
+        rrk.enabled is not True
+        or rrk.input_k != 30
+        or rrk.batch_size != 16
+        or rrk.max_length != 1024
+        or rrk.input_construction != "plain-pair-v1"
+        or rrk.sequence_contract != "seq-trunc-1024-passage-right-v1"
+        or rrk.device != "auto"
+        or rrk.score_transform != "raw-logit-v1"
+        or rrk.tie_break != CHUNK_ID_ASC_TIE_BREAK
+        or rrk.output_k != 10
+        or rrk.model.model_id != "BAAI/bge-reranker-v2-m3"
+        or rrk.model.revision != "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+        or rrk.model.local_files_only is not True
+        or rrk.model.trust_remote_code is not False
+        or rrk.batching_strategy != strategy
+    ):
+        raise RuntimeError("native reranker configuration differs from manifest")
+    if (
+        embedding.model_id != "Qwen/Qwen3-Embedding-0.6B"
+        or embedding.revision != "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+        or embedding.dimension != 1024
+        or embedding.device != "auto"
+        or embedding.precision != "native"
+        or settings.dense.enabled is not True
+        or settings.project.strict_offline is not True
+        or settings.deployment.qdrant_mode != "local"
+        or api.max_concurrent_query != 1
+        or api.query_deadline_seconds != 180
+        or api.shutdown_grace_seconds != 30
+    ):
+        raise RuntimeError("native application execution settings differ")
+    if (FROZEN_ORT_INTRA_OP_THREADS, FROZEN_ORT_INTER_OP_THREADS) != (8, 1):
+        raise RuntimeError("frozen ONNX Runtime thread policy differs")
+    if (torch.get_num_threads(), torch.get_num_interop_threads()) != (2, 2):
+        raise RuntimeError("native Torch thread policy differs")
+    if torch.version.cuda is not None or len(os.sched_getaffinity(0)) != 4:
+        raise RuntimeError("native CPU execution environment differs")
+    from native_contract import load_manifest, verify_config_file
+
+    manifest = load_manifest(Path("/review/inputs"))
+    verify_config_file(
+        manifest,
+        Path(os.environ.get("OFFLINE_RAG_CONFIG", "")),
+    )
+    if (
+        manifest.get("schema") != "seneca-stage2-native-settings-v1"
+        or manifest.get("application_source_commit")
+        != "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e"
+        or manifest.get("diagnostic_image_digest") != DIAGNOSTIC_IMAGE_DIGEST
+        or manifest.get("scientific_settings_hash")
+        != "5dce337dc1875b2aa615d62ee771a0ae384559c2da14be384e067ded035f5417"
+        or hashlib.sha256(
+            Path("/review/inputs/workloads.json").read_bytes()
+        ).hexdigest()
+        != manifest.get("workloads_file_sha256")
+        or hashlib.sha256(
+            Path("/review/inputs/stage1-bindings.json").read_bytes()
+        ).hexdigest()
+        != manifest.get("stage1_binding_file_sha256")
+        or manifest.get("budget", {}).get("total_submissions") != 36
+    ):
+        raise RuntimeError("native settings manifest content differs")
+
+
+def native_identity(settings, strategy: str) -> dict[str, object]:
+    from offline_rag.dense.st_onnx_runtime import (
+        FROZEN_ORT_INTER_OP_THREADS,
+        FROZEN_ORT_INTRA_OP_THREADS,
+    )
+
+    availability = _runtime.embedding_availability if _runtime is not None else None
+    reranker = (
+        None
+        if _runtime is None or _runtime.resources is None
+        else _runtime.resources.reranker
+    )
+    embedder = (
+        None
+        if _runtime is None or _runtime.resources is None
+        else _runtime.resources.embedder
+    )
+    profile = None if embedder is None else getattr(embedder, "profile", None)
+    return {
+        "mode": "native",
+        "source_revision": "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e",
+        "strategy": strategy,
+        "reranker_model_id": settings.reranker.model.model_id,
+        "reranker_revision": settings.reranker.model.revision,
+        "reranker_input_k": settings.reranker.input_k,
+        "reranker_max_length": settings.reranker.max_length,
+        "reranker_device_policy": settings.reranker.device,
+        "reranker_resolved_device": None if reranker is None else reranker.device,
+        "reranker_precision": "fp32",
+        "reranker_score_transform": settings.reranker.score_transform,
+        "embedding_model_id": settings.indexing.embedding.model_id,
+        "embedding_revision": settings.indexing.embedding.revision,
+        "embedding_device_policy": settings.indexing.embedding.device,
+        "embedding_profile_id": (
+            None if availability is None else availability.selected_profile_id
+        ),
+        "embedding_representation_id": (
+            None if availability is None else availability.selected_representation_id
+        ),
+        "embedding_backend_family": None if profile is None else profile.backend_family,
+        "embedding_resolved_device": None if profile is None else profile.device,
+        "embedding_resolved_precision": None if profile is None else profile.precision,
+        "embedding_provider": None if profile is None else profile.provider,
+        "ort_intra": FROZEN_ORT_INTRA_OP_THREADS,
+        "ort_inter": FROZEN_ORT_INTER_OP_THREADS,
+        "configured_query_deadline_s": settings.api.query_deadline_seconds,
+        "configured_shutdown_grace_s": settings.api.shutdown_grace_seconds,
+        "effective_cpus": len(os.sched_getaffinity(0)),
+        "torch_intra": torch.get_num_threads(),
+        "torch_inter": torch.get_num_interop_threads(),
+        "provider_fixture": True,
+        "external_network": False,
+        "runtime_ready": _runtime is not None and _runtime.is_ready,
+    }
+
+
+def native_resource_factories() -> ResourceFactories:
+    """Use production embedding/reranking with only the fixture generator."""
+    defaults = default_resource_factories()
+    sys.path.insert(0, "/review/inputs")
+    provider_path = Path("/review/inputs/provider_fixture.py")
+    if hashlib.sha256(provider_path.read_bytes()).hexdigest() != (
+        "07f3e9daaeffc2d46e0cd421fd57487fa8603020ff1d3271d923c94aae7ad3a0"
+    ):
+        raise RuntimeError("native deterministic provider fixture identity differs")
+    from provider_fixture import respond
+
+    def fixture_generator(_settings):
+        def observed_response(request):
+            event("synthetic_generator_invoked", _ordinal.get())
+            return respond(request)
+
+        return FakeGenerator(response_fn=observed_response)
+
+    return replace(defaults, generator_client=fixture_generator)
+
+
+def install_native_scorer_observer(counters: dict[str, int]) -> None:
+    """Observe real BGE calls and barriers without changing tensors or scores."""
+    original = CrossEncoderReranker.score_pairs
+
+    def observed_score_pairs(scorer, pairs):
+        global _native_model_verified
+        ordinal = _ordinal.get()
+        counters["native_scorer_calls"] = counters.get("native_scorer_calls", 0) + 1
+        counters["native_candidate_pairs"] = len(pairs)
+        event("scorer_entered", ordinal, pair_count=len(pairs), mode="native")
+        _tokenizer, model = scorer._load()
+        import torch
+
+        if not _native_model_verified:
+            floating_tensors = [
+                tensor
+                for tensor in (*model.parameters(), *model.buffers())
+                if tensor.is_floating_point()
+            ]
+            if not floating_tensors or any(
+                tensor.dtype != torch.float32 or tensor.device.type != "cpu"
+                for tensor in floating_tensors
+            ):
+                raise RuntimeError("native BGE tensors are not CPU FP32")
+            _native_model_verified = True
+        control = current_control(ordinal)
+        start_ns: list[int] = []
+
+        def before(_module, _args, kwargs):
+            marker = EVENTS.parent / f"{ordinal}.forward_entered"
+            if control.get("hold") == "forward" and not marker.exists():
+                marker.touch(exist_ok=False)
+                event(
+                    "forward_entered",
+                    ordinal,
+                    shape=list(kwargs["input_ids"].shape),
+                    mode="native",
+                    query_capacity_held=(
+                        _runtime.operations.query_capacity.held
+                        if _runtime is not None
+                        else None
+                    ),
+                )
+                deadline = time.monotonic() + 180
+                release = EVENTS.parent / f"{ordinal}.release"
+                while not release.exists():
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("native forward barrier expired")
+                    time.sleep(0.01)
+                event("forward_released", ordinal)
+            start_ns.append(time.perf_counter_ns())
+            shape = list(kwargs["input_ids"].shape)
+            event("forward_started", ordinal, shape=shape, mode="native")
+
+        def after(_module, _args, output):
+            if not start_ns:
+                return
+            elapsed_ms = (time.perf_counter_ns() - start_ns.pop()) / 1_000_000
+            logits = getattr(output, "logits", None)
+            event(
+                "forward_returned",
+                ordinal,
+                elapsed_ms=elapsed_ms,
+                logits_shape=(list(logits.shape) if logits is not None else None),
+                mode="native",
+            )
+
+        pre_hook = model.register_forward_pre_hook(before, with_kwargs=True)
+        post_hook = model.register_forward_hook(after, always_call=True)
+        try:
+            result = original(scorer, pairs)
+        except BaseException as exc:
+            event("scorer_failed", ordinal, exception=type(exc).__name__, mode="native")
+            raise
+        else:
+            event(
+                "native_scores",
+                ordinal,
+                candidate_order_sha256=hash_json([pair.chunk_id for pair in pairs]),
+                score_associations=[
+                    {
+                        "candidate_id_sha256": hashlib.sha256(
+                            pair.chunk_id.encode("utf-8")
+                        ).hexdigest(),
+                        "pair_input_sha256": hashlib.sha256(
+                            (pair.query_text + "\0" + pair.passage_text).encode("utf-8")
+                        ).hexdigest(),
+                        "raw_logit": float(score),
+                    }
+                    for pair, score in zip(pairs, result, strict=True)
+                ],
+                score_count=len(result),
+            )
+            event("scorer_returned", ordinal, score_count=len(result), mode="native")
+            return result
+        finally:
+            pre_hook.remove()
+            post_hook.remove()
+
+    CrossEncoderReranker.score_pairs = observed_score_pairs
+
+    from offline_rag.context.assemble import HybridRerankContextAssembler
+    from offline_rag.rerank import retrieve as rerank_retrieve
+
+    original_sort_scored = rerank_retrieve._sort_scored
+
+    def observed_sort_scored(pool, scores):
+        ordered = original_sort_scored(pool, scores)
+        if len(ordered) != len(pool):
+            raise RuntimeError("native reranker ranking lost a candidate")
+        event(
+            "native_ranked_candidates",
+            _ordinal.get(),
+            candidate_count=len(ordered),
+            ranked_candidate_ids_sha256=hash_json(
+                [candidate.chunk_id for candidate in ordered]
+            ),
+            ranked_candidate_order=[
+                hashlib.sha256(candidate.chunk_id.encode("utf-8")).hexdigest()
+                for candidate in ordered
+            ],
+            tie_break=CHUNK_ID_ASC_TIE_BREAK,
+            mode="native",
+        )
+        return ordered
+
+    rerank_retrieve._sort_scored = observed_sort_scored
+
+    original_assemble = HybridRerankContextAssembler.assemble
+
+    def observed_assemble(assembler, *args, **kwargs):
+        result = original_assemble(assembler, *args, **kwargs)
+        ordinal = _ordinal.get()
+        event(
+            "native_context",
+            ordinal,
+            anchor_ids_sha256=hash_json([item.chunk_id for item in result.anchors]),
+            anchor_order=[
+                hashlib.sha256(str(item.chunk_id).encode("utf-8")).hexdigest()
+                for item in result.anchors
+            ],
+            evidence_unit_ids_sha256=hash_json(
+                [item.evidence_unit_id for item in result.evidence_units]
+            ),
+            context_sha256=hashlib.sha256(
+                result.assembled_text.encode("utf-8")
+            ).hexdigest(),
+            context_token_count=result.context_token_count,
+            evidence_unit_count=len(result.evidence_units),
+            reranker_execution=result.metadata.get("reranker_execution"),
+        )
+        return result
+
+    HybridRerankContextAssembler.assemble = observed_assemble
+
+
+def hash_json(value) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=("synthetic", "native"), default="synthetic")
     parser.add_argument(
         "--strategy", choices=("consecutive", "length_sorted_8"), required=True
     )
+    parser.add_argument("--native-bindings", type=Path)
     options = parser.parse_args()
     if torch.version.cuda is not None or len(os.sched_getaffinity(0)) != 4:
-        raise RuntimeError("local Stage 2 container must be CPU-only with four CPUs")
+        raise RuntimeError("Stage 2 container must be CPU-only with four CPUs")
     torch.set_num_threads(2)
     torch.set_num_interop_threads(2)
     counters: dict[str, int] = {}
-    work_root = Path("/stage2-work")
-    settings = settings_for(work_root, options.strategy)
-    factories = resource_factories(options.strategy, counters)
-
-    # Seed disposable backing through the application HTTP APIs before the
-    # measured server starts. The seed app and measured app never share an
-    # open Qdrant handle.
     from offline_rag.api.app import create_app as make_app
 
-    bindings_path = work_root / "bindings.json"
-    if bindings_path.is_file():
-        bindings = json.loads(bindings_path.read_text(encoding="utf-8"))
+    if options.mode == "synthetic":
+        if options.native_bindings is not None:
+            raise ValueError("synthetic mode does not accept native bindings")
+        work_root = Path("/stage2-work")
+        settings = settings_for(work_root, options.strategy)
+        factories = resource_factories(options.strategy, counters)
+        bindings_path = work_root / "bindings.json"
+        if bindings_path.is_file():
+            bindings = json.loads(bindings_path.read_text(encoding="utf-8"))
+        else:
+            # The synthetic rehearsal seeds disposable workspaces through the
+            # application APIs. Native mode never enters this branch.
+            bindings = seed_workspaces(settings, factories)
+            bindings_path.write_text(
+                json.dumps(bindings, sort_keys=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
     else:
-        bindings = seed_workspaces(settings, factories)
-        bindings_path.write_text(
-            json.dumps(bindings, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+        if options.native_bindings is None:
+            raise ValueError("native mode requires verified native bindings")
+        if not options.native_bindings.is_file():
+            raise FileNotFoundError("native binding artifact is missing")
+        if (
+            os.environ.get("HF_HUB_OFFLINE") != "1"
+            or os.environ.get("TRANSFORMERS_OFFLINE") != "1"
+        ):
+            raise RuntimeError("native mode requires offline model loading")
+        if not Path("/data").is_dir() or not Path("/models").is_dir():
+            raise RuntimeError("native mode requires /data and /models mounts")
+        if not os.statvfs("/models").f_flag & os.ST_RDONLY:
+            raise RuntimeError("native model mount must be read-only")
+        settings = load_settings()
+        settings = settings.model_copy(
+            update={
+                "reranker": settings.reranker.model_copy(
+                    update={"batching_strategy": options.strategy}
+                )
+            }
         )
+        validate_native_settings(settings, options.strategy)
+        bindings = load_native_bindings(options.native_bindings)
+        factories = native_resource_factories()
+        install_native_scorer_observer(counters)
+
     (EVENTS.parent / "bindings.json").write_text(
         json.dumps(bindings, sort_keys=True, indent=2) + "\n", encoding="utf-8"
     )
@@ -764,25 +1165,36 @@ def main() -> None:
     global _runtime
     _runtime = runtime
     app = make_app(runtime=runtime)
-    install_observers(app, runtime, counters)
+    install_observers(
+        app,
+        runtime,
+        counters,
+        native_mode=options.mode == "native",
+        strategy=options.strategy,
+    )
+    expected_shutdown_grace = 30 if options.mode == "native" else 1
+    if settings.api.shutdown_grace_seconds != expected_shutdown_grace:
+        raise RuntimeError("unexpected Stage 2 shutdown grace")
     event(
         "server_ready_identity",
         None,
         source_revision="1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e",
+        mode=options.mode,
         strategy=options.strategy,
-        local_deadline_fixture_seconds=2,
+        local_deadline_fixture_seconds=2 if options.mode == "synthetic" else None,
         configured_deadline_s=settings.api.query_deadline_seconds,
         shutdown_grace_s=settings.api.shutdown_grace_seconds,
         effective_cpus=len(os.sched_getaffinity(0)),
         torch_intra=torch.get_num_threads(),
         torch_inter=torch.get_num_interop_threads(),
         provider_calls=0,
+        synthetic_inference=options.mode == "synthetic",
     )
     uvicorn.run(
         app,
         host="127.0.0.1",
         port=8080,
-        timeout_graceful_shutdown=1,
+        timeout_graceful_shutdown=expected_shutdown_grace,
         log_level="warning",
     )
     event("server_exit", None, counters=counters)

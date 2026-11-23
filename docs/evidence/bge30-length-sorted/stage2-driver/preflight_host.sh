@@ -4,16 +4,31 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 dir=$PWD/docs/evidence/bge30-length-sorted/stage2-driver
 inputs=$PWD/docs/evidence/bge30-length-sorted/stage2-integration
-mode=${1:?metadata or isolated}
+mode=${1:?metadata, isolated or native}
 data=$(realpath -e "${2:?data path}")
 models=$(realpath -e "${3:?models path}")
 cpuset=${4:?four-CPU set}
-if [[ $mode == isolated ]]; then
+IFS=, read -r -a cpu_ids <<< "$cpuset"
+[[ ${#cpu_ids[@]} -eq 4 ]]
+[[ $(printf '%s\n' "${cpu_ids[@]}" | sort -u | wc -l) -eq 4 ]]
+[[ $models == /srv/seneca/models ]]
+extra_mounts=()
+extra_args=()
+if [[ $mode == isolated || $mode == native ]]; then
     stop_epoch=${5:?verified automatic STOP epoch}
     [[ $stop_epoch =~ ^[0-9]+$ ]]
     (( stop_epoch - $(date +%s) >= 4800 ))
+    if [[ $mode == native ]]; then
+        output=$(realpath -e "${6:?native binding output directory}")
+        [[ -d $output && -z $(find "$output" -mindepth 1 -maxdepth 1 -print -quit) ]]
+        [[ $(stat -c '%a' "$output") == 777 ]]
+        [[ $data == /var/tmp/seneca-stage2-native-*/A/data || $data == /var/tmp/seneca-stage2-native-*/B/data ]]
+        python3 "$dir/native_host_control.py" check-qdrant "$data/qdrant"
+        extra_mounts=(--mount "type=bind,src=$output,dst=/review/output")
+        extra_args=(/review/output/native-bindings.json)
+    fi
 elif [[ $mode != metadata ]]; then
-    printf 'mode must be metadata or isolated\n' >&2
+    printf 'mode must be metadata, isolated or native\n' >&2
     exit 2
 fi
 awk '/^MemAvailable:/ {found=1; if ($2 < 2097152) exit 1} END {if (!found) exit 1}' /proc/meminfo
@@ -26,10 +41,13 @@ assert json.load(sys.stdin)[0]["Descriptor"]["digest"] == sys.argv[1]
 ' "$digest"
 case "$mode" in
   metadata)
+    [[ $data == /srv/seneca/data ]]
     data_mount="type=bind,src=$data,dst=/data,readonly"
     ;;
-  isolated)
-    [[ $data == /var/tmp/seneca-stage2-copy.*/data ]]
+  isolated|native)
+    if [[ $mode == isolated ]]; then
+      [[ $data == /var/tmp/seneca-stage2-copy.*/data ]]
+    fi
     active=$(docker ps -q)
     if [[ -n $active ]]; then
         mapfile -t ids <<< "$active"
@@ -54,6 +72,10 @@ timeout -k 5 180 docker run --rm --name "seneca-stage2-preflight-$$" \
   --mount "type=bind,src=$models,dst=/models,readonly" \
   --mount "type=bind,src=$dir,dst=/review/driver,readonly" \
   --mount "type=bind,src=$inputs,dst=/review/inputs,readonly" \
-  -e SENECA_ISOLATED_COPY=verified -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
+  "${extra_mounts[@]}" \
+  -e SENECA_ISOLATED_COPY=verified -e OFFLINE_RAG_CONFIG=/app/config/base.yaml \
+  -e OFFLINE_RAG_DATA_DIR=/data -e OFFLINE_RAG_MODELS_DIR=/models \
+  -e OFFLINE_RAG_STRICT_OFFLINE=true -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
   --entrypoint timeout "$digest" -k 2 170 python -B /review/driver/preflight.py "$mode" \
-  /review/inputs/workloads.json /review/inputs/stage1-bindings.json
+  /review/inputs/workloads.json /review/inputs/stage1-bindings.json \
+  "${extra_args[@]}"

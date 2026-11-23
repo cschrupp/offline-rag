@@ -52,7 +52,7 @@ def session_containers(session):
     return json.loads(docker("inspect", *ids))
 
 
-def terminate(name, session):
+def terminate(name, session, *, stop_timeout=3):
     """Stop and remove only the exact session-owned container."""
     item = owned_container(name, session)
     if item is None:
@@ -60,8 +60,14 @@ def terminate(name, session):
     container = item["Id"]
     if item["State"]["Running"]:
         try:
-            docker("stop", "--timeout", "3", container, timeout=8)
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+            docker(
+                "stop",
+                "--timeout",
+                str(stop_timeout),
+                container,
+                timeout=stop_timeout + 5,
+            )
+        except subprocess.SubprocessError:
             current = owned_container(name, session)
             if current and current["State"]["Running"]:
                 docker("kill", container, timeout=8)
@@ -367,6 +373,10 @@ class DockerHTTPAdapter:
         driver_dir,
         work_roots,
         bindings=None,
+        mode="synthetic",
+        native_models=None,
+        native_bindings=None,
+        shutdown_grace_seconds=1,
     ):
         if not re.fullmatch(r"[a-f0-9]{16}", session):
             raise ValueError("invalid diagnostic session identity")
@@ -378,6 +388,28 @@ class DockerHTTPAdapter:
         self.driver_dir = Path(driver_dir).resolve(strict=True)
         self.work_roots = work_roots
         self.bindings = bindings or {}
+        if mode not in {"synthetic", "native"}:
+            raise ValueError("unsupported adapter mode")
+        self.mode = mode
+        if shutdown_grace_seconds not in {1, 30}:
+            raise ValueError("unsupported application shutdown grace")
+        if mode == "native" and shutdown_grace_seconds != 30:
+            raise ValueError("native mode requires the accepted 30-second grace")
+        if mode == "synthetic" and shutdown_grace_seconds != 1:
+            raise ValueError("synthetic rehearsal retains its accelerated grace")
+        self.shutdown_grace_seconds = shutdown_grace_seconds
+        self.native_models = (
+            None if native_models is None else Path(native_models).resolve(strict=True)
+        )
+        self.native_bindings = (
+            None
+            if native_bindings is None
+            else Path(native_bindings).resolve(strict=True)
+        )
+        if self.mode == "native" and (
+            self.native_models is None or self.native_bindings is None
+        ):
+            raise ValueError("native adapter requires model and binding roots")
         self.container = None
         self.strategy = None
         self._send_lock = threading.Lock()
@@ -386,7 +418,7 @@ class DockerHTTPAdapter:
     def open(self, strategy):
         if strategy not in {"consecutive", "length_sorted_8"}:
             raise ValueError("unsupported strategy")
-        if strategy == "length_sorted_8":
+        if self.mode == "synthetic" and strategy == "length_sorted_8":
             source = Path(self.work_roots["consecutive"]).resolve(strict=True)
             target = Path(self.work_roots[strategy]).resolve(strict=True)
             if not (target / "bindings.json").exists():
@@ -396,6 +428,16 @@ class DockerHTTPAdapter:
         if owned_container(self.name, self.session):
             raise RuntimeError("diagnostic name already occupied")
         work_root = Path(self.work_roots[strategy]).resolve(strict=True)
+        if self.mode == "native":
+            if not (work_root / "data").is_dir():
+                raise RuntimeError("native arm data copy is missing")
+            if (
+                not self.native_models.is_dir()
+                or not (self.native_models / "rerankers").is_dir()
+            ):
+                raise RuntimeError("native read-only model tree is incomplete")
+            if not self.native_bindings.is_file():
+                raise RuntimeError("native preflight binding file is missing")
         allowed_cpus = sorted(os.sched_getaffinity(0))
         if len(allowed_cpus) < 4:
             raise RuntimeError("host does not expose four allowed CPUs")
@@ -403,6 +445,29 @@ class DockerHTTPAdapter:
         os.chmod(work_root, 0o777)
         os.chmod(self.journal, 0o777)
         os.chmod(self.control, 0o777)
+        mounts = [
+            "--mount",
+            f"type=bind,src={self.journal},dst=/stage2-journal",
+            "--mount",
+            f"type=bind,src={self.control},dst=/stage2-control",
+            "--mount",
+            f"type=bind,src={self.inputs},dst=/review/inputs,readonly",
+            "--mount",
+            f"type=bind,src={self.driver_dir},dst=/review/driver,readonly",
+        ]
+        if self.mode == "native":
+            mounts.extend(
+                [
+                    "--mount",
+                    f"type=bind,src={work_root / 'data'},dst=/data",
+                    "--mount",
+                    f"type=bind,src={self.native_models},dst=/models,readonly",
+                    "--mount",
+                    f"type=bind,src={self.native_bindings},dst=/stage2-native/native-bindings.json,readonly",
+                ]
+            )
+        else:
+            mounts.extend(["--mount", f"type=bind,src={work_root},dst=/stage2-work"])
         docker(
             "run",
             "-d",
@@ -422,23 +487,35 @@ class DockerHTTPAdapter:
             self.name,
             "--env",
             "OFFLINE_RAG_CONFIG=/app/config/base.yaml",
-            "--mount",
-            f"type=bind,src={self.journal},dst=/stage2-journal",
-            "--mount",
-            f"type=bind,src={self.control},dst=/stage2-control",
-            "--mount",
-            f"type=bind,src={self.inputs},dst=/review/inputs,readonly",
-            "--mount",
-            f"type=bind,src={self.driver_dir},dst=/review/driver,readonly",
-            "--mount",
-            f"type=bind,src={work_root},dst=/stage2-work",
+            "--env",
+            "OFFLINE_RAG_DATA_DIR=/data"
+            if self.mode == "native"
+            else "OFFLINE_RAG_DATA_DIR=/stage2-work/data",
+            "--env",
+            "OFFLINE_RAG_MODELS_DIR=/models"
+            if self.mode == "native"
+            else "OFFLINE_RAG_MODELS_DIR=/stage2-work/models",
+            "--env",
+            "OFFLINE_RAG_STRICT_OFFLINE=true",
+            "--env",
+            "HF_HUB_OFFLINE=1",
+            "--env",
+            "TRANSFORMERS_OFFLINE=1",
+            *mounts,
             "--entrypoint",
             "python",
             IMAGE,
             "-B",
             "/review/driver/stage2_app_server.py",
+            "--mode",
+            self.mode,
             "--strategy",
             strategy,
+            *(
+                ["--native-bindings", "/stage2-native/native-bindings.json"]
+                if self.mode == "native"
+                else []
+            ),
         )
         item = owned_container(self.name, self.session)
         if (
@@ -452,6 +529,34 @@ class DockerHTTPAdapter:
         ):
             terminate(self.name, self.session)
             raise RuntimeError("diagnostic container isolation mismatch")
+        mounted = {
+            mount["Destination"]: (Path(mount["Source"]).resolve(), mount["RW"])
+            for mount in item.get("Mounts", [])
+        }
+        expected_mounts = {
+            "/stage2-journal": (self.journal, True),
+            "/stage2-control": (self.control, True),
+            "/review/inputs": (self.inputs, False),
+            "/review/driver": (self.driver_dir, False),
+        }
+        if self.mode == "native":
+            expected_mounts.update(
+                {
+                    "/data": ((work_root / "data").resolve(), True),
+                    "/models": (self.native_models, False),
+                    "/stage2-native/native-bindings.json": (
+                        self.native_bindings,
+                        False,
+                    ),
+                }
+            )
+        else:
+            expected_mounts["/stage2-work"] = (work_root, True)
+        if any(
+            mounted.get(dest) != identity for dest, identity in expected_mounts.items()
+        ):
+            terminate(self.name, self.session)
+            raise RuntimeError("diagnostic mount identity mismatch")
         self.container = item["Id"]
         self.strategy = strategy
         deadline = monotonic() + 120
@@ -461,6 +566,7 @@ class DockerHTTPAdapter:
                 for row in read_events(self.journal)
                 if row["event"] == "server_ready_identity"
                 and row.get("strategy") == strategy
+                and row.get("mode", "synthetic") == self.mode
             ]
             if identities:
                 if len(identities) != 1:
@@ -491,19 +597,69 @@ class DockerHTTPAdapter:
                     timeout=3,
                 )
                 break
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            except subprocess.SubprocessError:
                 sleep(0.05)
         else:
             raise TimeoutError("real app did not become ready")
         identity = identities[0]
-        if identity.get("strategy") != strategy or identity.get("effective_cpus") != 4:
+        if (
+            identity.get("strategy") != strategy
+            or identity.get("effective_cpus") != 4
+            or identity.get("mode", "synthetic") != self.mode
+        ):
             raise RuntimeError("effective server identity mismatch")
+        if self.mode == "native":
+            raw_identity = docker(
+                "exec",
+                self.container,
+                "python",
+                "-B",
+                "-c",
+                "import json,urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8080/__stage2/identity', timeout=2).read().decode())",
+                timeout=5,
+            )
+            resolved = json.loads(raw_identity)
+            required = {
+                "mode": "native",
+                "strategy": strategy,
+                "source_revision": SOURCE,
+                "reranker_model_id": "BAAI/bge-reranker-v2-m3",
+                "reranker_revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+                "reranker_input_k": 30,
+                "reranker_max_length": 1024,
+                "reranker_resolved_device": "cpu",
+                "reranker_precision": "fp32",
+                "reranker_score_transform": "raw-logit-v1",
+                "embedding_model_id": "Qwen/Qwen3-Embedding-0.6B",
+                "embedding_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+                "embedding_profile_id": "cpu_onnx_fp32_v1",
+                "embedding_representation_id": "onnx_fp32_v1",
+                "embedding_backend_family": "sentence_transformers_onnx",
+                "embedding_resolved_device": "cpu",
+                "embedding_resolved_precision": "fp32",
+                "embedding_provider": "CPUExecutionProvider",
+                "configured_query_deadline_s": 180,
+                "configured_shutdown_grace_s": 30,
+                "effective_cpus": 4,
+                "torch_intra": 2,
+                "torch_inter": 2,
+                "ort_intra": 8,
+                "ort_inter": 1,
+                "provider_fixture": True,
+                "external_network": False,
+                "runtime_ready": True,
+            }
+            if any(resolved.get(key) != value for key, value in required.items()):
+                raise RuntimeError("native runtime identity differs from manifest")
+            self.bindings = json.loads(
+                (self.journal / "bindings.json").read_text(encoding="utf-8")
+            )
         bindings_path = self.journal / "bindings.json"
         deadline = monotonic() + 30
         while not bindings_path.exists() and monotonic() < deadline:
             sleep(0.02)
         if not bindings_path.exists():
-            raise RuntimeError("synthetic workspace bindings missing")
+            raise RuntimeError("server workspace bindings missing")
         self.bindings = json.loads(bindings_path.read_text(encoding="utf-8"))
 
     def submit(self, case, timeout):
@@ -627,6 +783,7 @@ class DockerHTTPAdapter:
             elif case.case == "drain":
                 wait_for_event(self.journal, case.ordinal, "forward_entered", 10)
                 drain_requested_after = monotonic_ns()
+                drain_timeout = 195 if self.mode == "native" else 40
                 drain = subprocess.Popen(
                     [
                         "docker",
@@ -635,7 +792,10 @@ class DockerHTTPAdapter:
                         "python",
                         "-B",
                         "-c",
-                        "import urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/__stage2/drain', method='POST'); print(urllib.request.urlopen(req, timeout=30).read().decode())",
+                        (
+                            "import urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/__stage2/drain', method='POST'); print(urllib.request.urlopen(req, timeout="
+                            f"{drain_timeout}).read().decode())"
+                        ),
                     ],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -645,7 +805,7 @@ class DockerHTTPAdapter:
                     self.journal,
                     None,
                     "drain_grace_exhausted",
-                    5,
+                    35 if self.mode == "native" else 5,
                     after_monotonic_ns=drain_requested_after,
                 )
                 if (
@@ -661,7 +821,9 @@ class DockerHTTPAdapter:
                 ):
                     raise RuntimeError("resources closed before held worker returned")
                 (self.journal / f"{case.ordinal}.release").touch(exist_ok=False)
-                _drain_out, drain_err = drain.communicate(timeout=20)
+                _drain_out, drain_err = drain.communicate(
+                    timeout=205 if self.mode == "native" else 20
+                )
                 if drain.returncode != 0:
                     raise RuntimeError(f"diagnostic drain failed: {drain_err}")
 
@@ -684,7 +846,7 @@ class DockerHTTPAdapter:
                     self.journal,
                     None,
                     "runtime_stopped",
-                    5,
+                    195 if self.mode == "native" else 5,
                     after_monotonic_ns=grace["monotonic_ns"],
                 )
                 full_events = read_events(self.journal)
@@ -759,7 +921,11 @@ class DockerHTTPAdapter:
 
     def abort(self):
         if self.container is not None:
-            terminate(self.name, self.session)
+            terminate(
+                self.name,
+                self.session,
+                stop_timeout=self.shutdown_grace_seconds,
+            )
             self.container = None
             if session_containers(self.session):
                 raise RuntimeError("diagnostic session container remains after abort")
