@@ -1,0 +1,93 @@
+{
+  "schema": "seneca-rich2-stage1-binding-v1",
+  "status": "prepared_not_execution_authority",
+  "historical_rich_binding": {
+    "preserved_file": "stage1-bindings.json",
+    "preserved_sha256": "7bfc80f1ab7455077e41672d547b3b9938b18fd630f1615e80822477796af9f7",
+    "workspace_id": "ws_73a29d6defb545e8958746d78ac80775",
+    "revision": 2,
+    "source_inventory_sha256": "bd55ee4c43af654179d951eea04af237812bc453fb904226a41820936e1a02bb"
+  },
+  "workspace": {
+    "workspace_id": "ws_ee9ddd1e51354be1b7981282cc1dd240",
+    "title": "Rich 2",
+    "revision": 2,
+    "status": "active",
+    "source_count": 1,
+    "source_inventory_sha256": "3fef97218820b06e65baa48468923f7ac23166c286b648722f5db468c4accfad",
+    "workspace_record_sha256": "3fef97218820b06e65baa48468923f7ac23166c286b648722f5db468c4accfad",
+    "backing_corpus_name": "wsc_ee9ddd1e51354be1b7981282cc1dd240"
+  },
+  "source": {
+    "identity": {
+      "source_id": "src_e5f3f9cf065a468397d85e4c97f7f6f5",
+      "version": 1,
+      "document_id": "doc_c3084e336e87f2bbcc915a3c12b0e9bbd6128d8c34298637abbfb0ea6ac390cc",
+      "content_hash": "c3084e336e87f2bbcc915a3c12b0e9bbd6128d8c34298637abbfb0ea6ac390cc",
+      "byte_size": 59777,
+      "active": true,
+      "active_from_revision": 2,
+      "active_from_snapshot_id": "snap_62fce56e749ccf0e7b3bad46f82c153c4d0ba032f500509a1da37755babc97ca"
+    },
+    "content_sha256": "c3084e336e87f2bbcc915a3c12b0e9bbd6128d8c34298637abbfb0ea6ac390cc",
+    "byte_size": 59777
+  },
+  "publication": {
+    "snapshot_id": "snap_62fce56e749ccf0e7b3bad46f82c153c4d0ba032f500509a1da37755babc97ca",
+    "published_pointer": "snap_62fce56e749ccf0e7b3bad46f82c153c4d0ba032f500509a1da37755babc97ca",
+    "snapshot_manifest_sha256": "866cb5040778debf1235f0d86c065c47efeca770ed0d258bb9f0c44e732eebfa",
+    "snapshot_identity": {
+      "schema_version": "offline-rag-corpus-read-snapshot-v1",
+      "product_mode_id": "grounded_v1",
+      "corpus_id": "corpus_514e8eaae936a36f0862897eaf66be4a72694fae0d80d15f6e438b27148bcf61",
+      "chunk_set_id": "chunkset_7d67681e970b61c0911ee1312172156a7e325279cd4a7e4acf438d2b6e33fd66",
+      "dense_index_id": "denseindex_0260f9a1b37c14e45cb15d2af0372b0c21b01462584830e50b8f54e4d7cb2c90",
+      "lexical_index_id": "lexical_7b35bba27873a98170d1606fd6a5a7b905064a4b9b2aef49b027df3b8437d1e9",
+      "embedding_config_hash": "embcfg_e7861b5986785eba0fb6725a3d1e40f2d461f33e2dcd66d2c75ad3875f9a5d3f",
+      "index_config_hash": "idxcfg_45b7b17026e085b4f721de7031819b3b72d99db3966e1b77fc9dcc8203d41862",
+      "lexical_config_hash": "lexcfg_054978dd1ca7528bf5c6363dd223e891507d7f4d84286a3ab9b701fa85d427ee",
+      "fusion_config_hash": "fuscfg_fa8a567966bfa7676166b2689fec631d8a9cee0fd0739cdb1688854df92755a9",
+      "reranker_config_hash": "rrkcfg_68c77803ed7dc09ef0b5df50b3c09b6ee1c388bdccd0b8c29ca4c2161d57bb3e",
+      "context_config_hash": "ctxcfg_b1742f41ecc03defbcf7c4e270fe22b4aa72db4a1af2c02a70d5560cd2ac8876"
+    },
+    "science_settings_sha256": "5dce337dc1875b2aa615d62ee771a0ae384559c2da14be384e067ded035f5417"
+  },
+  "artifacts": {
+    "manifest_sha256": {
+      "corpus": "bda41f37af50c7d2dd44a920c937c0c8c3afcc7fd9ce15dd40d6872a5378bf94",
+      "chunk": "f7df70ac0c4f019c367f1bacb0dcdc37ac54bbce033f5a7d66424792216e8324",
+      "dense": "f48f1b78d4f5b35d251544f53e55f752f74c6e14b580381ecaee7d331371300a",
+      "lexical": "d697d59c4d8022ece68077e6568c5ef3fce7894cf686c9ac802c113e3b078a92"
+    },
+    "dense": {
+      "expected_child_count": 10,
+      "indexed_child_count": 10,
+      "collection_name": "dense_0260f9a1b37c14e45cb15d2af0372b0c21b01462584830e5"
+    },
+    "lexical": {
+      "expected_child_count": 10,
+      "indexed_child_count": 10,
+      "document_count": 10,
+      "lexical_files_sha256": {
+        "documents.json": "74e1f589c998c1bda0dc2d1c8d5f8b623d8dbf2d2ef9b9023321ccc98d1beb62",
+        "metadata.json": "0ca27ca08a71f29e5e1c977bc9d17d88a355bff60af94944f249e842b3021c72",
+        "postings.json": "8827941438b8c2f0a01b33d5a18946bcb81ca67cc3d9607c5d5dbb426c8439a6"
+      }
+    }
+  },
+  "question": {
+    "text": "Describe the naturalistic decision method",
+    "normalized_sha256": "68078feb74268f2e867cc4b97a38dd4f7f6fd047f2068b24c0ec3d35c079a825",
+    "prior_turns": []
+  },
+  "source_scope": {
+    "mode": "all_active",
+    "source_ids": ["src_e5f3f9cf065a468397d85e4c97f7f6f5"],
+    "document_ids": ["doc_c3084e336e87f2bbcc915a3c12b0e9bbd6128d8c34298637abbfb0ea6ac390cc"]
+  },
+  "expected_candidate_count": 10,
+  "effective_config": {
+    "path": "/app/config/base.yaml",
+    "sha256": "dc45247f1c807237cf09e8570d26b2600e685f637f967b7f162ed84cf9db77f0"
+  }
+}

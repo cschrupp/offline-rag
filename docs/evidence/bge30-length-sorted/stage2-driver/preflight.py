@@ -14,6 +14,7 @@ from offline_rag.app.query import (
 )
 from offline_rag.app.snapshot import CanonicalSnapshotManifest, compute_snapshot_id
 from offline_rag.app.workspace.store import WorkspaceStore
+from offline_rag.app.workspace.vault import RawSourceVault
 from offline_rag.config.loader import load_settings
 from offline_rag.context.store import load_structure_store_for_chunk_manifest
 from offline_rag.dense.persistence import load_index_manifest
@@ -329,6 +330,273 @@ def rich(settings):
     return result, ws.backing_corpus_name, actual.source_ids
 
 
+def _sha256(path: Path) -> str:
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def validate_rich2_binding(settings, binding: dict, *, qdrant=None) -> dict:
+    """Validate Rich 2 metadata and optional physical snapshot backing."""
+    require(
+        binding.get("schema") == "seneca-rich2-stage1-binding-v1"
+        and binding.get("status") == "prepared_not_execution_authority",
+        "Rich 2 binding schema/status",
+    )
+    workspace_binding = binding["workspace"]
+    source_binding = binding["source"]
+    publication_binding = binding["publication"]
+    artifacts_binding = binding["artifacts"]
+    question_binding = binding["question"]
+
+    workspace_id = workspace_binding["workspace_id"]
+    store = WorkspaceStore(settings)
+    workspace = store.get(workspace_id)
+    workspace_path = store.workspace_path(workspace_id)
+    workspace_bytes = workspace_path.read_bytes()
+    inventory_sha = hashlib.sha256(workspace_bytes).hexdigest()
+    require(workspace.status == "active", "Rich 2 workspace is not active")
+    require(
+        workspace.revision == workspace_binding["revision"]
+        and workspace.current_snapshot_id == publication_binding["snapshot_id"],
+        "Rich 2 workspace revision or snapshot drift",
+    )
+    require(
+        inventory_sha
+        == workspace_binding["source_inventory_sha256"]
+        == workspace_binding["workspace_record_sha256"],
+        "Rich 2 workspace record/inventory hash drift",
+    )
+    require(
+        workspace.backing_corpus_name == publication_binding["backing_corpus_name"],
+        "Rich 2 corpus binding drift",
+    )
+    require(
+        len(workspace.sources) == workspace_binding["source_count"] == 1
+        and workspace.sources[0].active,
+        "Rich 2 active source population drift",
+    )
+
+    source = workspace.sources[0]
+    actual_source = {
+        "source_id": source.source_id,
+        "version": source.version,
+        "document_id": source.document_id,
+        "content_hash": source.content_hash,
+        "byte_size": source.byte_size,
+        "active": source.active,
+        "active_from_revision": source.active_from_revision,
+        "active_from_snapshot_id": source.active_from_snapshot_id,
+    }
+    require(actual_source == source_binding["identity"], "Rich 2 source identity drift")
+    vault_meta = RawSourceVault(settings.paths.workspaces).verify_object(
+        workspace_id, source.vault_object_id
+    )
+    require(
+        vault_meta.content_hash == source_binding["content_sha256"]
+        and vault_meta.byte_size == source_binding["byte_size"],
+        "Rich 2 source bytes do not match the binding",
+    )
+
+    scope, _, document_ids = _resolve_workspace_source_scope(workspace, source_ids=None)
+    expected_scope = binding["source_scope"]
+    require(
+        expected_scope
+        == {
+            "mode": "all_active",
+            "source_ids": [source["source_id"]],
+            "document_ids": [source["document_id"]],
+        },
+        "Rich 2 binding scope is malformed",
+    )
+    require(
+        scope.model_dump(mode="json") == expected_scope
+        and document_ids == frozenset(expected_scope["document_ids"]),
+        "Rich 2 all-active scope drift",
+    )
+
+    question = normalize_product_question(question_binding["text"])
+    question_sha = hashlib.sha256(question.encode("utf-8")).hexdigest()
+    require(
+        question_sha == question_binding["normalized_sha256"]
+        and not question_binding["prior_turns"],
+        "Rich 2 no-history question binding mismatch",
+    )
+
+    snapshot_id = publication_binding["snapshot_id"]
+    manifest_path = snapshot_manifest_path(
+        settings.paths.corpora, workspace.backing_corpus_name, snapshot_id
+    )
+    manifest_bytes = manifest_path.read_bytes()
+    manifest_sha = hashlib.sha256(manifest_bytes).hexdigest()
+    require(
+        manifest_sha == publication_binding["snapshot_manifest_sha256"],
+        "Rich 2 snapshot manifest hash drift",
+    )
+    manifest = CanonicalSnapshotManifest.model_validate_json(manifest_bytes)
+    require(
+        compute_snapshot_id(manifest) == snapshot_id,
+        "Rich 2 snapshot identity mismatch",
+    )
+    identity = manifest.model_dump(
+        mode="json",
+        exclude={
+            "corpus_manifest",
+            "chunk_manifest",
+            "dense_index_manifest",
+            "lexical_index_manifest",
+        },
+    )
+    require(
+        identity == publication_binding["snapshot_identity"],
+        "Rich 2 scientific snapshot identity drift",
+    )
+
+    manifest_paths = {
+        "corpus": settings.paths.manifests / Path(manifest.corpus_manifest).name,
+        "chunk": settings.paths.chunk_manifests / Path(manifest.chunk_manifest).name,
+        "dense": settings.paths.index_manifests
+        / Path(manifest.dense_index_manifest).name,
+        "lexical": settings.paths.lexical_index_manifests
+        / Path(manifest.lexical_index_manifest).name,
+    }
+    for name, path in manifest_paths.items():
+        require(path.is_file(), f"Rich 2 {name} manifest is missing")
+        require(
+            _sha256(path) == artifacts_binding["manifest_sha256"][name],
+            f"Rich 2 {name} manifest hash drift",
+        )
+
+    dense = load_index_manifest(manifest_paths["dense"])
+    expected_count = binding["expected_candidate_count"]
+    dense_expected = artifacts_binding["dense"]
+    require(
+        dense.index_id == identity["dense_index_id"]
+        and dense.expected_child_count
+        == dense.indexed_child_count
+        == dense_expected["expected_child_count"]
+        == dense_expected["indexed_child_count"]
+        == expected_count
+        and dense.collection_name == dense_expected["collection_name"],
+        "Rich 2 dense index identity/population mismatch",
+    )
+    require(
+        (settings.paths.qdrant_storage / "collection" / dense.collection_name).is_dir(),
+        "Rich 2 dense collection directory is missing",
+    )
+
+    from offline_rag.lexical.backend import LocalInvertedIndexBackend
+    from offline_rag.lexical.persistence import load_lexical_index_manifest
+
+    lexical = load_lexical_index_manifest(manifest_paths["lexical"])
+    lexical_expected = artifacts_binding["lexical"]
+    require(
+        lexical.lexical_index_id == identity["lexical_index_id"]
+        and lexical.expected_child_count
+        == lexical.indexed_child_count
+        == lexical_expected["expected_child_count"]
+        == lexical_expected["indexed_child_count"]
+        == lexical_expected["document_count"]
+        == expected_count,
+        "Rich 2 lexical index identity/population mismatch",
+    )
+    lexical_backend = LocalInvertedIndexBackend(settings.paths.lexical_indexes)
+    require(
+        lexical_backend.index_exists(lexical.lexical_index_id)
+        and lexical_backend.validate(lexical.lexical_index_id),
+        "Rich 2 lexical backing is missing or invalid",
+    )
+    lexical_dir = settings.paths.lexical_indexes / lexical.lexical_index_id
+    lexical_files = {
+        path.name: _sha256(path) for path in lexical_dir.iterdir() if path.is_file()
+    }
+    require(
+        lexical_files == lexical_expected["lexical_files_sha256"],
+        "Rich 2 lexical backing file hashes drift",
+    )
+
+    structures = load_structure_store_for_chunk_manifest(
+        settings, Path(manifest.chunk_manifest).name
+    )
+    terminal = {"succeeded", "failed", "canceled", "cancelled", "interrupted"}
+    active_operations = sum(
+        json.loads(path.read_bytes()).get("status") not in terminal
+        for path in settings.paths.workspaces.glob("*/operations/by_id/*.json")
+    )
+    require(active_operations == 0, "managed workspace operation is active")
+
+    pointer = ProductPublicationRegistry(settings).published_snapshot_id(
+        workspace.backing_corpus_name
+    )
+    require(
+        pointer == snapshot_id == publication_binding["published_pointer"],
+        "Rich 2 publication pointer mismatch",
+    )
+    settings_hash = hashlib.sha256(
+        json.dumps(
+            {
+                key: getattr(settings, key).model_dump(
+                    mode="json",
+                    exclude={"batching_strategy"} if key == "reranker" else None,
+                )
+                for key in (
+                    "dense",
+                    "reranker",
+                    "fusion",
+                    "context",
+                    "lexical",
+                    "indexing",
+                )
+            },
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    require(
+        settings_hash == publication_binding["science_settings_sha256"],
+        "Rich 2 scientific settings drift",
+    )
+    effective_config = binding["effective_config"]
+    config_path = Path(os.environ.get("OFFLINE_RAG_CONFIG", effective_config["path"]))
+    require(
+        str(config_path) == effective_config["path"]
+        and _sha256(config_path) == effective_config["sha256"],
+        "Rich 2 effective configuration identity drift",
+    )
+
+    if qdrant is not None:
+        resolved = ProductPublicationRegistry(settings, qdrant=qdrant).resolve_snapshot(
+            workspace.backing_corpus_name, snapshot_id
+        )
+        resolved_identity = resolved.identity.model_dump(
+            mode="json",
+            exclude={
+                "corpus_manifest",
+                "chunk_manifest",
+                "dense_index_manifest",
+                "lexical_index_manifest",
+            },
+        )
+        require(
+            resolved.snapshot_id == snapshot_id and resolved_identity == identity,
+            "Rich 2 physical snapshot backing mismatch",
+        )
+
+    return {
+        "binding": binding,
+        "workspace": workspace,
+        "source_scope": scope,
+        "document_ids": document_ids,
+        "question": question,
+        "manifest": manifest,
+        "dense_manifest": dense,
+        "lexical_manifest": lexical,
+        "structures": structures,
+        "corpus_name": workspace.backing_corpus_name,
+        "settings_hash": settings_hash,
+        "workspace_record_sha256": inventory_sha,
+        "snapshot_manifest_sha256": manifest_sha,
+    }
+
+
 def digest(path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
@@ -358,7 +626,17 @@ def verify_models(settings, workloads):
 
 def main():
     mode = sys.argv[1]
-    require(mode in {"metadata", "isolated", "native"}, "unsupported preflight mode")
+    require(
+        mode
+        in {
+            "metadata",
+            "isolated",
+            "native",
+            "rich2-stage1",
+            "rich2-metadata",
+        },
+        "unsupported preflight mode",
+    )
     if len(sys.argv) not in {4, 5}:
         raise ValueError(
             "expected mode, workload manifest, bindings, and optional output"
@@ -396,7 +674,11 @@ def main():
         bool(os.statvfs("/models").f_flag & os.ST_RDONLY), "model mount is writable"
     )
     data_read_only = bool(os.statvfs("/data").f_flag & os.ST_RDONLY)
-    require(data_read_only == (mode == "metadata"), "data mount mode mismatch")
+    data_should_be_read_only = mode in {"metadata", "rich2-metadata"}
+    require(
+        data_read_only == data_should_be_read_only,
+        "data mount mode mismatch",
+    )
     settings = load_settings()
     require(
         settings.api.max_concurrent_query == 1
@@ -410,7 +692,19 @@ def main():
         and settings.reranker.max_length == 1024,
         "scorer settings drift",
     )
-    actual = {"Recipes": recipes(settings), "Rich": rich(settings)}
+    from rich2_stage1 import validate_binding_document, workload_labels_for_mode
+
+    workload_validators = {"Recipes": recipes, "Rich": rich}
+    actual = {
+        label: workload_validators[label](settings)
+        for label in workload_labels_for_mode(mode)
+    }
+    rich2_binding_path = manifest_path.parent / "rich2-stage1-binding.json"
+    rich2_binding = json.loads(rich2_binding_path.read_text(encoding="utf-8"))
+
+    historical_binding_sha = digest(bindings_path)
+    validate_binding_document(rich2_binding, historical_binding_sha)
+    rich2 = validate_rich2_binding(settings, rich2_binding)
     if mode == "native":
         validate_scientific_settings(
             {label: binding for label, (binding, _, _) in actual.items()},
@@ -458,7 +752,7 @@ def main():
         # Contains only workspace/snapshot/source identifiers, no content or
         # credentials; host driver and same-UID app container must both read it.
         os.chmod(output_bindings, 0o644)
-    if mode in {"isolated", "native"}:
+    if mode in {"isolated", "native", "rich2-stage1"}:
         import torch
 
         from offline_rag.app.runtime import default_resource_factories
@@ -496,6 +790,14 @@ def main():
                     == binding["snapshot_id"],
                     "backing resolution mismatch",
                 )
+            rich2_snapshot = registry.resolve_snapshot(
+                rich2["corpus_name"], rich2_binding["publication"]["snapshot_id"]
+            )
+            require(
+                rich2_snapshot.snapshot_id
+                == rich2_binding["publication"]["snapshot_id"],
+                "Rich 2 backing resolution mismatch",
+            )
         finally:
             backend.close()
     print(
@@ -517,6 +819,27 @@ def main():
                     }
                     for label, (b, _, ids) in actual.items()
                 },
+                "Rich2": {
+                    "workspace_id": rich2["workspace"].workspace_id,
+                    "workspace_revision": rich2["workspace"].revision,
+                    "source_inventory_sha256": rich2["workspace_record_sha256"],
+                    "source_ids": sorted(rich2["source_scope"].source_ids),
+                    "document_ids": sorted(rich2["document_ids"]),
+                    "snapshot_id": rich2_binding["publication"]["snapshot_id"],
+                    "snapshot_manifest_sha256": rich2["snapshot_manifest_sha256"],
+                    "published_pointer": rich2_binding["publication"][
+                        "published_pointer"
+                    ],
+                    "scientific_settings_sha256": rich2["settings_hash"],
+                },
+                "historical_Rich": (
+                    {
+                        "status": "preserved_historical_binding_not_live_resolved",
+                        **rich2_binding["historical_rich_binding"],
+                    }
+                    if mode in {"rich2-stage1", "rich2-metadata"}
+                    else None
+                ),
                 "scientific_settings": {
                     label: b["science_settings_hash"]
                     for label, (b, _, _) in actual.items()

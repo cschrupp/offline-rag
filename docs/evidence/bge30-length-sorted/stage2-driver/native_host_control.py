@@ -91,6 +91,7 @@ def verify(
     start_if_stopped: bool,
     metadata_baseline: Path | None = None,
     cpuset: str | None = None,
+    metadata_mode: str = "metadata",
 ) -> None:
     baseline = json.loads(path.read_text(encoding="utf-8"))
     current = inspect_named(APP_NAME)
@@ -123,7 +124,7 @@ def verify(
             [
                 "bash",
                 str(script),
-                "metadata",
+                metadata_mode,
                 "/srv/seneca/data",
                 "/srv/seneca/models",
                 cpuset,
@@ -140,7 +141,7 @@ def verify(
             raise RuntimeError("published workspace/snapshot metadata changed")
 
 
-def verify_scratch_unowned(root: Path) -> None:
+def verify_scratch_unowned(root: Path, *, layout: str = "stage2") -> None:
     containers = docker("ps", "-aq").split()
     if containers:
         for item in json.loads(docker("inspect", *containers)):
@@ -148,8 +149,13 @@ def verify_scratch_unowned(root: Path) -> None:
                 source = Path(mount.get("Source", "/")).resolve()
                 if source == root or root in source.parents:
                     raise RuntimeError("a Docker container still mounts native scratch")
-    for strategy in ("A", "B"):
-        assert_qdrant_unowned(root / strategy / "data" / "qdrant")
+    if layout == "rich2-stage1":
+        assert_qdrant_unowned(root / "data" / "qdrant")
+    elif layout == "stage2":
+        for strategy in ("A", "B"):
+            assert_qdrant_unowned(root / strategy / "data" / "qdrant")
+    else:
+        raise ValueError("unsupported scratch layout")
 
 
 def assert_qdrant_unowned(path: Path) -> None:
@@ -184,7 +190,13 @@ def main() -> None:
     verify_parser.add_argument("snapshot", type=Path)
     verify_parser.add_argument("--scratch", type=Path, required=True)
     verify_parser.add_argument("--metadata-baseline", type=Path)
+    verify_parser.add_argument(
+        "--metadata-mode", choices=("metadata", "rich2-metadata"), default="metadata"
+    )
     verify_parser.add_argument("--cpuset")
+    verify_parser.add_argument(
+        "--scratch-layout", choices=("stage2", "rich2-stage1"), default="stage2"
+    )
     qdrant_parser = commands.add_parser("check-qdrant")
     qdrant_parser.add_argument("path", type=Path)
     if len(sys.argv) > 1 and sys.argv[1] == "supervise":
@@ -197,19 +209,30 @@ def main() -> None:
         supervise_parser.add_argument("--abort", type=Path, required=True)
         supervise_parser.add_argument("--ceiling-epoch", type=float, required=True)
         supervise_parser.add_argument("--metadata-baseline", type=Path, required=True)
+        supervise_parser.add_argument(
+            "--metadata-mode",
+            choices=("metadata", "rich2-metadata"),
+            default="metadata",
+        )
         supervise_parser.add_argument("--cpuset", required=True)
+        supervise_parser.add_argument(
+            "--scratch-layout", choices=("stage2", "rich2-stage1"), default="stage2"
+        )
     options = parser.parse_args()
     if options.command == "capture":
         capture(options.snapshot)
     elif options.command == "restore":
         verify(options.snapshot, start_if_stopped=True)
     elif options.command == "verify":
-        verify_scratch_unowned(options.scratch.resolve(strict=True))
+        verify_scratch_unowned(
+            options.scratch.resolve(strict=True), layout=options.scratch_layout
+        )
         verify(
             options.snapshot,
             start_if_stopped=False,
             metadata_baseline=options.metadata_baseline,
             cpuset=options.cpuset,
+            metadata_mode=options.metadata_mode,
         )
     elif options.command == "check-qdrant":
         assert_qdrant_unowned(options.path.resolve(strict=True))
@@ -224,8 +247,12 @@ def main() -> None:
             str(snapshot),
             "--scratch",
             str(root),
+            "--scratch-layout",
+            options.scratch_layout,
             "--metadata-baseline",
             str(options.metadata_baseline.resolve(strict=True)),
+            "--metadata-mode",
+            options.metadata_mode,
             "--cpuset",
             options.cpuset,
         ]
