@@ -1,0 +1,8 @@
+src/offline_rag/config/loader.py
+src/offline_rag/config/models.py
+src/offline_rag/context/assemble.py
+src/offline_rag/generation/executor.py
+src/offline_rag/generation/orchestrate.py
+src/offline_rag/rerank/config_hash.py
+src/offline_rag/rerank/cross_encoder.py
+src/offline_rag/rerank/retrieve.py

@@ -1,0 +1,5 @@
+RUN_PATH=/var/tmp/seneca-pr3-stage1.68PLZ3F0
+PREFLIGHT resource safety: CPUs=4 data_KiB=98332 disk_free_KiB=21127764 host_available_KiB=15499880 STOP_epoch=1795365600
+PREFLIGHT PASS live=200 ready=200 idle deadline_remaining_s=6847
+Diagnostic exit code=1
+RESTORATION PASS: original container running, live=200 ready=200, original image/mounts/restart policy, both workspace revisions/snapshots/source inventories/publication pointers unchanged; diagnostic removed

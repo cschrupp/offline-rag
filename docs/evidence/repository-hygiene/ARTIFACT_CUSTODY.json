@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-11-23",
+  "persistent_root": "/home/user/projects/technical_rag/artifacts/retained/seneca",
+  "storage_policy": {
+    "git_ignored": true,
+    "directory_mode": "0700",
+    "artifact_mode": "0600",
+    "verification": "Verify every listed SHA-256 before use. Do not infer authorization to load, execute, transfer, or deploy an artifact from its retention record."
+  },
+  "artifacts": [
+    {
+      "artifact_id": "stage2-qualified-oci-image",
+      "classification": "large diagnostic image archive",
+      "path": "seneca-stage2-qualified-image.tar",
+      "size_bytes": 606774272,
+      "sha256": "48084b824acd41126f54eb264d6ad63f4414be3239a23ed905edf864c50c3380",
+      "provenance": "Pinned Stage 2 Docker diagnostic image archive; exact identity verified during repository hygiene cleanup.",
+      "verify_command": "sha256sum /home/user/projects/technical_rag/artifacts/retained/seneca/seneca-stage2-qualified-image.tar",
+      "retrieve_and_use": [
+        "Keep or copy this exact file from the persistent_root; do not rebuild it when reproducing the accepted image identity.",
+        "Before any authorized isolated diagnostic use, verify the recorded SHA-256, then load with: docker load -i /home/user/projects/technical_rag/artifacts/retained/seneca/seneca-stage2-qualified-image.tar",
+        "Use the image only under a separate Stage 2 execution authorization. No VM transfer or deployment was performed by this cleanup."
+      ]
+    },
+    {
+      "artifact_id": "provisioned-model-bundle",
+      "classification": "local model/runtime artifact archive; not a corpus archive",
+      "path": "seneca-models.tar.gz",
+      "size_bytes": 4643400874,
+      "sha256": "857fc87a733ae8988f91e74c863eebe4ce757cddfb43ceae7dbd8c86b5201f81",
+      "provenance": "Exact staging archive recovered from /tmp and checksum-verified. It contains 316 tar members (257 regular files, 7,341,594,208 uncompressed bytes); the archive listing was checked and no workspace corpus documents were present. The full bundle's byte-for-byte regeneration is not claimed.",
+      "verify_command": "sha256sum /home/user/projects/technical_rag/artifacts/retained/seneca/seneca-models.tar.gz",
+      "retrieve_and_use": [
+        "For an authorized host transfer, use: gcloud compute scp /home/user/projects/technical_rag/artifacts/retained/seneca/seneca-models.tar.gz user@seneca-review:/home/user/seneca-models.tar.gz --project=seneca-515016 --zone=us-central1-a",
+        "On the destination, verify SHA-256 against this manifest before extraction.",
+        "The previously documented extraction form is: sudo tar -C /srv/seneca/models -xzf /home/user/seneca-models.tar.gz",
+        "The transfer and extraction commands are retrieval instructions only; this cleanup did not connect to or modify a VM."
+      ]
+    },
+    {
+      "artifact_id": "bge-reranker-v2-m3-onnx-fp32-feasibility-export",
+      "classification": "exploratory ONNX model export; not a production selection",
+      "path": "bge-reranker-v2-m3-onnx-fp32/",
+      "artifact_identity_sha256": "d926f96a263341121d26c67bf2b4a687f61fada427761dcee5e68826d839d10d",
+      "model": "BAAI/bge-reranker-v2-m3",
+      "model_revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+      "export_opset": 17,
+      "runtime_versions": {
+        "onnx": "1.23.2",
+        "onnxruntime": "1.31.0",
+        "optimum": "2.1.0",
+        "optimum_onnx": "0.1.0",
+        "torch": "2.14.0+cpu",
+        "transformers": "4.57.6"
+      },
+      "files": [
+        {
+          "path": "artifact.json",
+          "size_bytes": 2159,
+          "sha256": "b9fff90b153b568d0ddfe1cd94051126d4e62027d40be0a0f0d8f1fa39f967af"
+        },
+        {
+          "path": "export/config.json",
+          "size_bytes": 756,
+          "sha256": "acdbf9ee9fe3710ee1c275e674c6bf4367e73a50711c02e3edba038047ccd526"
+        },
+        {
+          "path": "export/model.onnx",
+          "size_bytes": 489245,
+          "sha256": "cc74171f1b60e7ca43d5b79c362cf28605e758ec25abcd3cce779b47f6f28d64"
+        },
+        {
+          "path": "export/model.onnx_data",
+          "size_bytes": 2271088656,
+          "sha256": "9a748c82efb2079d24650c489e053dbb3c71d8acbbcf04d7b2340db66f2748f7"
+        },
+        {
+          "path": "export/special_tokens_map.json",
+          "size_bytes": 964,
+          "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+        },
+        {
+          "path": "export/tokenizer.json",
+          "size_bytes": 17082900,
+          "sha256": "8bf8afbfd11306bd872018c53bfdf2e160a56f8edbcf49933324404791c148d3"
+        },
+        {
+          "path": "export/tokenizer_config.json",
+          "size_bytes": 1203,
+          "sha256": "b87c8703482b0300d3da30e201519aa641f6a450f5eb5bf1e624afbf70c74d80"
+        },
+        {
+          "path": "four-stage-supplement/model.onnx",
+          "size_bytes": 489245,
+          "sha256": "cc74171f1b60e7ca43d5b79c362cf28605e758ec25abcd3cce779b47f6f28d64"
+        },
+        {
+          "path": "four-stage-supplement/seneca-onnx-reconstruct.py",
+          "size_bytes": 1976,
+          "sha256": "7e7ccc327ae260a0cadb73169c0198b9853da4f42257b21cade851806b9d87a9"
+        },
+        {
+          "path": "four-stage-supplement/seneca-sidecar-map.json",
+          "size_bytes": 58483,
+          "sha256": "c003ba378b0426666ff4274c244860c67a23f4d186253f04a22175cae14fd6e4"
+        },
+        {
+          "path": "four-stage-supplement/tail",
+          "size_bytes": 65552,
+          "sha256": "cdf16f72c5d07b36484056e601ed9687f78477e5d85cee85a34f2406b7fb5906"
+        }
+      ],
+      "verify_command": "cd /home/user/projects/technical_rag/artifacts/retained/seneca/bge-reranker-v2-m3-onnx-fp32 && sha256sum -c checksums.sha256",
+      "retrieve_and_use": [
+        "Retain the directory tree, including the external ONNX weight data; do not separate model.onnx from model.onnx_data.",
+        "The directory includes export.py, compare.py, protocol.json, logs, artifact.json, and checksums.sha256 for feasibility provenance.",
+        "Use only for separately authorized research parity work. It is not selected or qualified for production and must not replace the PyTorch BGE deployment by implication.",
+        "A complete Git bundle of the unpushed four-vCPU feasibility evidence is retained at research-git-bundles/diagnostic-18d-r-bge-onnx-four-vcpu.bundle; verify it with git bundle verify before fetching."
+      ]
+    },
+    {
+      "artifact_id": "18dr-visual-review-screenshots",
+      "classification": "human-review visual evidence files retained locally",
+      "path": "18dr-review-screenshots/",
+      "files": [
+        {
+          "path": "seneca-18dr-desktop-final.png",
+          "size_bytes": 77227,
+          "sha256": "ac0b98a798a16a52cc3f89b3e675cec46532ca66c8feef28d15e30852f467f95"
+        },
+        {
+          "path": "seneca-18dr-desktop.png",
+          "size_bytes": 572439,
+          "sha256": "8603a2a8e299456b59f1f0762df4a1c9f8464a69536281fa492de91ed3518dee"
+        },
+        {
+          "path": "seneca-18dr-mobile-final.png",
+          "size_bytes": 543907,
+          "sha256": "ad739fc1895eb81fc5847fc4a2cb7e1d06111357d1e681f9886399c86caa14f0"
+        },
+        {
+          "path": "seneca-18dr-mobile.png",
+          "size_bytes": 341621,
+          "sha256": "3cd7b85538430f215a8b93010be163d5c01aafb688328399f9c98dde6bb4e484"
+        }
+      ],
+      "retrieve_and_use": [
+        "Read locally from the persistent_root; these files are not part of the committed human-review record."
+      ]
+    },
+    {
+      "artifact_id": "restricted-private-diagnostic-traces",
+      "classification": "private local-only workspace/query traces; excluded from Git",
+      "path": "restricted/",
+      "permissions": "0700 directory; 0600 files",
+      "files": 3,
+      "retrieve_and_use": [
+        "Do not transfer, publish, or attach these traces without privacy review. They were moved from /tmp to durable restricted storage; contents and hashes are intentionally omitted from this public manifest."
+      ],
+      "contents_and_hashes": "Omitted from the public manifest; one retained trace projection and two diagnostic outputs contain packed-context data."
+    },
+    {
+      "artifact_id": "unpushed-bge-diagnostic-history",
+      "classification": "local Git bundles preserving unique diagnostic histories not present in fetched GitHub refs",
+      "path": "research-git-bundles/",
+      "files": [
+        {
+          "path": "diagnostic-18d-r-bge-cpu-forward.bundle",
+          "size_bytes": 6427305,
+          "sha256": "e901cb2b7681fb90a4330a5c661facecc6f6dff24d8a337ae861d260e3b26734"
+        },
+        {
+          "path": "diagnostic-18d-r-bge-onnx-four-vcpu.bundle",
+          "size_bytes": 6418455,
+          "sha256": "9f88bb59aaf89af60327b7b0df22cb8b13e533a6d313ef77314f4a249c979f82"
+        }
+      ],
+      "retrieve_and_use": [
+        "Verify the SHA-256 from this manifest before use.",
+        "For a Git bundle, run git bundle verify and clone the bundle into a new local directory to inspect its retained commit history.",
+        "For the private scratch archive, inspect only in a restricted local workspace; do not publish or transfer it without privacy review."
+      ],
+      "tips": {
+        "diagnostic-18d-r-bge-onnx-four-vcpu.bundle": "1d1f9aecffe9d1905c5678e824c7073b5e958106",
+        "diagnostic-18d-r-bge-cpu-forward.bundle": "9066e62fb1c07ab915e4e8360742b66f469afe1e"
+      }
+    },
+    {
+      "artifact_id": "historical-diagnostic-scratch",
+      "classification": "local-only archive of selected historical diagnostic tools and logs; may contain operational paths or private context",
+      "path": "restricted/historical-scratch/",
+      "files": [
+        {
+          "path": "historical-diagnostics.tar.gz",
+          "size_bytes": 87390,
+          "sha256": "5f262b43fcc2f5655300bfc44d6e8e18a82deb7508b8c0f0c7aa6eb38ec2e812"
+        }
+      ],
+      "retrieve_and_use": [
+        "Verify the SHA-256 from this manifest before use.",
+        "For a Git bundle, run git bundle verify and clone the bundle into a new local directory to inspect its retained commit history.",
+        "For the private scratch archive, inspect only in a restricted local workspace; do not publish or transfer it without privacy review."
+      ],
+      "file_count": 32
+    }
+  ]
+}

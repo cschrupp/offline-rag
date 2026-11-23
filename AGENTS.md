@@ -509,6 +509,31 @@ Unless the active authority says otherwise:
 - do not merge or promote without explicit authority;
 - do not rewrite accepted history.
 
+### Durable source, evidence, and artifact custody
+
+- Keep important source, tests, authorizations, scientific evidence, and final
+  documentation in their appropriate existing repository workstreams. Do not
+  leave `/tmp` as the sole copy of material needed to understand or reproduce
+  completed work.
+- Use `/tmp` only for disposable execution scratch. Before deleting scratch,
+  establish whether its contents are already committed, reproducible, or
+  retained in an ignored persistent artifact location.
+- Completion requires durable custody of every unique artifact needed for
+  verification or reproduction. When binaries do not belong in Git, retain
+  them under the ignored persistent project-artifact location and commit a
+  small manifest with identity, checksum, size, storage location, and
+  retrieval/use instructions.
+- Keep evidence updates on the existing work branch when they belong to its
+  workstream. Create a new branch only for a distinct reviewable purpose and
+  define how that branch will be retired.
+- Give every linked worktree an identifiable purpose and persistent location.
+  Keep only worktrees needed by active work; remove stale worktree metadata
+  only after confirming the referenced directory is absent.
+- Periodically reconcile remote branches. Retire a reference only after
+  verifying its exact identity, Git reachability, protection/PR/worktree
+  status, and recoverability. Base artifact cleanup on verified content
+  identity and Git reachability, never on a filename or age alone.
+
 ## 17. Active-state rule
 
 Always consult the applicable active Relay / slice authority before performing bounded governed work.
