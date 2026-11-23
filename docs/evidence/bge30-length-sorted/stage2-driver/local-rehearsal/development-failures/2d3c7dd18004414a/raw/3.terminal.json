@@ -1,0 +1,36 @@
+{
+  "admission": "preflight_rejected",
+  "http_status": 503,
+  "operation": null,
+  "ordinal": 3,
+  "reason": "query_preflight_capacity_exhausted",
+  "scientific_trace_ids": [],
+  "server_events": [
+    {
+      "event": "http_received",
+      "method": "POST",
+      "monotonic_ns": 757970430941325,
+      "ordinal": 3,
+      "path": "/v1/workspaces/ws_c7e2829afa8e45be880a45037a47a5ba/conversation/turn"
+    },
+    {
+      "error_code": "service_overloaded",
+      "event": "preflight_rejected",
+      "monotonic_ns": 757970437060793,
+      "ordinal": 3,
+      "reason": "query_preflight_capacity_exhausted"
+    },
+    {
+      "event": "http_response",
+      "monotonic_ns": 757970439631578,
+      "ordinal": 3,
+      "status": 503
+    }
+  ],
+  "server_http_status": 503,
+  "settled": true,
+  "slot_released": false,
+  "terminal": null,
+  "transport": "response",
+  "worker_returned": false
+}

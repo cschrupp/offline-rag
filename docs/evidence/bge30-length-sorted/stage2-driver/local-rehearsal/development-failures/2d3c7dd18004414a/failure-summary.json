@@ -1,0 +1,128 @@
+{
+  "attempts": 18,
+  "classification": "FAILED_LOCAL_DEVELOPMENT_ATTEMPT",
+  "driver_failure": "[('/tmp/seneca-stage2-2d3c7dd18004414a-o5uh5_5k/work-consecutive/data/lexical-indexes/lexical_e8bbcc82865b7f53510de4945a4641677d877f363119f08edc1b43a7bd797089/postings.json', '/tmp/seneca-stage2-2d3c7dd18004414a-o5uh5_5k/work-length_sorted_8/data/lexical-indexes/lexical_e8bbcc82865b7f53510de4945a464",
+  "files": [
+    {
+      "bytes": 3157,
+      "path": "raw/1.terminal.json",
+      "sha256": "2338e7f7dd5c8e7a862ec636bfe84b41ab281661765734cc2480aac4dab131a0"
+    },
+    {
+      "bytes": 3171,
+      "path": "raw/10.terminal.json",
+      "sha256": "b9c3f806f1472508cf15ef27a4080dcb1c21b332169afb30630948f6bec02727"
+    },
+    {
+      "bytes": 1928,
+      "path": "raw/11.terminal.json",
+      "sha256": "d8762edada29bb29a88fbfd8784df86e39b9f26e3f5d49f8a3de5974b62161a3"
+    },
+    {
+      "bytes": 898,
+      "path": "raw/12.terminal.json",
+      "sha256": "b93633dc4f4d160cecc31c780895c6b9e5a08c800ca33cb72ceb1b109c3935dd"
+    },
+    {
+      "bytes": 898,
+      "path": "raw/13.terminal.json",
+      "sha256": "970a156b4663f74f80805d37354092bcf1a6c3793e43763b5e0bc9c838af9147"
+    },
+    {
+      "bytes": 3331,
+      "path": "raw/14.terminal.json",
+      "sha256": "934ad1dd55672625a9d10677eccc6e1201073c2fdf8668cda3b3405942fad3ee"
+    },
+    {
+      "bytes": 3086,
+      "path": "raw/15.terminal.json",
+      "sha256": "e89bef3ae698a9855fc063c87a35976b3bab579838071bd868c0650a8dd9707f"
+    },
+    {
+      "bytes": 3414,
+      "path": "raw/16.terminal.json",
+      "sha256": "299b9ca901bb35dfd47ee17b22db85f77d6e793b87990459917f18db95683fd3"
+    },
+    {
+      "bytes": 3072,
+      "path": "raw/17.terminal.json",
+      "sha256": "e8c6647da7d863c42163e5518dcd12b6b6d11b43fa7bcd4d095f79825cad91e8"
+    },
+    {
+      "bytes": 3267,
+      "path": "raw/18.terminal.json",
+      "sha256": "0e348eaef3efce9d30f723d5decd8a6ba13dabce911901e5488d4470a90fb36c"
+    },
+    {
+      "bytes": 3157,
+      "path": "raw/2.terminal.json",
+      "sha256": "778b3ad3dd351aaba7e796ce62e5d7ec74a2f6d7828d2736fcb4db763b1df049"
+    },
+    {
+      "bytes": 894,
+      "path": "raw/3.terminal.json",
+      "sha256": "7cab7d13ebf15b348ee08f5cd97299939248724a868d8a8f6ffaa4878dd7f29f"
+    },
+    {
+      "bytes": 894,
+      "path": "raw/4.terminal.json",
+      "sha256": "349904e9e8c276370f5c1446a54234acf4109abacad6bb7ca669b10c44055980"
+    },
+    {
+      "bytes": 1920,
+      "path": "raw/5.terminal.json",
+      "sha256": "2f1d271dca9df20dd7073801fe3cfb7241eb4895f20b69b9d51ed11e5dac135f"
+    },
+    {
+      "bytes": 894,
+      "path": "raw/6.terminal.json",
+      "sha256": "f9766d7d94fca5b95f280f58abc32d88da78560b728bc21a90124f01236bdcd4"
+    },
+    {
+      "bytes": 3315,
+      "path": "raw/7.terminal.json",
+      "sha256": "27230dbeebdbe5164f6d9fc9e170f6601f08bfe4a919734423d4ff6d0de5fa0d"
+    },
+    {
+      "bytes": 3316,
+      "path": "raw/8.terminal.json",
+      "sha256": "48767f5131b8c13f9028e939112dbd15c1a7a1dee1eda0cf9b2daa58c3019a36"
+    },
+    {
+      "bytes": 1920,
+      "path": "raw/9.terminal.json",
+      "sha256": "65b98efe96e701a4c783b2920d7a269e13892c43e0f6a8ab0ee1f0b569ae5ec6"
+    },
+    {
+      "bytes": 37569,
+      "path": "raw/driver-events.jsonl",
+      "sha256": "98e55ad29702f1fbfacf5d666d79fa8189aacff1afa407a5340df24f95ff79fb"
+    },
+    {
+      "bytes": 26898,
+      "path": "raw/events.jsonl",
+      "sha256": "c8fba48eca05d7c4dd4411c3bb27f274f5c76f1a226121a529195625b2e1493f"
+    },
+    {
+      "bytes": 17,
+      "path": "driver_done.json",
+      "sha256": "5cc319f54b05a38799195a491c303aa686eab7caccfdbbf1e8b8c07405cb7392"
+    },
+    {
+      "bytes": 194,
+      "path": "supervisor_result.json",
+      "sha256": "35cc1bd0308410127805f354ae1777cdc32b982463f9c682289611674af68a70"
+    }
+  ],
+  "raw_journal_file_count": 20,
+  "restoration": {
+    "abort_reason": "driver_failed",
+    "driver_exit_code": 1,
+    "recorded_at_unix": 1795395143.5031996,
+    "restoration_error": null,
+    "session_containers_remaining": 0,
+    "state": "restored"
+  },
+  "settled": 18,
+  "terminal_records": 18
+}

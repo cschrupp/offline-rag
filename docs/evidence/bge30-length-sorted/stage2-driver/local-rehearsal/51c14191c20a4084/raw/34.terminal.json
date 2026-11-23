@@ -1,0 +1,132 @@
+{
+  "admission": "accepted",
+  "global_query_capacity_empty": true,
+  "http_status": null,
+  "operation": "opq_e06f76ed75474ba7b30c15b3ceaa77be",
+  "ordinal": 34,
+  "reason": "client_disconnect",
+  "scientific_trace_ids": [
+    "trace_a4368c1c15b748de87666db5ed607fc1"
+  ],
+  "server_events": [
+    {
+      "event": "http_received",
+      "method": "POST",
+      "monotonic_ns": 761708673188661,
+      "ordinal": 34,
+      "path": "/v1/workspaces/ws_8e9f2c7c66fc4bb0b246d25d1b72fc68/conversation/turn"
+    },
+    {
+      "event": "preflight_admitted",
+      "monotonic_ns": 761708681660768,
+      "operation_id": "opq_e06f76ed75474ba7b30c15b3ceaa77be",
+      "ordinal": 34
+    },
+    {
+      "disconnected": false,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 761708684399883,
+      "ordinal": 34,
+      "poll": 1
+    },
+    {
+      "event": "worker_started",
+      "monotonic_ns": 761708684512194,
+      "operation_id": "opq_e06f76ed75474ba7b30c15b3ceaa77be",
+      "ordinal": 34
+    },
+    {
+      "active_count": 1,
+      "deadline_mono": 761888.692409619,
+      "event": "query_admitted",
+      "monotonic_ns": 761708692454483,
+      "operation_id": "opq_e06f76ed75474ba7b30c15b3ceaa77be",
+      "ordinal": 34,
+      "query_capacity_held": 1
+    },
+    {
+      "event": "scorer_entered",
+      "monotonic_ns": 761708705089827,
+      "ordinal": 34,
+      "pair_count": 30,
+      "strategy": "length_sorted_8"
+    },
+    {
+      "active_count": 1,
+      "event": "forward_entered",
+      "monotonic_ns": 761708708728916,
+      "ordinal": 34,
+      "query_capacity_held": 1,
+      "shape": [
+        8,
+        216
+      ],
+      "strategy": "length_sorted_8"
+    },
+    {
+      "disconnected": true,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 761708737273145,
+      "ordinal": 34,
+      "poll": 2
+    },
+    {
+      "event": "request_disconnect_observed",
+      "monotonic_ns": 761708740341200,
+      "ordinal": 34
+    },
+    {
+      "event": "cancel_signaled",
+      "monotonic_ns": 761708742996141,
+      "operation_id": "opq_e06f76ed75474ba7b30c15b3ceaa77be",
+      "ordinal": 34,
+      "reason": "client_disconnect",
+      "terminal_claimed": false
+    },
+    {
+      "event": "forward_released",
+      "monotonic_ns": 761708751532938,
+      "ordinal": 34
+    },
+    {
+      "event": "scorer_returned",
+      "monotonic_ns": 761708759429823,
+      "ordinal": 34,
+      "score_count": 30
+    },
+    {
+      "error_code": "request_cancelled",
+      "event": "worker_failed",
+      "exception": "AppError",
+      "monotonic_ns": 761708768801001,
+      "operation_id": "opq_e06f76ed75474ba7b30c15b3ceaa77be",
+      "ordinal": 34,
+      "query_trace_present": true,
+      "reason": null,
+      "trace_id": "trace_a4368c1c15b748de87666db5ed607fc1"
+    },
+    {
+      "active_count": 0,
+      "event": "slot_released",
+      "global_query_capacity_empty": true,
+      "monotonic_ns": 761708772287639,
+      "operation_id": "opq_e06f76ed75474ba7b30c15b3ceaa77be",
+      "operation_released": true,
+      "ordinal": 34,
+      "query_capacity_held": 0,
+      "worker_returned": true
+    },
+    {
+      "event": "http_response",
+      "monotonic_ns": 761708774519720,
+      "ordinal": 34,
+      "status": 204
+    }
+  ],
+  "server_http_status": 204,
+  "settled": true,
+  "slot_released": true,
+  "terminal": "cancelled",
+  "transport": "client_disconnected",
+  "worker_returned": true
+}

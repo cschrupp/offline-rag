@@ -1,0 +1,48 @@
+{
+  "attempts": 3,
+  "classification": "FAILED_LOCAL_DEVELOPMENT_ATTEMPT",
+  "driver_failure": "query slot release was not independently observed",
+  "files": [
+    {
+      "bytes": 3070,
+      "path": "raw/1.terminal.json",
+      "sha256": "3bfc6d599e133dc95bed9a3083d28815dc1b05db1a6c80a0b0791aa89ab7d56b"
+    },
+    {
+      "bytes": 3229,
+      "path": "raw/3.terminal.json",
+      "sha256": "44331f69911ffbd0c80438110a192757ed53ba57a85a8bd0e1f9aca4ffa686d0"
+    },
+    {
+      "bytes": 5605,
+      "path": "raw/driver-events.jsonl",
+      "sha256": "7c1554dace6efd156457ef40c6f7e625f640d93aad099bde7d4535546a97401c"
+    },
+    {
+      "bytes": 5845,
+      "path": "raw/events.jsonl",
+      "sha256": "2c859713d091648be5310a6457b37d86567338629fbeef4aff3c27ae1cdc4de7"
+    },
+    {
+      "bytes": 17,
+      "path": "driver_done.json",
+      "sha256": "5cc319f54b05a38799195a491c303aa686eab7caccfdbbf1e8b8c07405cb7392"
+    },
+    {
+      "bytes": 193,
+      "path": "supervisor_result.json",
+      "sha256": "cbb290219a844aa4f588b7507bf10ecbb05c69e4b81a23c192470b3e51375f68"
+    }
+  ],
+  "raw_journal_file_count": 4,
+  "restoration": {
+    "abort_reason": "driver_failed",
+    "driver_exit_code": 1,
+    "recorded_at_unix": 1795394531.853487,
+    "restoration_error": null,
+    "session_containers_remaining": 0,
+    "state": "restored"
+  },
+  "settled": 2,
+  "terminal_records": 2
+}

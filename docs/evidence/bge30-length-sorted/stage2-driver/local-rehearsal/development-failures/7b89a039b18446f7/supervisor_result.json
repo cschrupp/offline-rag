@@ -1,0 +1,8 @@
+{
+  "abort_reason": "driver_failed",
+  "driver_exit_code": 1,
+  "recorded_at_unix": 1795397603.791309,
+  "restoration_error": null,
+  "session_containers_remaining": 0,
+  "state": "restored"
+}

@@ -1,3 +1,11 @@
+# Historical Stage 2 partial-driver response
+
+> **Historical snapshot:** this response predates completion of the Docker
+> adapter and full local rehearsal. Its pending items were implemented and
+> tested later. The current qualification is recorded in
+> [DOCKER_QUALIFICATION.md](DOCKER_QUALIFICATION.md) and the full completion
+> handoff in [STAGE2_FINAL_RESPONSE.md](STAGE2_FINAL_RESPONSE.md).
+
 # Stage 2 driver qualification checkpoint
 
 **Partial local qualification. Execution gate remains closed.**

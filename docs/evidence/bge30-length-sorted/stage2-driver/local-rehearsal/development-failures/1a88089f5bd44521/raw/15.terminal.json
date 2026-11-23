@@ -1,0 +1,115 @@
+{
+  "admission": "accepted",
+  "global_query_capacity_empty": true,
+  "http_status": null,
+  "operation": "opq_c32aba634f404f6ea5c8c0ec5f900eeb",
+  "ordinal": 15,
+  "reason": "client_disconnect",
+  "scientific_trace_ids": [],
+  "server_events": [
+    {
+      "event": "http_received",
+      "method": "POST",
+      "monotonic_ns": 760576469384754,
+      "ordinal": 15,
+      "path": "/v1/workspaces/ws_d6e6785dc8e24e08b0a9596a188823f9/conversation/turn"
+    },
+    {
+      "event": "preflight_admitted",
+      "monotonic_ns": 760576483602688,
+      "operation_id": "opq_c32aba634f404f6ea5c8c0ec5f900eeb",
+      "ordinal": 15
+    },
+    {
+      "disconnected": false,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 760576487813900,
+      "ordinal": 15,
+      "poll": 1
+    },
+    {
+      "event": "worker_started",
+      "monotonic_ns": 760576487965008,
+      "operation_id": "opq_c32aba634f404f6ea5c8c0ec5f900eeb",
+      "ordinal": 15
+    },
+    {
+      "active_count": 1,
+      "deadline_mono": 760578.498834452,
+      "event": "query_admitted",
+      "monotonic_ns": 760576498847102,
+      "operation_id": "opq_c32aba634f404f6ea5c8c0ec5f900eeb",
+      "ordinal": 15,
+      "query_capacity_held": 1
+    },
+    {
+      "active_count": 1,
+      "checkpoint": "pre_grounded",
+      "event": "checkpoint_hold_entered",
+      "monotonic_ns": 760576501264737,
+      "ordinal": 15,
+      "preflight_count": 0,
+      "query_capacity_held": 1
+    },
+    {
+      "disconnected": true,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 760576541786585,
+      "ordinal": 15,
+      "poll": 2
+    },
+    {
+      "event": "request_disconnect_observed",
+      "monotonic_ns": 760576544950995,
+      "ordinal": 15
+    },
+    {
+      "event": "cancel_signaled",
+      "monotonic_ns": 760576547911604,
+      "operation_id": "opq_c32aba634f404f6ea5c8c0ec5f900eeb",
+      "ordinal": 15,
+      "reason": "client_disconnect",
+      "terminal_claimed": false
+    },
+    {
+      "checkpoint": "pre_grounded",
+      "event": "checkpoint_hold_released",
+      "monotonic_ns": 760576566222612,
+      "ordinal": 15
+    },
+    {
+      "error_code": "request_cancelled",
+      "event": "worker_failed",
+      "exception": "AppError",
+      "monotonic_ns": 760576573354489,
+      "operation_id": "opq_c32aba634f404f6ea5c8c0ec5f900eeb",
+      "ordinal": 15,
+      "query_trace_present": false,
+      "reason": "client_disconnect",
+      "trace_id": null
+    },
+    {
+      "active_count": 0,
+      "event": "slot_released",
+      "global_query_capacity_empty": true,
+      "monotonic_ns": 760576576242183,
+      "operation_id": "opq_c32aba634f404f6ea5c8c0ec5f900eeb",
+      "operation_released": true,
+      "ordinal": 15,
+      "query_capacity_held": 0,
+      "worker_returned": true
+    },
+    {
+      "event": "http_response",
+      "monotonic_ns": 760576578748670,
+      "ordinal": 15,
+      "status": 204
+    }
+  ],
+  "server_http_status": 204,
+  "settled": true,
+  "slot_released": true,
+  "terminal": "cancelled",
+  "transport": "client_disconnected",
+  "worker_returned": true
+}

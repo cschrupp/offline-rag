@@ -1,0 +1,127 @@
+{
+  "admission": "accepted",
+  "global_query_capacity_empty": true,
+  "http_status": 500,
+  "operation": "opq_d31c994a86be49ceae60f7167196ea44",
+  "ordinal": 18,
+  "reason": "shutdown",
+  "scientific_trace_ids": [
+    "trace_a669dae043cd443ba05472a4c508d4c0"
+  ],
+  "server_events": [
+    {
+      "event": "http_received",
+      "method": "POST",
+      "monotonic_ns": 757977235223410,
+      "ordinal": 18,
+      "path": "/v1/workspaces/ws_c7e2829afa8e45be880a45037a47a5ba/conversation/turn"
+    },
+    {
+      "event": "preflight_admitted",
+      "monotonic_ns": 757977245564501,
+      "operation_id": "opq_d31c994a86be49ceae60f7167196ea44",
+      "ordinal": 18
+    },
+    {
+      "event": "worker_started",
+      "monotonic_ns": 757977250807496,
+      "operation_id": "opq_d31c994a86be49ceae60f7167196ea44",
+      "ordinal": 18
+    },
+    {
+      "disconnected": false,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 757977251212369,
+      "ordinal": 18,
+      "poll": 1
+    },
+    {
+      "active_count": 1,
+      "deadline_mono": 757979.263676272,
+      "event": "query_admitted",
+      "monotonic_ns": 757977263688666,
+      "operation_id": "opq_d31c994a86be49ceae60f7167196ea44",
+      "ordinal": 18,
+      "query_capacity_held": 1
+    },
+    {
+      "event": "scorer_entered",
+      "monotonic_ns": 757977281221040,
+      "ordinal": 18,
+      "pair_count": 30,
+      "strategy": "consecutive"
+    },
+    {
+      "active_count": 1,
+      "event": "forward_entered",
+      "monotonic_ns": 757977286909012,
+      "ordinal": 18,
+      "query_capacity_held": 1,
+      "shape": [
+        16,
+        216
+      ],
+      "strategy": "consecutive"
+    },
+    {
+      "disconnected": false,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 757977314622865,
+      "ordinal": 18,
+      "poll": 2
+    },
+    {
+      "event": "cancel_signaled",
+      "monotonic_ns": 757977983182545,
+      "operation_id": "opq_d31c994a86be49ceae60f7167196ea44",
+      "ordinal": 18,
+      "reason": "shutdown",
+      "terminal_claimed": false
+    },
+    {
+      "event": "forward_released",
+      "monotonic_ns": 757979006661028,
+      "ordinal": 18
+    },
+    {
+      "event": "scorer_returned",
+      "monotonic_ns": 757979009833022,
+      "ordinal": 18,
+      "score_count": 30
+    },
+    {
+      "error_code": "request_cancelled",
+      "event": "worker_failed",
+      "exception": "AppError",
+      "monotonic_ns": 757979017931144,
+      "operation_id": "opq_d31c994a86be49ceae60f7167196ea44",
+      "ordinal": 18,
+      "query_trace_present": true,
+      "reason": null,
+      "trace_id": "trace_a669dae043cd443ba05472a4c508d4c0"
+    },
+    {
+      "active_count": 0,
+      "event": "slot_released",
+      "global_query_capacity_empty": true,
+      "monotonic_ns": 757979020084868,
+      "operation_id": "opq_d31c994a86be49ceae60f7167196ea44",
+      "operation_released": true,
+      "ordinal": 18,
+      "query_capacity_held": 0,
+      "worker_returned": true
+    },
+    {
+      "event": "http_response",
+      "monotonic_ns": 757979022130955,
+      "ordinal": 18,
+      "status": 500
+    }
+  ],
+  "server_http_status": 500,
+  "settled": true,
+  "slot_released": true,
+  "terminal": "cancelled",
+  "transport": "response",
+  "worker_returned": true
+}

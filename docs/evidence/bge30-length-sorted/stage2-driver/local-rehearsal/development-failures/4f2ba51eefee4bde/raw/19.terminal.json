@@ -1,0 +1,78 @@
+{
+  "admission": "preparation_failed",
+  "global_query_capacity_empty": true,
+  "http_status": 504,
+  "operation": "opq_3ee1a375a7bf4a7fbdaa8b6c2df785d3",
+  "ordinal": 19,
+  "reason": "query_deadline_exceeded",
+  "scientific_trace_ids": [],
+  "server_events": [
+    {
+      "event": "http_received",
+      "method": "POST",
+      "monotonic_ns": 761452099012834,
+      "ordinal": 19,
+      "path": "/v1/workspaces/ws_d05f40f28cec4619aeeef4ee11d6b698/conversation/turn"
+    },
+    {
+      "event": "preflight_admitted",
+      "monotonic_ns": 761452240782510,
+      "operation_id": "opq_3ee1a375a7bf4a7fbdaa8b6c2df785d3",
+      "ordinal": 19
+    },
+    {
+      "event": "worker_started",
+      "monotonic_ns": 761452246776057,
+      "operation_id": "opq_3ee1a375a7bf4a7fbdaa8b6c2df785d3",
+      "ordinal": 19
+    },
+    {
+      "disconnected": false,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 761452248654714,
+      "ordinal": 19,
+      "poll": 1
+    },
+    {
+      "disconnected": false,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 761452358481544,
+      "ordinal": 19,
+      "poll": 2
+    },
+    {
+      "error_code": "request_timeout",
+      "event": "worker_failed",
+      "exception": "AppError",
+      "monotonic_ns": 761458508828209,
+      "operation_id": "opq_3ee1a375a7bf4a7fbdaa8b6c2df785d3",
+      "ordinal": 19,
+      "query_trace_present": false,
+      "reason": "query_deadline_exceeded",
+      "trace_id": null
+    },
+    {
+      "active_count": 0,
+      "event": "slot_released",
+      "global_query_capacity_empty": true,
+      "monotonic_ns": 761458515116584,
+      "operation_id": "opq_3ee1a375a7bf4a7fbdaa8b6c2df785d3",
+      "operation_released": true,
+      "ordinal": 19,
+      "query_capacity_held": 0,
+      "worker_returned": true
+    },
+    {
+      "event": "http_response",
+      "monotonic_ns": 761458525852092,
+      "ordinal": 19,
+      "status": 504
+    }
+  ],
+  "server_http_status": 504,
+  "settled": true,
+  "slot_released": true,
+  "terminal": "timed_out",
+  "transport": "response",
+  "worker_returned": true
+}

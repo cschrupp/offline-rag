@@ -1,0 +1,118 @@
+{
+  "attempts": 16,
+  "classification": "FAILED_LOCAL_DEVELOPMENT_ATTEMPT",
+  "driver_failure": "held-forward disconnect outcome mismatch",
+  "files": [
+    {
+      "bytes": 3316,
+      "path": "raw/1.terminal.json",
+      "sha256": "ceb895850b64dd836de4732de2634ab3d9753ba3dd30ee36859fcf8512e8cfdc"
+    },
+    {
+      "bytes": 3171,
+      "path": "raw/10.terminal.json",
+      "sha256": "966843897a85b9bbda297655a77f87fbb2b846f54b45d433aa5f4979e004a8c3"
+    },
+    {
+      "bytes": 1928,
+      "path": "raw/11.terminal.json",
+      "sha256": "87090d09596f464b760a6eecb8963233a5e1e5f8f00942602a69fdb95c2c2cc4"
+    },
+    {
+      "bytes": 898,
+      "path": "raw/12.terminal.json",
+      "sha256": "58f2aa810383d205bdac62159ebbb06b180e7450d7c757143aae6523a1606f77"
+    },
+    {
+      "bytes": 898,
+      "path": "raw/13.terminal.json",
+      "sha256": "5abe6daa66d5118b4788cb0deb04c91c78143b6cb2045a811f5f2e31ab35195b"
+    },
+    {
+      "bytes": 3331,
+      "path": "raw/14.terminal.json",
+      "sha256": "ad79a59eeaada100b27317c881785f9c07fb0c9b2ed57b767cd0194e758f6e61"
+    },
+    {
+      "bytes": 3086,
+      "path": "raw/15.terminal.json",
+      "sha256": "ec75be54b4124bbff92dddc290096fc3afe6e39d47a1e1a3ff73e971714d6db4"
+    },
+    {
+      "bytes": 3404,
+      "path": "raw/16.terminal.json",
+      "sha256": "06859bd910decfe560039b437fee3c7b646547749fe229d5a842eabb252a3794"
+    },
+    {
+      "bytes": 1920,
+      "path": "raw/2.terminal.json",
+      "sha256": "f587e9ffb84ee054b5a6c01a7cb4483195d227e462b22f51f479a2f3a9136e96"
+    },
+    {
+      "bytes": 3316,
+      "path": "raw/3.terminal.json",
+      "sha256": "4561c341c7187ba350009ab3abfa2c8781dc6a500d429525c878f66e98d5d33f"
+    },
+    {
+      "bytes": 894,
+      "path": "raw/4.terminal.json",
+      "sha256": "0460230dbc51ad4c96570066908a81d711d854edf99c7af2b55e130b250a8af9"
+    },
+    {
+      "bytes": 1920,
+      "path": "raw/5.terminal.json",
+      "sha256": "afb3775fe5f71984c3f66d404e5100c0bf3a8dfb65b581f820903b6b61b55625"
+    },
+    {
+      "bytes": 894,
+      "path": "raw/6.terminal.json",
+      "sha256": "e98188256ca942de07242dd626f04c24f199a9495b3c1a04bf90a08a13c5684b"
+    },
+    {
+      "bytes": 3316,
+      "path": "raw/7.terminal.json",
+      "sha256": "e162dc603525b6f960b86af7af85f887229df53d174424dc52046f1ac9233e1c"
+    },
+    {
+      "bytes": 3157,
+      "path": "raw/8.terminal.json",
+      "sha256": "2711215b730c356a6ffe49939bb7530ec7a93c1651fb0f84d620042de074ebba"
+    },
+    {
+      "bytes": 1920,
+      "path": "raw/9.terminal.json",
+      "sha256": "1c65b5731aa980199c95fd60c84c2a944a0bb47249d5ca188bd1d98e0660cf57"
+    },
+    {
+      "bytes": 29995,
+      "path": "raw/driver-events.jsonl",
+      "sha256": "0ddcb6ab78329536a87e10c25da9cf26d51e5f83d7fb89b66db195746218a142"
+    },
+    {
+      "bytes": 23498,
+      "path": "raw/events.jsonl",
+      "sha256": "cffe0b027f78d1d65c98fff26a2270acf50dd4d30757962826c64aaf4cb17be2"
+    },
+    {
+      "bytes": 17,
+      "path": "driver_done.json",
+      "sha256": "5cc319f54b05a38799195a491c303aa686eab7caccfdbbf1e8b8c07405cb7392"
+    },
+    {
+      "bytes": 193,
+      "path": "supervisor_result.json",
+      "sha256": "d4f6fb1aaa543c1943348a1367a51ad180292c54b17e07e03231178ecf385750"
+    }
+  ],
+  "raw_journal_file_count": 18,
+  "restoration": {
+    "abort_reason": "driver_failed",
+    "driver_exit_code": 1,
+    "recorded_at_unix": 1795394698.363016,
+    "restoration_error": null,
+    "session_containers_remaining": 0,
+    "state": "restored"
+  },
+  "settled": 15,
+  "terminal_records": 16
+}

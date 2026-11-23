@@ -1,0 +1,119 @@
+{
+  "admission": "accepted",
+  "global_query_capacity_empty": true,
+  "http_status": 504,
+  "operation": "opq_3e9081578e4c46eb981d283709a4f7f7",
+  "ordinal": 17,
+  "reason": "query_deadline_exceeded",
+  "scientific_trace_ids": [
+    "trace_723aae324d7b4fee9f711adcd050dbe8"
+  ],
+  "server_events": [
+    {
+      "event": "http_received",
+      "method": "POST",
+      "monotonic_ns": 761434949943677,
+      "ordinal": 17,
+      "path": "/v1/workspaces/ws_d05f40f28cec4619aeeef4ee11d6b698/conversation/turn"
+    },
+    {
+      "event": "preflight_admitted",
+      "monotonic_ns": 761434953065869,
+      "operation_id": "opq_3e9081578e4c46eb981d283709a4f7f7",
+      "ordinal": 17
+    },
+    {
+      "disconnected": false,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 761434955508178,
+      "ordinal": 17,
+      "poll": 1
+    },
+    {
+      "event": "worker_started",
+      "monotonic_ns": 761434955670321,
+      "operation_id": "opq_3e9081578e4c46eb981d283709a4f7f7",
+      "ordinal": 17
+    },
+    {
+      "active_count": 1,
+      "deadline_mono": 761436.964558845,
+      "event": "query_admitted",
+      "monotonic_ns": 761434964572806,
+      "operation_id": "opq_3e9081578e4c46eb981d283709a4f7f7",
+      "ordinal": 17,
+      "query_capacity_held": 1
+    },
+    {
+      "event": "scorer_entered",
+      "monotonic_ns": 761434976593194,
+      "ordinal": 17,
+      "pair_count": 30,
+      "strategy": "consecutive"
+    },
+    {
+      "active_count": 1,
+      "event": "forward_entered",
+      "monotonic_ns": 761434979778109,
+      "ordinal": 17,
+      "query_capacity_held": 1,
+      "shape": [
+        16,
+        216
+      ],
+      "strategy": "consecutive"
+    },
+    {
+      "disconnected": false,
+      "event": "request_disconnect_poll",
+      "monotonic_ns": 761435009030684,
+      "ordinal": 17,
+      "poll": 2
+    },
+    {
+      "event": "forward_released",
+      "monotonic_ns": 761437017722368,
+      "ordinal": 17
+    },
+    {
+      "event": "scorer_returned",
+      "monotonic_ns": 761437028194486,
+      "ordinal": 17,
+      "score_count": 30
+    },
+    {
+      "error_code": "request_timeout",
+      "event": "worker_failed",
+      "exception": "AppError",
+      "monotonic_ns": 761437035178553,
+      "operation_id": "opq_3e9081578e4c46eb981d283709a4f7f7",
+      "ordinal": 17,
+      "query_trace_present": true,
+      "reason": "query_deadline_exceeded",
+      "trace_id": "trace_723aae324d7b4fee9f711adcd050dbe8"
+    },
+    {
+      "active_count": 0,
+      "event": "slot_released",
+      "global_query_capacity_empty": true,
+      "monotonic_ns": 761437037262046,
+      "operation_id": "opq_3e9081578e4c46eb981d283709a4f7f7",
+      "operation_released": true,
+      "ordinal": 17,
+      "query_capacity_held": 0,
+      "worker_returned": true
+    },
+    {
+      "event": "http_response",
+      "monotonic_ns": 761437039138275,
+      "ordinal": 17,
+      "status": 504
+    }
+  ],
+  "server_http_status": 504,
+  "settled": true,
+  "slot_released": true,
+  "terminal": "timed_out",
+  "transport": "response",
+  "worker_returned": true
+}

@@ -1,0 +1,140 @@
+{
+  "attempted_submissions": 19,
+  "classification": "FAILED_LOCAL_DEVELOPMENT_ATTEMPT_RESTORED",
+  "files": [
+    {
+      "bytes": 3316,
+      "path": "raw/1.terminal.json",
+      "sha256": "d4e3843502ee8cc3b380d7efdd13327d0f8fa59bc3d66cd84b2633e20327f20f"
+    },
+    {
+      "bytes": 3331,
+      "path": "raw/10.terminal.json",
+      "sha256": "ae5334f554e1193ccc29572130b745ca3fd35d525953b823a5e577ab49d3fbdc"
+    },
+    {
+      "bytes": 3331,
+      "path": "raw/11.terminal.json",
+      "sha256": "2c92ffc1192d6598ccbb2637ad9e635119dc02bce25e30cb7b01bc18e04b1771"
+    },
+    {
+      "bytes": 1928,
+      "path": "raw/12.terminal.json",
+      "sha256": "a83c49b4016b4e306bdc6e80a77d40bd94b1c022ff8c53b7b24034e8b388e8a1"
+    },
+    {
+      "bytes": 898,
+      "path": "raw/13.terminal.json",
+      "sha256": "4cbe99bc99dd405901c5eb6a608358e4dbc9835cc30da7aee728322e569ccd14"
+    },
+    {
+      "bytes": 898,
+      "path": "raw/14.terminal.json",
+      "sha256": "c9a47ad4bab84557cccbcdc58633866e260f25c3b72291a17bcad325f295668f"
+    },
+    {
+      "bytes": 3086,
+      "path": "raw/15.terminal.json",
+      "sha256": "66614b39b332a3cbed1e40b7a4f885d1b099b91ee189a6c3c24e3852c7f1643e"
+    },
+    {
+      "bytes": 3414,
+      "path": "raw/16.terminal.json",
+      "sha256": "ebda0089466db88fb96cd8f93b6cce1bbb13db5ca08da55808f0e44833d5e205"
+    },
+    {
+      "bytes": 3072,
+      "path": "raw/17.terminal.json",
+      "sha256": "aafbe5f3d38f4b71db44c5dd3dabae9ff822f0cbfa2d18ebda6b5b1e0b1ea360"
+    },
+    {
+      "bytes": 3266,
+      "path": "raw/18.terminal.json",
+      "sha256": "82dc8ac0a041bbe7f63d19f8e442f185e96967085bd8da4327429605846642d1"
+    },
+    {
+      "bytes": 2088,
+      "path": "raw/19.terminal.json",
+      "sha256": "5799ee54bde85d540b58f13361281f48a423e9fdf536ded09206f28ffdf1535d"
+    },
+    {
+      "bytes": 3157,
+      "path": "raw/2.terminal.json",
+      "sha256": "91968021703be85f94adf1097dc66d22b44ebda47ec9603e7f4385a2f634cd48"
+    },
+    {
+      "bytes": 1920,
+      "path": "raw/3.terminal.json",
+      "sha256": "7f40c1ba05b594ff6151f80e616e8c56567ffee4dc3a296325d8458a39580861"
+    },
+    {
+      "bytes": 3157,
+      "path": "raw/4.terminal.json",
+      "sha256": "355cca22b51e2c95464682daa5beefa229eaa8eea50bfb71ba338b8444539aef"
+    },
+    {
+      "bytes": 894,
+      "path": "raw/5.terminal.json",
+      "sha256": "39f060e944bb6d63b426a1e968edae347352125c371a61418f3f76db935928bc"
+    },
+    {
+      "bytes": 1918,
+      "path": "raw/6.terminal.json",
+      "sha256": "80a2f8df8baf26abd65ccbcdd77673865b72c5bc2daa1f44ac3efd7bb6cca115"
+    },
+    {
+      "bytes": 1920,
+      "path": "raw/7.terminal.json",
+      "sha256": "d016e585b216f9c66506aa18d477ebdfc9c25d903453cea1f94f0ff3e735a9de"
+    },
+    {
+      "bytes": 3157,
+      "path": "raw/8.terminal.json",
+      "sha256": "ec4eb6fb5d37e7c8c5d284abda30be63678c4130059353b4efce6cb155b42679"
+    },
+    {
+      "bytes": 1920,
+      "path": "raw/9.terminal.json",
+      "sha256": "ac71785f152536663a27137bab293265fe4275f14966dbcca9ab56da7e8a3c04"
+    },
+    {
+      "bytes": 38877,
+      "path": "raw/driver-events.jsonl",
+      "sha256": "3d565fc6c5ab155d4f0ef2c1c114ef14da937e2fcdfab2c314622f71b036afbd"
+    },
+    {
+      "bytes": 30185,
+      "path": "raw/events.jsonl",
+      "sha256": "6c4917ef04db81b6475f7279cb3ea2a2431f76d726bbe8ee091b80851ab329f0"
+    },
+    {
+      "bytes": 17,
+      "path": "driver_done.json",
+      "sha256": "5cc319f54b05a38799195a491c303aa686eab7caccfdbbf1e8b8c07405cb7392"
+    },
+    {
+      "bytes": 194,
+      "path": "supervisor_result.json",
+      "sha256": "032b878452404abd76a3e024de4f5a7553dcbe89eded74fedb160013df8b5712"
+    }
+  ],
+  "first_failure": {
+    "admission": "preparation_failed",
+    "http_status": 504,
+    "ordinal": 19,
+    "reason": "query_deadline_exceeded",
+    "scientific_trace_ids": [],
+    "server_http_status": 504,
+    "terminal": "timed_out"
+  },
+  "raw_journal_file_count": 21,
+  "restoration": {
+    "abort_reason": "driver_failed",
+    "driver_exit_code": 1,
+    "recorded_at_unix": 1795398630.3012884,
+    "restoration_error": null,
+    "session_containers_remaining": 0,
+    "state": "restored"
+  },
+  "settled_submissions": 18
+}

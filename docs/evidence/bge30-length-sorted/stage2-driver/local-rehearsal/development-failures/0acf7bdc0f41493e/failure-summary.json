@@ -1,0 +1,73 @@
+{
+  "attempts": 7,
+  "classification": "FAILED_LOCAL_DEVELOPMENT_ATTEMPT",
+  "driver_failure": "ambiguous rejection",
+  "files": [
+    {
+      "bytes": 3157,
+      "path": "raw/1.terminal.json",
+      "sha256": "75ce8c73b7e41a9e43986ff825edd8933aee9f344e51bc6ef1140a5bb2477831"
+    },
+    {
+      "bytes": 3315,
+      "path": "raw/2.terminal.json",
+      "sha256": "37187fd102da8871760a79679de8b8a6d79b73f215f88bc67dc8769cd857109c"
+    },
+    {
+      "bytes": 894,
+      "path": "raw/3.terminal.json",
+      "sha256": "3ad726942d9a2ac77b5d48193145771374ca2a2c40e43db0cb8e54731a9efc50"
+    },
+    {
+      "bytes": 3316,
+      "path": "raw/4.terminal.json",
+      "sha256": "92c069ac17a0f45093d7918d2e13952cf4ba1ba6cb237226b612d5b1667666f3"
+    },
+    {
+      "bytes": 894,
+      "path": "raw/5.terminal.json",
+      "sha256": "4be6c23fac781a66920d770c0c913514203cb39b3185836912565d28a96f2f3e"
+    },
+    {
+      "bytes": 894,
+      "path": "raw/6.terminal.json",
+      "sha256": "ef06a5f9dda0cf7f3e986069adef00833f8ea6370e46567c190793f6f0449dee"
+    },
+    {
+      "bytes": 1920,
+      "path": "raw/7.terminal.json",
+      "sha256": "75d691e6ae0d913e863b62e9a421e117ada48bc04c5014331f8e61cffaef8d87"
+    },
+    {
+      "bytes": 11208,
+      "path": "raw/driver-events.jsonl",
+      "sha256": "3f038eed22d7b140b4f4939c89ee2b6dad396311ae197275bbf1fc72ec432f49"
+    },
+    {
+      "bytes": 9300,
+      "path": "raw/events.jsonl",
+      "sha256": "5654eb90402c5925342828d463eb2361163e8404d4a8e4bf14cf714e021599dc"
+    },
+    {
+      "bytes": 17,
+      "path": "driver_done.json",
+      "sha256": "5cc319f54b05a38799195a491c303aa686eab7caccfdbbf1e8b8c07405cb7392"
+    },
+    {
+      "bytes": 193,
+      "path": "supervisor_result.json",
+      "sha256": "2dd81f10783f0c37a01dcde845adf335c4bf833d7c7295518bc02963b1bb431c"
+    }
+  ],
+  "raw_journal_file_count": 9,
+  "restoration": {
+    "abort_reason": "driver_failed",
+    "driver_exit_code": 1,
+    "recorded_at_unix": 1795394627.900573,
+    "restoration_error": null,
+    "session_containers_remaining": 0,
+    "state": "restored"
+  },
+  "settled": 6,
+  "terminal_records": 7
+}
