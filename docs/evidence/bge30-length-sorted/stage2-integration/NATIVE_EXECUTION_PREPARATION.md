@@ -59,7 +59,7 @@ After this preparation revision has been pushed, use the recorded code candidate
 ```bash
 REPO=/path/to/offline-rag
 CODE=/var/tmp/seneca-stage2-native-code
-CANDIDATE_SHA=<native-preparation-code-commit>
+CANDIDATE_SHA=69c46fb0796eea4287b8aec6111077f08c4ec38f
 git -C "$REPO" fetch origin prep/stage2-docker-transport
 git -C "$REPO" worktree add --detach "$CODE" "$CANDIDATE_SHA"
 test -z "$(git -C "$CODE" status --porcelain)"
