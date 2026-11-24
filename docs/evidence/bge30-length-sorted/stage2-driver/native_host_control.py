@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from docker_adapter import LABEL, docker
@@ -16,6 +18,7 @@ from docker_watchdog import supervise as supervise_docker_session
 APP_NAME = "seneca-review"
 EXPECTED_APP_IMAGE_REF = "seneca-review:9c92e706c4b9"
 STAGE2_CONTAINER_PREFIX = "seneca-stage2-"
+COMPLETION_SCHEMA = "seneca-rich2-stage1-completion-v1"
 
 
 def rich2_stage1_container_identity(session: str) -> tuple[str, str]:
@@ -32,6 +35,69 @@ def mark_watchdog_failure(*, done: Path, abort: Path) -> None:
     """Release a preflight-failed session to the independent restore watchdog."""
     abort.touch(exist_ok=True)
     done.touch(exist_ok=True)
+
+
+def write_completion_record(
+    *, done: Path, session: str, exit_code: int, diagnostic_result: Path
+) -> None:
+    """Atomically publish a successful one-shot completion for the watchdog."""
+    rich2_stage1_container_identity(session)
+    if type(exit_code) is not int or exit_code != 0:
+        raise ValueError("only a successful diagnostic can complete the session")
+    result = json.loads(diagnostic_result.read_text(encoding="utf-8"))
+    if (
+        result.get("schema") != "seneca-rich2-stage1-observation-v1"
+        or result.get("status") != "executed_single_assembler_call"
+        or result.get("generation_invoked") is not False
+        or result.get("external_network") is not False
+    ):
+        raise RuntimeError("diagnostic result is not a valid completed Rich 2 probe")
+    record = {
+        "schema": COMPLETION_SCHEMA,
+        "session": session,
+        "exit_code": exit_code,
+        "ended_at_unix": time.time(),
+    }
+    temporary = done.with_name(done.name + ".tmp")
+    if done.exists() or temporary.exists():
+        raise FileExistsError("completion record already exists")
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(json.dumps(record, sort_keys=True) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(temporary, done)
+        temporary.unlink()
+        directory_fd = os.open(done.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
+def validate_completion_record(path: Path, *, session: str) -> None:
+    """Require a complete, session-bound success record before accepting done."""
+    rich2_stage1_container_identity(session)
+    record = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(record, dict):
+        raise TypeError("watchdog completion record is invalid")
+    ended_at = record.get("ended_at_unix")
+    if (
+        set(record) != {"schema", "session", "exit_code", "ended_at_unix"}
+        or record.get("schema") != COMPLETION_SCHEMA
+        or record.get("session") != session
+        or type(record.get("exit_code")) is not int
+        or record["exit_code"] != 0
+        or isinstance(ended_at, bool)
+        or not isinstance(ended_at, (int, float))
+        or not math.isfinite(ended_at)
+        or ended_at <= 0
+    ):
+        raise RuntimeError("watchdog completion record is invalid")
 
 
 def inspect_named(name: str) -> dict:
@@ -159,7 +225,12 @@ def verify(
             raise RuntimeError("published workspace/snapshot metadata changed")
 
 
-def verify_scratch_unowned(root: Path, *, layout: str = "stage2") -> None:
+def verify_scratch_unowned(
+    root: Path,
+    *,
+    layout: str = "stage2",
+    allow_missing_qdrant: bool = False,
+) -> None:
     containers = docker("ps", "-aq").split()
     if containers:
         for item in json.loads(docker("inspect", *containers)):
@@ -168,7 +239,11 @@ def verify_scratch_unowned(root: Path, *, layout: str = "stage2") -> None:
                 if source == root or root in source.parents:
                     raise RuntimeError("a Docker container still mounts native scratch")
     if layout == "rich2-stage1":
-        assert_qdrant_unowned(root / "data" / "qdrant")
+        qdrant_path = root / "data" / "qdrant"
+        if qdrant_path.exists() or qdrant_path.is_symlink():
+            assert_qdrant_unowned(qdrant_path)
+        elif not allow_missing_qdrant:
+            raise RuntimeError("isolated Qdrant storage is missing")
     elif layout == "stage2":
         for strategy in ("A", "B"):
             assert_qdrant_unowned(root / strategy / "data" / "qdrant")
@@ -207,6 +282,7 @@ def main() -> None:
     verify_parser = commands.add_parser("verify")
     verify_parser.add_argument("snapshot", type=Path)
     verify_parser.add_argument("--scratch", type=Path, required=True)
+    verify_parser.add_argument("--abort", type=Path)
     verify_parser.add_argument("--metadata-baseline", type=Path)
     verify_parser.add_argument(
         "--metadata-mode", choices=("metadata", "rich2-metadata"), default="metadata"
@@ -220,6 +296,11 @@ def main() -> None:
     failure_parser = commands.add_parser("signal-failure")
     failure_parser.add_argument("--done", type=Path, required=True)
     failure_parser.add_argument("--abort", type=Path, required=True)
+    complete_parser = commands.add_parser("complete")
+    complete_parser.add_argument("--done", type=Path, required=True)
+    complete_parser.add_argument("--session", required=True)
+    complete_parser.add_argument("--exit-code", type=int, required=True)
+    complete_parser.add_argument("--diagnostic-result", type=Path, required=True)
     identity_parser = commands.add_parser("rich2-identity")
     identity_parser.add_argument("session")
     if len(sys.argv) > 1 and sys.argv[1] == "supervise":
@@ -247,9 +328,6 @@ def main() -> None:
     elif options.command == "restore":
         verify(options.snapshot, start_if_stopped=True)
     elif options.command == "verify":
-        verify_scratch_unowned(
-            options.scratch.resolve(strict=True), layout=options.scratch_layout
-        )
         verify(
             options.snapshot,
             start_if_stopped=False,
@@ -257,14 +335,29 @@ def main() -> None:
             cpuset=options.cpuset,
             metadata_mode=options.metadata_mode,
         )
+        verify_scratch_unowned(
+            options.scratch.resolve(),
+            layout=options.scratch_layout,
+            allow_missing_qdrant=bool(options.abort and options.abort.exists()),
+        )
     elif options.command == "check-qdrant":
         assert_qdrant_unowned(options.path.resolve(strict=True))
     elif options.command == "signal-failure":
         mark_watchdog_failure(done=options.done, abort=options.abort)
+    elif options.command == "complete":
+        write_completion_record(
+            done=options.done,
+            session=options.session,
+            exit_code=options.exit_code,
+            diagnostic_result=options.diagnostic_result,
+        )
     elif options.command == "rich2-identity":
         name, label = rich2_stage1_container_identity(options.session)
         print(json.dumps({"name": name, "label": label}, sort_keys=True))
     else:
+        expected_name, _ = rich2_stage1_container_identity(options.session)
+        if options.container != expected_name:
+            raise RuntimeError("watchdog container name does not match its session")
         root = options.scratch.resolve(strict=True)
         snapshot = options.snapshot.resolve(strict=True)
         restore = [sys.executable, __file__, "restore", str(snapshot)]
@@ -275,6 +368,8 @@ def main() -> None:
             str(snapshot),
             "--scratch",
             str(root),
+            "--abort",
+            str((root / options.abort).resolve()),
             "--scratch-layout",
             options.scratch_layout,
             "--metadata-baseline",
@@ -298,9 +393,7 @@ def main() -> None:
             stop_timeout=30,
         )
         if status == 0:
-            done_record = json.loads((root / options.done).read_text(encoding="utf-8"))
-            if done_record.get("exit_code") != 0:
-                status = 1
+            validate_completion_record(root / options.done, session=options.session)
         raise SystemExit(status)
 
 

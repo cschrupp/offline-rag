@@ -71,9 +71,11 @@ restoration failure leaves the amendment unqualified.
 
 The independent restore watchdog must be running **before** the original
 container is stopped. First capture its exact identity and the read-only
-`rich2-metadata` publication baseline while the service is healthy. Create the
-unique scratch/session directory, empty `stage1` output directory, and absent
-`done`/`abort` markers. Then launch
+`rich2-metadata` publication baseline while the service is healthy. Set
+`SESSION` to the 16-character session identity, `SCRATCH` to
+`/var/tmp/seneca-stage2-$SESSION`, and `DONE`/`ABORT` to paths inside that
+directory. Create the unique scratch/session directory, empty `stage1` output
+directory, and absent markers. Then launch
 `native_host_control.py supervise` independently with the captured container
 snapshot, metadata baseline, `--scratch-layout rich2-stage1`,
 `--metadata-mode rich2-metadata`, the verified CPU set, and the bounded
@@ -86,16 +88,36 @@ and run isolated preflight. A shell `EXIT`/signal handler must call
 any failure after watchdog startup, then wait for that supervisor's restoration
 and verification before returning failure. This includes stop, copy and
 preflight errors, even when no diagnostic container was created. On a normal
-one-shot completion, the coordinator records the exit status in `done`, waits
-for the supervisor, and treats any nonzero diagnostic or supervisor status as
-qualification failure.
+one-shot completion, the coordinator first waits for the diagnostic container
+to exit and records its status. Only when that status is zero and the mounted
+`$SCRATCH/stage1/rich2-stage1.json` is present does it emit the watchdog's
+session-bound completion record:
+
+```bash
+python "$DRIVER/native_host_control.py" complete \
+  --done "$DONE" --session "$SESSION" --exit-code 0 \
+  --diagnostic-result "$SCRATCH/stage1/rich2-stage1.json"
+```
+
+The command validates the one-shot observation schema and writes an atomic
+`seneca-rich2-stage1-completion-v1` record containing the session, zero exit
+status, and completion timestamp. The supervisor validates that record after
+restoration. On any nonzero diagnostic status or earlier coordinator failure,
+use `signal-failure` instead; an incomplete/empty scratch data tree is allowed
+only on that aborted path. The original service, both health endpoints and
+publication metadata are verified before scratch ownership checks. If the
+Qdrant directory exists, ownership is always checked; successful probe paths
+also require that directory to exist and be unowned. Wait for the supervisor,
+and treat any nonzero diagnostic or supervisor status as qualification failure.
 
 The diagnostic container name and ownership label must come from
 `native_host_control.py rich2-identity "$SESSION"`. The required pair is
 `seneca-stage2-$SESSION` and
-`io.seneca.stage2.session=$SESSION`; verify the created container with the
-existing `docker_adapter.owned_container()` check before starting it. The
-watchdog then terminates only that exact session-owned container. Successful
+`io.seneca.stage2.session=$SESSION`. Create the container with exactly that
+name and label, then verify it with the existing
+`docker_adapter.owned_container()` check before starting it. The watchdog
+accepts only the same session-bound name and terminates only that owned
+container. Successful
 completion requires the watchdog's post-restore checks: original container
 identity/image/mounts/restart policy, both health endpoints, unchanged
 read-only publication metadata, and unowned scratch Qdrant storage.

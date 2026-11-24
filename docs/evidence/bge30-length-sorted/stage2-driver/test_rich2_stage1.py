@@ -586,6 +586,8 @@ def test_existing_single_use_artifact_rejected_before_model_work(
 
 
 def test_rich2_restoration_layout_checks_its_only_qdrant_copy(tmp_path, monkeypatch):
+    qdrant = tmp_path / "data" / "qdrant"
+    qdrant.mkdir(parents=True)
     observed = []
     monkeypatch.setattr(
         native_host_control,
@@ -593,9 +595,254 @@ def test_rich2_restoration_layout_checks_its_only_qdrant_copy(tmp_path, monkeypa
         lambda path: observed.append(path),
     )
 
-    native_host_control.verify_scratch_unowned(tmp_path, layout="rich2-stage1")
+    native_host_control.verify_scratch_unowned(
+        tmp_path, layout="rich2-stage1", allow_missing_qdrant=True
+    )
 
-    assert observed == [tmp_path / "data" / "qdrant"]
+    assert observed == [qdrant]
+
+
+def test_aborted_restore_without_scratch_data_still_verifies_original_first(
+    tmp_path, monkeypatch
+):
+    snapshot = tmp_path / "baseline.json"
+    metadata = tmp_path / "metadata.json"
+    scratch = tmp_path / "session"
+    scratch.mkdir()
+    abort = tmp_path / "abort"
+    abort.touch()
+    baseline = {
+        "id": "original-id",
+        "image_id": "image-id",
+        "image_ref": "seneca-review:9c92e706c4b9",
+        "restart_policy": {"Name": "unless-stopped"},
+        "network_mode": "bridge",
+        "mounts": [{"destination": "/data", "source": "/srv/seneca/data"}],
+        "running": True,
+    }
+    metadata_baseline = {"publication": "unchanged"}
+    snapshot.write_text(json.dumps(baseline), encoding="utf-8")
+    metadata.write_text(json.dumps(metadata_baseline), encoding="utf-8")
+    events = []
+    monkeypatch.setattr(
+        native_host_control,
+        "inspect_named",
+        lambda _name: {
+            "id": "original-id",
+            "image_id": "image-id",
+            "image_ref": "seneca-review:9c92e706c4b9",
+            "restart_policy": {"Name": "unless-stopped"},
+            "network_mode": "bridge",
+            "mounts": [{"destination": "/data", "source": "/srv/seneca/data"}],
+            "running": True,
+        },
+    )
+    monkeypatch.setattr(
+        native_host_control,
+        "health",
+        lambda container_id: events.append(("health", container_id)),
+    )
+
+    def run_preflight(*_args, **_kwargs):
+        events.append(("publication",))
+        return types.SimpleNamespace(stdout=json.dumps(metadata_baseline))
+
+    monkeypatch.setattr(native_host_control.subprocess, "run", run_preflight)
+    original_verify = native_host_control.verify
+
+    def observe_verify(*args, **kwargs):
+        events.append(("original", kwargs["start_if_stopped"]))
+        return original_verify(*args, **kwargs)
+
+    monkeypatch.setattr(native_host_control, "verify", observe_verify)
+    monkeypatch.setattr(
+        native_host_control,
+        "docker",
+        lambda *args: events.append(("docker", args)) or "",
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "native_host_control.py",
+            "verify",
+            str(snapshot),
+            "--scratch",
+            str(scratch),
+            "--abort",
+            str(abort),
+            "--metadata-baseline",
+            str(metadata),
+            "--metadata-mode",
+            "rich2-metadata",
+            "--cpuset",
+            "0-3",
+            "--scratch-layout",
+            "rich2-stage1",
+        ],
+    )
+
+    native_host_control.main()
+
+    assert not (scratch / "data" / "qdrant").exists()
+    assert events[0] == ("original", False)
+    assert events[1] == ("health", "original-id")
+    assert events[2] == ("publication",)
+    assert events[3][0] == "docker"  # scratch-container ownership scan
+
+
+def test_restoration_health_checks_both_endpoints(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        native_host_control,
+        "docker",
+        lambda *args, **kwargs: calls.append(args) or "",
+    )
+
+    native_host_control.health("original-id")
+
+    assert len(calls) == 2
+    assert calls[0][-1] == "health/live"
+    assert calls[1][-1] == "health/ready"
+
+
+def test_completed_rich2_session_requires_qdrant_directory(tmp_path, monkeypatch):
+    monkeypatch.setattr(native_host_control, "docker", lambda *_args: "")
+
+    with pytest.raises(RuntimeError, match="Qdrant storage is missing"):
+        native_host_control.verify_scratch_unowned(
+            tmp_path, layout="rich2-stage1", allow_missing_qdrant=False
+        )
+
+
+def test_aborted_session_still_rejects_surviving_scratch_container(
+    tmp_path, monkeypatch
+):
+    container = {"Mounts": [{"Source": str(tmp_path / "data"), "Destination": "/data"}]}
+    monkeypatch.setattr(
+        native_host_control,
+        "docker",
+        lambda *args: (
+            "container-id" if args == ("ps", "-aq") else json.dumps([container])
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="still mounts native scratch"):
+        native_host_control.verify_scratch_unowned(
+            tmp_path, layout="rich2-stage1", allow_missing_qdrant=True
+        )
+
+
+def test_rich2_qdrant_owner_is_rejected_even_for_aborted_session(tmp_path, monkeypatch):
+    qdrant = tmp_path / "data" / "qdrant"
+    qdrant.mkdir(parents=True)
+    monkeypatch.setattr(native_host_control, "docker", lambda *_args: "")
+    monkeypatch.setattr(
+        native_host_control.subprocess,
+        "run",
+        lambda *_args, **_kwargs: types.SimpleNamespace(
+            returncode=0,
+            stdout="COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\nseneca 42 user 3r DIR 8,1 0 1 /qdrant\n",
+            stderr="",
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="already holds isolated Qdrant"):
+        native_host_control.verify_scratch_unowned(
+            tmp_path, layout="rich2-stage1", allow_missing_qdrant=True
+        )
+
+
+def test_rich2_completion_record_is_session_bound_and_fail_closed(tmp_path):
+    done = tmp_path / "done.json"
+    result = tmp_path / "rich2-stage1.json"
+    result.write_text(
+        json.dumps(
+            {
+                "schema": "seneca-rich2-stage1-observation-v1",
+                "status": "executed_single_assembler_call",
+                "generation_invoked": False,
+                "external_network": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    native_host_control.write_completion_record(
+        done=done,
+        session="0123456789abcdef",
+        exit_code=0,
+        diagnostic_result=result,
+    )
+    record = json.loads(done.read_text(encoding="utf-8"))
+    assert record["schema"] == "seneca-rich2-stage1-completion-v1"
+    assert record["session"] == "0123456789abcdef"
+    native_host_control.validate_completion_record(done, session="0123456789abcdef")
+
+    with pytest.raises(RuntimeError, match="completion record is invalid"):
+        native_host_control.validate_completion_record(done, session="fedcba9876543210")
+    with pytest.raises(ValueError, match="only a successful diagnostic"):
+        native_host_control.write_completion_record(
+            done=tmp_path / "failed.json",
+            session="0123456789abcdef",
+            exit_code=1,
+            diagnostic_result=result,
+        )
+
+
+def test_supervise_requires_session_owned_diagnostic_name(tmp_path, monkeypatch):
+    root = tmp_path / "session"
+    root.mkdir()
+    snapshot = root / "baseline.json"
+    metadata = root / "metadata.json"
+    snapshot.write_text("{}", encoding="utf-8")
+    metadata.write_text("{}", encoding="utf-8")
+    called = []
+    monkeypatch.setattr(
+        native_host_control,
+        "supervise_docker_session",
+        lambda **kwargs: called.append(kwargs) or 124,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "native_host_control.py",
+            "supervise",
+            "--session",
+            "0123456789abcdef",
+            "--container",
+            "seneca-stage2-0123456789abcdef",
+            "--scratch",
+            str(root),
+            "--snapshot",
+            str(snapshot),
+            "--done",
+            "done.json",
+            "--abort",
+            "abort",
+            "--ceiling-epoch",
+            "9999999999",
+            "--metadata-baseline",
+            str(metadata),
+            "--metadata-mode",
+            "rich2-metadata",
+            "--cpuset",
+            "0-3",
+            "--scratch-layout",
+            "rich2-stage1",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        native_host_control.main()
+
+    assert exc.value.code == 124
+    assert len(called) == 1
+    assert called[0]["name"] == "seneca-stage2-0123456789abcdef"
+    assert called[0]["session"] == "0123456789abcdef"
+    verify_command = called[0]["verify"]
+    assert "--abort" in verify_command
+    assert str(root / "abort") in verify_command
 
 
 def test_rich2_container_identity_uses_watchdog_session_label():
