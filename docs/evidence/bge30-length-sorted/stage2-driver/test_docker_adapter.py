@@ -157,3 +157,41 @@ def test_native_teardown_preserves_thirty_second_application_grace(monkeypatch):
     assert docker_calls[0][0] == ("stop", "--timeout", "30", "container-id")
     assert docker_calls[0][1]["timeout"] == 35
     assert docker_calls[1][0] == ("rm", "container-id")
+
+
+def test_native_readiness_allows_model_startup_beyond_synthetic_window(monkeypatch):
+    monotonic_values = iter((0, 0, 31))
+    docker_calls = []
+
+    monkeypatch.setattr(adapter_module, "monotonic", lambda: next(monotonic_values))
+    monkeypatch.setattr(adapter_module, "sleep", lambda _seconds: None)
+
+    def delayed_ready(*args, **kwargs):
+        docker_calls.append((args, kwargs))
+        if len(docker_calls) == 1:
+            raise adapter_module.subprocess.CalledProcessError(1, args)
+        return ""
+
+    monkeypatch.setattr(adapter_module, "docker", delayed_ready)
+
+    assert adapter_module.readiness_timeout("native") == 120
+    assert adapter_module.readiness_timeout("synthetic") == 30
+    adapter_module.wait_for_http_ready("seneca-stage2-test", 120)
+
+    assert len(docker_calls) == 2
+
+
+def test_native_readiness_remains_bounded(monkeypatch):
+    monotonic_values = iter((0, 0, 120))
+    monkeypatch.setattr(adapter_module, "monotonic", lambda: next(monotonic_values))
+    monkeypatch.setattr(adapter_module, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(
+        adapter_module,
+        "docker",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            adapter_module.subprocess.CalledProcessError(1, "docker")
+        ),
+    )
+
+    with pytest.raises(TimeoutError, match="real app did not become ready"):
+        adapter_module.wait_for_http_ready("seneca-stage2-test", 120)

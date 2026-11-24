@@ -13,6 +13,8 @@ from time import monotonic, monotonic_ns, sleep
 IMAGE = "sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee"
 SOURCE = "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e"
 LABEL = "io.seneca.stage2.session"
+NATIVE_READY_TIMEOUT_S = 120
+SYNTHETIC_READY_TIMEOUT_S = 30
 
 
 def docker(*args, timeout=15, input_text=None):
@@ -136,6 +138,34 @@ def read_events(journal: Path) -> list[dict]:
 
 def events_for(journal: Path, ordinal: int) -> list[dict]:
     return [row for row in read_events(journal) if row.get("ordinal") == ordinal]
+
+
+def wait_for_http_ready(container: str, timeout: int) -> None:
+    """Wait for the diagnostic app's readiness endpoint within a fixed bound."""
+    deadline = monotonic() + timeout
+    while monotonic() < deadline:
+        try:
+            docker(
+                "exec",
+                container,
+                "python",
+                "-B",
+                "-c",
+                "import urllib.request; assert urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=1).status == 200",
+                timeout=3,
+            )
+            return
+        except subprocess.SubprocessError:
+            sleep(0.05)
+    raise TimeoutError("real app did not become ready")
+
+
+def readiness_timeout(mode: str) -> int:
+    if mode == "native":
+        return NATIVE_READY_TIMEOUT_S
+    if mode == "synthetic":
+        return SYNTHETIC_READY_TIMEOUT_S
+    raise ValueError("unsupported adapter mode")
 
 
 def wait_for_event(
@@ -584,23 +614,7 @@ class DockerHTTPAdapter:
             if monotonic() >= deadline:
                 raise TimeoutError("server readiness identity missing")
             sleep(0.02)
-        deadline = monotonic() + 30
-        while monotonic() < deadline:
-            try:
-                docker(
-                    "exec",
-                    self.container,
-                    "python",
-                    "-B",
-                    "-c",
-                    "import urllib.request; assert urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=1).status == 200",
-                    timeout=3,
-                )
-                break
-            except subprocess.SubprocessError:
-                sleep(0.05)
-        else:
-            raise TimeoutError("real app did not become ready")
+        wait_for_http_ready(self.container, readiness_timeout(self.mode))
         identity = identities[0]
         if (
             identity.get("strategy") != strategy
