@@ -19,6 +19,7 @@ import torch
 import uvicorn
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from stage2_identity import Stage2IdentityMiddleware
 from stage2_settings import configure_fixture_generation
 
 from offline_rag.api.app import create_app
@@ -712,6 +713,20 @@ def install_observers(app, runtime, counters, *, native_mode=False, strategy=Non
 
     app.add_middleware(Stage2RequestObserver)
 
+    def diagnostic_identity():
+        if native_mode:
+            return native_identity(runtime.settings, strategy)
+        return {
+            "mode": "synthetic",
+            "strategy": strategy,
+            "source_revision": "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e",
+        }
+
+    app.add_middleware(
+        Stage2IdentityMiddleware,
+        identity_provider=diagnostic_identity,
+    )
+
     @app.post("/__stage2/drain")
     async def diagnostic_drain():
         event("diagnostic_drain_requested", None)
@@ -750,18 +765,6 @@ def install_observers(app, runtime, counters, *, native_mode=False, strategy=Non
         runtime.operations.release(handle)
         event("test_query_slot_released", None, operation_id=handle.op_id)
         return JSONResponse({"released": True})
-
-    @app.get("/__stage2/identity")
-    async def diagnostic_identity():
-        if native_mode:
-            return JSONResponse(native_identity(runtime.settings, strategy))
-        return JSONResponse(
-            {
-                "mode": "synthetic",
-                "strategy": strategy,
-                "source_revision": "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e",
-            }
-        )
 
     return originals
 
