@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -19,6 +20,9 @@ APP_NAME = "seneca-review"
 EXPECTED_APP_IMAGE_REF = "seneca-review:9c92e706c4b9"
 STAGE2_CONTAINER_PREFIX = "seneca-stage2-"
 COMPLETION_SCHEMA = "seneca-rich2-stage1-completion-v1"
+RICH2_BINDING_SHA256 = (
+    "b3e2fcae6140ca3d1e87c3d925f3ec281d8c48889ff44723739def4cbd0db7a1"
+)
 
 
 def rich2_stage1_container_identity(session: str) -> tuple[str, str]:
@@ -29,6 +33,12 @@ def rich2_stage1_container_identity(session: str) -> tuple[str, str]:
         STAGE2_CONTAINER_PREFIX + session,
         f"{LABEL}={session}",
     )
+
+
+def rich2_stage1_scratch_root(session: str) -> Path:
+    """Return the preflight-compatible scratch root for a valid session."""
+    rich2_stage1_container_identity(session)
+    return Path("/var/tmp") / f"seneca-rich2-stage1-{session}"
 
 
 def mark_watchdog_failure(*, done: Path, abort: Path) -> None:
@@ -45,13 +55,7 @@ def write_completion_record(
     if type(exit_code) is not int or exit_code != 0:
         raise ValueError("only a successful diagnostic can complete the session")
     result = json.loads(diagnostic_result.read_text(encoding="utf-8"))
-    if (
-        result.get("schema") != "seneca-rich2-stage1-observation-v1"
-        or result.get("status") != "executed_single_assembler_call"
-        or result.get("generation_invoked") is not False
-        or result.get("external_network") is not False
-    ):
-        raise RuntimeError("diagnostic result is not a valid completed Rich 2 probe")
+    validate_rich2_completion_observation(result)
     record = {
         "schema": COMPLETION_SCHEMA,
         "session": session,
@@ -77,6 +81,105 @@ def write_completion_record(
     except BaseException:
         temporary.unlink(missing_ok=True)
         raise
+
+
+def validate_rich2_completion_observation(result: object) -> None:
+    """Validate the committed binding and essential one-shot result evidence."""
+    if not isinstance(result, dict):
+        raise TypeError("diagnostic result is not a valid Rich 2 observation")
+    driver_dir = Path(__file__).resolve().parent
+    binding_path = (
+        driver_dir.parent / "stage2-integration" / "rich2-stage1-binding.json"
+    )
+    binding_bytes = binding_path.read_bytes()
+    binding_sha256 = hashlib.sha256(binding_bytes).hexdigest()
+    if binding_sha256 != RICH2_BINDING_SHA256:
+        raise RuntimeError("committed Rich 2 binding identity changed")
+    binding = json.loads(binding_bytes)
+    expected_identity = {
+        "binding_sha256": binding_sha256,
+        "workspace_id": binding["workspace"]["workspace_id"],
+        "workspace_revision": binding["workspace"]["revision"],
+        "source_inventory_sha256": binding["workspace"]["source_inventory_sha256"],
+        "source_ids": sorted(binding["source_scope"]["source_ids"]),
+        "document_ids": sorted(binding["source_scope"]["document_ids"]),
+        "snapshot_id": binding["publication"]["snapshot_id"],
+        "snapshot_manifest_sha256": binding["publication"]["snapshot_manifest_sha256"],
+        "scientific_settings_sha256": binding["publication"]["science_settings_sha256"],
+        "question_sha256": binding["question"]["normalized_sha256"],
+        "source_scope": "all_active",
+    }
+    if any(result.get(key) != value for key, value in expected_identity.items()):
+        raise RuntimeError(
+            "diagnostic result differs from the committed Rich 2 binding"
+        )
+    candidate_ids = result.get("fused_candidate_ids")
+    candidate_document_ids = result.get("candidate_document_ids")
+    score_pairs = result.get("candidate_score_associations")
+    ranked_ids = result.get("ranked_candidate_ids")
+    anchor_ids = result.get("anchor_ids")
+    evidence_unit_ids = result.get("evidence_unit_ids")
+    if (
+        result.get("schema") != "seneca-rich2-stage1-observation-v1"
+        or result.get("status") != "executed_single_assembler_call"
+        or result.get("generation_invoked") is not False
+        or result.get("external_network") is not False
+        or binding.get("expected_candidate_count") != 10
+        or result.get("fused_candidate_count") != 10
+        or not isinstance(candidate_ids, list)
+        or len(candidate_ids) != 10
+        or not isinstance(candidate_document_ids, list)
+        or not isinstance(score_pairs, list)
+        or not isinstance(ranked_ids, list)
+        or not isinstance(anchor_ids, list)
+        or not isinstance(evidence_unit_ids, list)
+        or result.get("ranking_tie_break") != "chunk-id-asc-v1"
+        or type(result.get("context_token_count")) is not int
+        or result["context_token_count"] < 0
+        or type(result.get("evidence_unit_count")) is not int
+        or result.get("evidence_unit_count") != len(evidence_unit_ids)
+        or not _is_sha256(result.get("packed_context_sha256"))
+    ):
+        raise RuntimeError(
+            "diagnostic result is incomplete or not a successful Rich 2 probe"
+        )
+    if result.get("fused_candidate_ids_sha256") != _sha256_json(candidate_ids):
+        raise RuntimeError("diagnostic candidate identity hash is inconsistent")
+    if result.get("anchor_ids_sha256") != _sha256_json(anchor_ids):
+        raise RuntimeError("diagnostic anchor identity hash is inconsistent")
+    if result.get("evidence_unit_ids_sha256") != _sha256_json(evidence_unit_ids):
+        raise RuntimeError("diagnostic evidence identity hash is inconsistent")
+    expected_document_id = binding["source_scope"]["document_ids"][0]
+    for association in score_pairs:
+        if (
+            not isinstance(association, dict)
+            or association.get("candidate_id_sha256")
+            != hashlib.sha256(
+                str(association.get("candidate_id", "")).encode()
+            ).hexdigest()
+        ):
+            raise RuntimeError("diagnostic candidate-score association is incomplete")
+    from rich2_stage1 import validate_observation
+
+    validate_observation(
+        candidate_ids=candidate_ids,
+        candidate_document_ids=candidate_document_ids,
+        expected_document_id=expected_document_id,
+        score_pairs=score_pairs,
+        ranked_ids=ranked_ids,
+        anchor_ids=anchor_ids,
+        evidence_unit_ids=evidence_unit_ids,
+        expected_count=10,
+    )
+
+
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value) is not None
+
+
+def _sha256_json(value: object) -> str:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 def validate_completion_record(path: Path, *, session: str) -> None:
@@ -353,7 +456,16 @@ def main() -> None:
         )
     elif options.command == "rich2-identity":
         name, label = rich2_stage1_container_identity(options.session)
-        print(json.dumps({"name": name, "label": label}, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "name": name,
+                    "label": label,
+                    "scratch_root": str(rich2_stage1_scratch_root(options.session)),
+                },
+                sort_keys=True,
+            )
+        )
     else:
         expected_name, _ = rich2_stage1_container_identity(options.session)
         if options.container != expected_name:

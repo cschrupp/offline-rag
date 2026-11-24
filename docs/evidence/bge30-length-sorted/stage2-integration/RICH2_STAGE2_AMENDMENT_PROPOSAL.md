@@ -72,18 +72,94 @@ restoration failure leaves the amendment unqualified.
 The independent restore watchdog must be running **before** the original
 container is stopped. First capture its exact identity and the read-only
 `rich2-metadata` publication baseline while the service is healthy. Set
-`SESSION` to the 16-character session identity, `SCRATCH` to
-`/var/tmp/seneca-stage2-$SESSION`, and `DONE`/`ABORT` to paths inside that
-directory. Create the unique scratch/session directory, empty `stage1` output
-directory, and absent markers. Then launch
-`native_host_control.py supervise` independently with the captured container
-snapshot, metadata baseline, `--scratch-layout rich2-stage1`,
-`--metadata-mode rich2-metadata`, the verified CPU set, and the bounded
-monotonic ceiling.
+`DRIVER` and `INPUTS` to those directories in the reviewed checkout, and set
+`SESSION` to a 16-character lowercase hex identity. Derive the container name,
+ownership label, and scratch root from the helper so the scratch root matches
+the `rich2-stage1` path assertion in `preflight_host.sh`:
+
+```bash
+set -euo pipefail
+: "${DRIVER:?set to the reviewed stage2-driver checkout}"
+: "${INPUTS:?set to its stage2-integration directory}"
+: "${CPUSET:?set to the verified four-CPU set}"
+: "${STOP_EPOCH:?set to the freshly verified host STOP epoch}"
+: "${WATCHDOG_MONOTONIC_DEADLINE:?set to the accepted bounded monotonic deadline}"
+SESSION=$(python3 -c 'import secrets; print(secrets.token_hex(8))')
+IDENTITY=$(python "$DRIVER/native_host_control.py" rich2-identity "$SESSION")
+CONTAINER_NAME=$(python -c 'import json,sys; print(json.load(sys.stdin)["name"])' <<<"$IDENTITY")
+CONTAINER_LABEL=$(python -c 'import json,sys; print(json.load(sys.stdin)["label"])' <<<"$IDENTITY")
+SCRATCH=$(python -c 'import json,sys; print(json.load(sys.stdin)["scratch_root"])' <<<"$IDENTITY")
+DONE="$SCRATCH/done"
+ABORT="$SCRATCH/abort"
+test ! -e "$SCRATCH"
+mkdir -m 0700 "$SCRATCH"
+sudo install -d -m 0777 -o 10001 -g 10001 "$SCRATCH/stage1"
+test ! -e "$DONE" && test ! -e "$ABORT"
+SNAPSHOT="$SCRATCH/container.json"
+METADATA="$SCRATCH/rich2-metadata.json"
+python "$DRIVER/native_host_control.py" capture "$SNAPSHOT"
+bash "$DRIVER/preflight_host.sh" rich2-metadata \
+  /srv/seneca/data /srv/seneca/models "$CPUSET" > "$METADATA"
+nohup python "$DRIVER/native_host_control.py" supervise \
+  --session "$SESSION" --container "$CONTAINER_NAME" \
+  --scratch "$SCRATCH" --snapshot "$SNAPSHOT" \
+  --done "$DONE" --abort "$ABORT" \
+  --ceiling-epoch "$WATCHDOG_MONOTONIC_DEADLINE" \
+  --metadata-baseline "$METADATA" --metadata-mode rich2-metadata \
+  --cpuset "$CPUSET" --scratch-layout rich2-stage1 \
+  > "$SCRATCH/watchdog.log" 2>&1 < /dev/null &
+WATCHDOG_PID=$!
+restore_on_exit() {
+  status=$?
+  trap - EXIT INT TERM
+  if [[ ! -e $DONE ]]; then
+    python "$DRIVER/native_host_control.py" signal-failure \
+      --abort "$ABORT" --done "$DONE" || status=1
+  fi
+  wait "$WATCHDOG_PID" || watchdog_status=$?
+  if [[ ${watchdog_status:-0} -ne 0 && $status -eq 0 ]]; then
+    status=$watchdog_status
+  fi
+  exit "$status"
+}
+trap restore_on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+sleep 0.2
+kill -0 "$WATCHDOG_PID"
+WATCHDOG_STATE=$(ps -o stat= -p "$WATCHDOG_PID")
+test -n "$WATCHDOG_STATE" && [[ $WATCHDOG_STATE != Z* ]]
+```
+
+This produces scratch `/var/tmp/seneca-rich2-stage1-$SESSION`, while the
+separately required diagnostic container remains `seneca-stage2-$SESSION`
+with label `io.seneca.stage2.session=$SESSION`. Capture the baseline into a
+session-owned file inside `$SCRATCH`. The watchdog command above must return a
+live PID; the monotonic deadline, CPU set, and host checks come from the
+separately accepted execution limits. Confirm the supervisor remains alive
+before proceeding.
 
 Only after the supervisor is confirmed alive may the coordinator stop the
-original container, copy `/srv/seneca/data`, verify exclusive Qdrant ownership,
-and run isolated preflight. A shell `EXIT`/signal handler must call
+original container and copy its data into the session-owned scratch tree. Use
+the previously accepted copy procedure and ensure the copied data is writable
+by the diagnostic UID; never open original Qdrant storage from another process:
+
+```bash
+docker stop --time 30 seneca-review
+test "$(docker inspect --format '{{.State.Running}}' seneca-review)" = false
+sudo install -d -m 0700 -o 10001 -g 10001 "$SCRATCH/data"
+sudo cp -a /srv/seneca/data/. "$SCRATCH/data/"
+```
+
+Then verify exclusive Qdrant ownership and run isolated preflight with the same
+session-root convention:
+
+```bash
+bash "$DRIVER/preflight_host.sh" rich2-stage1 \
+  "$SCRATCH/data" /srv/seneca/models "$CPUSET" "$STOP_EPOCH"
+```
+
+A shell `EXIT`/signal handler must call
 `native_host_control.py signal-failure --abort "$ABORT" --done "$DONE"` on
 any failure after watchdog startup, then wait for that supervisor's restoration
 and verification before returning failure. This includes stop, copy and
@@ -91,13 +167,8 @@ preflight errors, even when no diagnostic container was created. On a normal
 one-shot completion, the coordinator first waits for the diagnostic container
 to exit and records its status. Only when that status is zero and the mounted
 `$SCRATCH/stage1/rich2-stage1.json` is present does it emit the watchdog's
-session-bound completion record:
-
-```bash
-python "$DRIVER/native_host_control.py" complete \
-  --done "$DONE" --session "$SESSION" --exit-code 0 \
-  --diagnostic-result "$SCRATCH/stage1/rich2-stage1.json"
-```
+session-bound completion record using the diagnostic exit status and mounted
+result path, as shown in the launch sequence below.
 
 The command validates the one-shot observation schema and writes an atomic
 `seneca-rich2-stage1-completion-v1` record containing the session, zero exit
@@ -110,17 +181,68 @@ Qdrant directory exists, ownership is always checked; successful probe paths
 also require that directory to exist and be unowned. Wait for the supervisor,
 and treat any nonzero diagnostic or supervisor status as qualification failure.
 
-The diagnostic container name and ownership label must come from
-`native_host_control.py rich2-identity "$SESSION"`. The required pair is
-`seneca-stage2-$SESSION` and
-`io.seneca.stage2.session=$SESSION`. Create the container with exactly that
-name and label, then verify it with the existing
-`docker_adapter.owned_container()` check before starting it. The watchdog
-accepts only the same session-bound name and terminates only that owned
-container. Successful
-completion requires the watchdog's post-restore checks: original container
+The isolated preflight and diagnostic container use the same read-only source
+mounts: the driver checkout at `/review/driver` and frozen inputs at
+`/review/inputs`. The one-shot script resolves those exact container paths;
+local tests continue to resolve inputs from the repository checkout. The
+diagnostic container is created with the session-derived name and label, no
+network, the frozen CPU/memory limits, writable isolated `/data`, read-only
+`/models`, driver and inputs, and the result directory at `/stage1`:
+
+```bash
+docker create --name "$CONTAINER_NAME" --label "$CONTAINER_LABEL" \
+  --network none --cpuset-cpus "$CPUSET" --memory 6g --memory-swap 6g \
+  --mount "type=bind,src=$SCRATCH/data,dst=/data" \
+  --mount "type=bind,src=/srv/seneca/models,dst=/models,readonly" \
+  --mount "type=bind,src=$DRIVER,dst=/review/driver,readonly" \
+  --mount "type=bind,src=$INPUTS,dst=/review/inputs,readonly" \
+  --mount "type=bind,src=$SCRATCH/stage1,dst=/stage1" \
+  -e SENECA_ISOLATED_COPY=verified \
+  -e SENECA_RICH2_STAGE1_EXECUTION_AUTHORIZED=one-call \
+  -e OFFLINE_RAG_CONFIG=/app/config/base.yaml \
+  -e OFFLINE_RAG_DATA_DIR=/data -e OFFLINE_RAG_MODELS_DIR=/models \
+  -e OFFLINE_RAG_STRICT_OFFLINE=true -e HF_HUB_OFFLINE=1 \
+  -e TRANSFORMERS_OFFLINE=1 \
+  --entrypoint timeout \
+  sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04 \
+  -k 2 180 \
+  python -B /review/driver/rich2_stage1.py --execute-one-call
+```
+
+Before `docker start`, verify the created container with
+`docker_adapter.owned_container(CONTAINER_NAME, SESSION)`. Start and wait for
+that exact container; use its exit status and the mounted result path in the
+completion command above. The watchdog accepts only the same session-bound
+name and terminates only that owned container. Successful completion requires
+the watchdog's post-restore checks: original container
 identity/image/mounts/restart policy, both health endpoints, unchanged
 read-only publication metadata, and unowned scratch Qdrant storage.
+
+The ownership check and start/wait sequence is:
+
+```bash
+python - "$DRIVER" "$CONTAINER_NAME" "$SESSION" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+from docker_adapter import owned_container
+assert owned_container(sys.argv[2], sys.argv[3]) is not None
+PY
+docker start "$CONTAINER_NAME" >/dev/null
+DIAGNOSTIC_STATUS=$(docker wait "$CONTAINER_NAME")
+if [[ $DIAGNOSTIC_STATUS -ne 0 ]]; then
+  exit 1
+fi
+sudo chown "$(id -u):$(id -g)" "$SCRATCH/stage1/rich2-stage1.json"
+python "$DRIVER/native_host_control.py" complete \
+  --done "$DONE" --session "$SESSION" --exit-code "$DIAGNOSTIC_STATUS" \
+  --diagnostic-result "$SCRATCH/stage1/rich2-stage1.json"
+```
+
+If `DIAGNOSTIC_STATUS` is nonzero, signal failure and wait for watchdog
+restoration; only status zero proceeds to the observation-backed `complete`
+command. The diagnostic's `/review/inputs` bind is read-only and contains the
+same `rich2-stage1-binding.json`, `stage1-bindings.json`, workload and native
+settings files that local tests resolve from `stage2-integration/`.
 
 ## Explicit boundary
 

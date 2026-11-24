@@ -19,7 +19,16 @@ from pathlib import Path
 from typing import Any
 
 DRIVER_DIR = Path(__file__).resolve().parent
-STAGE2_INPUTS = DRIVER_DIR.parent / "stage2-integration"
+
+
+def resolve_stage2_inputs(driver_dir: Path) -> Path:
+    """Resolve the read-only input mount for either the host or probe image."""
+    if driver_dir.resolve() == Path("/review/driver"):
+        return Path("/review/inputs")
+    return driver_dir.parent / "stage2-integration"
+
+
+STAGE2_INPUTS = resolve_stage2_inputs(DRIVER_DIR)
 RICH2_BINDING_PATH = STAGE2_INPUTS / "rich2-stage1-binding.json"
 STAGE1_BINDINGS_PATH = STAGE2_INPUTS / "stage1-bindings.json"
 RICH2_EXPECTED_CANDIDATES = 10
@@ -676,6 +685,7 @@ def execute_one_call(
         "source_scope": "all_active",
         "fused_candidate_count": len(fused_ids),
         "fused_candidate_ids": fused_ids,
+        "candidate_document_ids": candidate_documents,
         "fused_candidate_ids_sha256": sha256_json(fused_ids),
         "candidate_score_associations": score_associations,
         "ranked_candidate_ids": observation["ranked_ids"],

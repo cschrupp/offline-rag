@@ -21,6 +21,7 @@ from rich2_stage1 import (
     Rich2Stage1Error,
     _claim_single_use,
     _require_single_use_paths_available,
+    resolve_stage2_inputs,
     validate_binding_document,
     validate_observation,
 )
@@ -123,6 +124,31 @@ def test_rich2_binding_is_distinct_and_historical_binding_is_unchanged():
     )
     assert binding["workspace"]["revision"] == 2
     assert binding["historical_rich_binding"]["preserved_sha256"] == historical_sha
+
+
+def test_one_shot_uses_the_actual_read_only_container_input_mount():
+    inputs = resolve_stage2_inputs(Path("/review/driver"))
+    preflight_source = (DRIVER_DIR / "preflight_host.sh").read_text()
+    runbook = (
+        DRIVER_DIR.parent / "stage2-integration" / "RICH2_STAGE2_AMENDMENT_PROPOSAL.md"
+    ).read_text()
+
+    assert resolve_stage2_inputs(DRIVER_DIR) == INPUTS
+    assert inputs == Path("/review/inputs")
+    assert "dst=/review/driver,readonly" in preflight_source
+    assert "dst=/review/inputs,readonly" in preflight_source
+    assert "src=$INPUTS,dst=/review/inputs,readonly" in runbook
+    assert inputs / "rich2-stage1-binding.json" == Path(
+        "/review/inputs/rich2-stage1-binding.json"
+    )
+    assert inputs / "stage1-bindings.json" == Path(
+        "/review/inputs/stage1-bindings.json"
+    )
+    assert inputs / "workloads.json" == Path("/review/inputs/workloads.json")
+    assert inputs / "provider_fixture.py" == Path("/review/inputs/provider_fixture.py")
+    assert inputs / "NATIVE_SETTINGS_MANIFEST.json" == Path(
+        "/review/inputs/NATIVE_SETTINGS_MANIFEST.json"
+    )
 
 
 def test_committed_binding_passes_complete_deterministic_preflight(
@@ -756,17 +782,8 @@ def test_rich2_qdrant_owner_is_rejected_even_for_aborted_session(tmp_path, monke
 def test_rich2_completion_record_is_session_bound_and_fail_closed(tmp_path):
     done = tmp_path / "done.json"
     result = tmp_path / "rich2-stage1.json"
-    result.write_text(
-        json.dumps(
-            {
-                "schema": "seneca-rich2-stage1-observation-v1",
-                "status": "executed_single_assembler_call",
-                "generation_invoked": False,
-                "external_network": False,
-            }
-        ),
-        encoding="utf-8",
-    )
+    observation = valid_completion_observation()
+    result.write_text(json.dumps(observation), encoding="utf-8")
     native_host_control.write_completion_record(
         done=done,
         session="0123456789abcdef",
@@ -785,6 +802,113 @@ def test_rich2_completion_record_is_session_bound_and_fail_closed(tmp_path):
             done=tmp_path / "failed.json",
             session="0123456789abcdef",
             exit_code=1,
+            diagnostic_result=result,
+        )
+
+
+def valid_completion_observation() -> dict:
+    binding_bytes = BINDING_PATH.read_bytes()
+    binding = json.loads(binding_bytes)
+    candidate_ids = [f"chunk-{index:02d}" for index in range(10)]
+    score_associations = [
+        {
+            "candidate_id": candidate_id,
+            "candidate_id_sha256": hashlib.sha256(candidate_id.encode()).hexdigest(),
+            "pair_input_sha256": hashlib.sha256(f"pair-{index}".encode()).hexdigest(),
+            "raw_logit": float(10 - index),
+        }
+        for index, candidate_id in enumerate(candidate_ids)
+    ]
+    anchors = candidate_ids[:3]
+    evidence_ids = ["evidence-unit-1"]
+    return {
+        "schema": "seneca-rich2-stage1-observation-v1",
+        "status": "executed_single_assembler_call",
+        "binding_sha256": hashlib.sha256(binding_bytes).hexdigest(),
+        "workspace_id": binding["workspace"]["workspace_id"],
+        "workspace_revision": binding["workspace"]["revision"],
+        "source_inventory_sha256": binding["workspace"]["source_inventory_sha256"],
+        "source_ids": binding["source_scope"]["source_ids"],
+        "document_ids": binding["source_scope"]["document_ids"],
+        "snapshot_id": binding["publication"]["snapshot_id"],
+        "snapshot_manifest_sha256": binding["publication"]["snapshot_manifest_sha256"],
+        "scientific_settings_sha256": binding["publication"]["science_settings_sha256"],
+        "question_sha256": binding["question"]["normalized_sha256"],
+        "source_scope": "all_active",
+        "generation_invoked": False,
+        "external_network": False,
+        "fused_candidate_count": 10,
+        "fused_candidate_ids": candidate_ids,
+        "candidate_document_ids": binding["source_scope"]["document_ids"] * 10,
+        "fused_candidate_ids_sha256": hashlib.sha256(
+            json.dumps(candidate_ids, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "candidate_score_associations": score_associations,
+        "ranked_candidate_ids": candidate_ids,
+        "ranking_tie_break": "chunk-id-asc-v1",
+        "anchor_ids": anchors,
+        "anchor_ids_sha256": hashlib.sha256(
+            json.dumps(anchors, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "evidence_unit_ids": evidence_ids,
+        "evidence_unit_ids_sha256": hashlib.sha256(
+            json.dumps(evidence_ids, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "evidence_unit_count": len(evidence_ids),
+        "context_token_count": 123,
+        "packed_context_sha256": "a" * 64,
+    }
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "four_fields_only",
+        "missing_candidate",
+        "missing_score",
+        "wrong_association",
+        "wrong_document",
+        "wrong_rank",
+        "missing_context",
+        "wrong_binding",
+    ],
+)
+def test_incomplete_or_inconsistent_observation_cannot_complete(tmp_path, mutation):
+    observation = valid_completion_observation()
+    if mutation == "four_fields_only":
+        observation = {
+            key: observation[key]
+            for key in (
+                "schema",
+                "status",
+                "generation_invoked",
+                "external_network",
+            )
+        }
+    elif mutation == "missing_candidate":
+        observation["fused_candidate_ids"].pop()
+    elif mutation == "missing_score":
+        observation["candidate_score_associations"].pop()
+    elif mutation == "wrong_association":
+        observation["candidate_score_associations"].reverse()
+    elif mutation == "wrong_document":
+        observation["candidate_document_ids"][0] = "out-of-scope-document"
+    elif mutation == "wrong_rank":
+        observation["ranked_candidate_ids"] = list(
+            reversed(observation["ranked_candidate_ids"])
+        )
+    elif mutation == "missing_context":
+        observation["packed_context_sha256"] = ""
+    else:
+        observation["binding_sha256"] = "0" * 64
+    result = tmp_path / "observation.json"
+    result.write_text(json.dumps(observation), encoding="utf-8")
+
+    with pytest.raises(RuntimeError):
+        native_host_control.write_completion_record(
+            done=tmp_path / "done.json",
+            session="0123456789abcdef",
+            exit_code=0,
             diagnostic_result=result,
         )
 
@@ -845,15 +969,35 @@ def test_supervise_requires_session_owned_diagnostic_name(tmp_path, monkeypatch)
     assert str(root / "abort") in verify_command
 
 
-def test_rich2_container_identity_uses_watchdog_session_label():
+def test_rich2_identity_cli_matches_preflight_scratch_and_watchdog_label(
+    monkeypatch, capsys
+):
     from docker_adapter import LABEL
 
     name, label = native_host_control.rich2_stage1_container_identity(
         "0123456789abcdef"
     )
+    scratch = native_host_control.rich2_stage1_scratch_root("0123456789abcdef")
 
     assert name == "seneca-stage2-0123456789abcdef"
     assert label == f"{LABEL}=0123456789abcdef"
+    assert scratch == Path("/var/tmp/seneca-rich2-stage1-0123456789abcdef")
+    preflight_source = (DRIVER_DIR / "preflight_host.sh").read_text()
+    assert "[[ $data == /var/tmp/seneca-rich2-stage1-*/data ]]" in preflight_source
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["native_host_control.py", "rich2-identity", "0123456789abcdef"],
+    )
+
+    native_host_control.main()
+
+    output = json.loads(capsys.readouterr().out)
+    assert output == {
+        "name": name,
+        "label": label,
+        "scratch_root": str(scratch),
+    }
 
 
 def test_preflight_failure_releases_watchdog_to_restore_original(tmp_path, monkeypatch):
