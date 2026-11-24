@@ -421,7 +421,11 @@ def validate_rich2_binding(settings, binding: dict, *, qdrant=None) -> dict:
         "Rich 2 binding scope is malformed",
     )
     require(
-        scope.model_dump(mode="json") == expected_scope
+        scope.workspace_id == workspace_id
+        and scope.workspace_revision == workspace_binding["revision"]
+        and scope.mode == expected_scope["mode"]
+        and scope.source_ids == expected_scope["source_ids"]
+        and scope.document_ids == expected_scope["document_ids"]
         and document_ids == frozenset(expected_scope["document_ids"]),
         "Rich 2 all-active scope drift",
     )

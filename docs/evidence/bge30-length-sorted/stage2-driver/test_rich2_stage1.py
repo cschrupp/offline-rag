@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import importlib.util
@@ -9,8 +10,10 @@ import json
 import sys
 import types
 from pathlib import Path
+from typing import Literal
 
 import pytest
+from pydantic import BaseModel, ConfigDict, Field
 
 DRIVER_DIR = Path(__file__).parent
 sys.path.insert(0, str(DRIVER_DIR))
@@ -154,6 +157,28 @@ def test_one_shot_uses_the_actual_read_only_container_input_mount():
 def test_committed_binding_passes_complete_deterministic_preflight(
     tmp_path, monkeypatch
 ):
+    trace_path = DRIVER_DIR.parents[3] / "src/offline_rag/app/traces.py"
+    trace_module = ast.parse(trace_path.read_text(encoding="utf-8"))
+    scope_class = next(
+        node
+        for node in trace_module.body
+        if isinstance(node, ast.ClassDef) and node.name == "ProductTraceSourceScope"
+    )
+    namespace = {
+        "BaseModel": BaseModel,
+        "ConfigDict": ConfigDict,
+        "Field": Field,
+        "Literal": Literal,
+    }
+    exec(  # noqa: S102 - load the repository schema without provider imports
+        compile(
+            ast.Module(body=[scope_class], type_ignores=[]), str(trace_path), "exec"
+        ),
+        namespace,
+    )
+    ProductTraceSourceScope = namespace["ProductTraceSourceScope"]
+    ProductTraceSourceScope.model_rebuild(_types_namespace=namespace)
+
     binding, historical_sha = load_binding()
     validate_binding_document(binding, historical_sha)
     preflight = load_preflight_with_deterministic_dependencies(monkeypatch)
@@ -266,7 +291,11 @@ def test_committed_binding_passes_complete_deterministic_preflight(
         preflight,
         "_resolve_workspace_source_scope",
         lambda _workspace, source_ids: (
-            types.SimpleNamespace(model_dump=lambda **_kwargs: binding["source_scope"]),
+            ProductTraceSourceScope(
+                workspace_id=workspace_binding["workspace_id"],
+                workspace_revision=workspace_binding["revision"],
+                **binding["source_scope"],
+            ),
             None,
             frozenset(binding["source_scope"]["document_ids"]),
         ),
