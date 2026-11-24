@@ -50,7 +50,8 @@ def _observation(strategy, workload, ordinal):
         "citation_chunk_count": 1,
         "citation_evidence_unit_count": 1,
     }
-    server_events = [scores, ranking, context, citations]
+    generator = {"event": "synthetic_generator_returned", "elapsed_ms": 1.0}
+    server_events = [scores, ranking, context, citations, generator]
     server_events.extend(
         {"event": "forward_started", "shape": [size, seq]} for size in sizes
     )
@@ -65,11 +66,42 @@ def _observation(strategy, workload, ordinal):
         "settled": {
             "event": "settled",
             "ordinal": ordinal,
+            "settled": True,
             "admission": "accepted",
             "terminal": "completed",
             "http_status": 200,
             "server_events": server_events,
         },
+    }
+
+
+def _capacity_rejection(strategy, workload, ordinal, admission):
+    reason = (
+        "query_preflight_capacity_exhausted"
+        if admission == "preflight_rejected"
+        else "query_capacity_exhausted"
+    )
+    settled = {
+        "event": "settled",
+        "ordinal": ordinal,
+        "settled": True,
+        "admission": admission,
+        "terminal": None if admission == "preflight_rejected" else "failed",
+        "operation": None if admission == "preflight_rejected" else "capacity-rejected",
+        "worker_returned": admission == "query_rejected",
+        "http_status": 503,
+        "reason": reason,
+        "scientific_trace_ids": [],
+    }
+    return {
+        "send": {
+            "event": "send_attempt",
+            "ordinal": ordinal,
+            "strategy": strategy,
+            "workload": workload,
+            "case": "load",
+        },
+        "settled": settled,
     }
 
 
@@ -94,6 +126,61 @@ def test_native_parity_accepts_fixed_depth_matching_observations(tmp_path):
     assert result["classification"] == "NATIVE_FIXED_DEPTH_PARITY_PASS"
     assert result["workloads"]["Recipes"]["candidate_count"] == 30
     assert result["workloads"]["Rich"]["candidate_count"] == 10
+    assert result["workloads"]["Recipes"]["consecutive_completed"] == 7
+    assert result["workloads"]["Rich"]["length_sorted_8_completed"] == 7
+
+
+def test_native_parity_accepts_capacity_one_rejections_with_cell_coverage(tmp_path):
+    rows = []
+    ordinal = 1
+    for strategy in ("consecutive", "length_sorted_8"):
+        for workload in ("Recipes", "Rich"):
+            rows.append(_observation(strategy, workload, ordinal))
+            ordinal += 1
+            for attempt in range(6):
+                admission = (
+                    "preflight_rejected" if attempt % 2 == 0 else "query_rejected"
+                )
+                rows.append(_capacity_rejection(strategy, workload, ordinal, admission))
+                ordinal += 1
+    journal = tmp_path / "events.jsonl"
+    _write_journal(journal, rows)
+
+    result = validate(journal)
+
+    assert result["workloads"]["Recipes"]["consecutive_completed"] == 1
+    assert result["workloads"]["Recipes"]["capacity_rejections"]["consecutive"] == {
+        "query_preflight_capacity_exhausted": 3,
+        "query_capacity_exhausted": 3,
+    }
+
+
+def test_native_parity_requires_completed_coverage_for_each_workload_and_arm(
+    tmp_path,
+):
+    rows = []
+    ordinal = 1
+    for strategy in ("consecutive", "length_sorted_8"):
+        for workload in ("Recipes", "Rich"):
+            has_success = not (strategy == "length_sorted_8" and workload == "Rich")
+            for attempt in range(7):
+                if has_success and attempt == 0:
+                    rows.append(_observation(strategy, workload, ordinal))
+                else:
+                    rows.append(
+                        _capacity_rejection(
+                            strategy,
+                            workload,
+                            ordinal,
+                            "query_rejected",
+                        )
+                    )
+                ordinal += 1
+    journal = tmp_path / "events.jsonl"
+    _write_journal(journal, rows)
+
+    with pytest.raises(NativeParityError, match="completed request per arm"):
+        validate(journal)
 
 
 @pytest.mark.parametrize(

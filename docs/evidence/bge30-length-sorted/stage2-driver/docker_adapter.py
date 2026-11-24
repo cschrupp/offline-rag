@@ -15,6 +15,17 @@ SOURCE = "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e"
 LABEL = "io.seneca.stage2.session"
 NATIVE_READY_TIMEOUT_S = 120
 SYNTHETIC_READY_TIMEOUT_S = 30
+NATIVE_FORWARD_ENTRY_TIMEOUT_S = 180
+SYNTHETIC_FORWARD_ENTRY_TIMEOUT_S = 10
+
+
+def forward_entry_timeout(mode):
+    """Bound lifecycle waits by the actual mode's inference deadline."""
+    return (
+        NATIVE_FORWARD_ENTRY_TIMEOUT_S
+        if mode == "native"
+        else SYNTHETIC_FORWARD_ENTRY_TIMEOUT_S
+    )
 
 
 def docker(*args, timeout=15, input_text=None):
@@ -789,13 +800,23 @@ class DockerHTTPAdapter:
                 admitted = wait_for_event(
                     self.journal, case.ordinal, "query_admitted", 10
                 )
-                wait_for_event(self.journal, case.ordinal, "forward_entered", 10)
+                wait_for_event(
+                    self.journal,
+                    case.ordinal,
+                    "forward_entered",
+                    forward_entry_timeout(self.mode),
+                )
                 remaining = float(admitted["deadline_mono"]) - monotonic()
                 if remaining > 0:
                     sleep(remaining + 0.05)
                 (self.journal / f"{case.ordinal}.release").touch(exist_ok=False)
             elif case.case == "drain":
-                wait_for_event(self.journal, case.ordinal, "forward_entered", 10)
+                wait_for_event(
+                    self.journal,
+                    case.ordinal,
+                    "forward_entered",
+                    forward_entry_timeout(self.mode),
+                )
                 drain_requested_after = monotonic_ns()
                 drain_timeout = 195 if self.mode == "native" else 40
                 drain = subprocess.Popen(

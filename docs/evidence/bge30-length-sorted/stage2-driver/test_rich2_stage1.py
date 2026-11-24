@@ -483,7 +483,14 @@ def test_original_preflight_modes_do_not_require_rich2(mode, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "mode", ["rich2-metadata", "rich2-stage1", "native", "native-metadata"]
+    "mode",
+    [
+        "rich2-metadata",
+        "rich2-stage1",
+        "native",
+        "native-smoke",
+        "native-metadata",
+    ],
 )
 def test_rich2_preflight_modes_use_recipes_and_rich2_not_live_historical_rich(
     mode, monkeypatch

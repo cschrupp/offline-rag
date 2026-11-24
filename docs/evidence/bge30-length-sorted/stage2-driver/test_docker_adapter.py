@@ -195,3 +195,8 @@ def test_native_readiness_remains_bounded(monkeypatch):
 
     with pytest.raises(TimeoutError, match="real app did not become ready"):
         adapter_module.wait_for_http_ready("seneca-stage2-test", 120)
+
+
+def test_native_forward_entry_wait_matches_query_deadline():
+    assert adapter_module.forward_entry_timeout("native") == 180
+    assert adapter_module.forward_entry_timeout("synthetic") == 10

@@ -1,4 +1,4 @@
-"""Run the prepared 36-send native Stage 2 driver on an authorized host."""
+"""Run the native Stage 2 campaign or a one-request engineering smoke."""
 
 from __future__ import annotations
 
@@ -20,6 +20,10 @@ INPUTS = DRIVER_DIR.parent / "stage2-integration"
 MIN_AVAILABLE_KIB = 2 * 1024 * 1024
 RESTORATION_RESERVE_S = 900
 EXECUTION_CEILING_S = 2400
+ENGINEERING_SMOKE_EXECUTION_CEILING_S = 300
+ENGINEERING_SMOKE_MIN_STOP_REMAINING_S = (
+    ENGINEERING_SMOKE_EXECUTION_CEILING_S + RESTORATION_RESERVE_S
+)
 
 
 def _append_jsonl(path: Path, row: dict) -> None:
@@ -131,8 +135,13 @@ def run(options) -> dict:
         )
         if baseline.get("running") is not True:
             raise RuntimeError("captured original service state was not running")
-        if options.stop_epoch - time.time() < 4800:
-            raise RuntimeError("less than the required 4,800-second STOP reserve")
+        minimum_stop_remaining = (
+            ENGINEERING_SMOKE_MIN_STOP_REMAINING_S
+            if options.engineering_smoke
+            else 4800
+        )
+        if options.stop_epoch - time.time() < minimum_stop_remaining:
+            raise RuntimeError("automatic STOP reserve is below the mode minimum")
         if available_kib() < MIN_AVAILABLE_KIB:
             raise RuntimeError("host available memory is below 2 GiB")
         if shutil.disk_usage(root).free < options.minimum_free_bytes:
@@ -177,7 +186,13 @@ def run(options) -> dict:
 
         def host_safe() -> bool:
             return (
-                time.monotonic() < started + EXECUTION_CEILING_S
+                time.monotonic()
+                < started
+                + (
+                    ENGINEERING_SMOKE_EXECUTION_CEILING_S
+                    if options.engineering_smoke
+                    else EXECUTION_CEILING_S
+                )
                 and options.stop_epoch - time.time() >= RESTORATION_RESERVE_S
                 and available_kib() >= MIN_AVAILABLE_KIB
             )
@@ -186,7 +201,28 @@ def run(options) -> dict:
             _append_jsonl(driver_events, row)
             heartbeat.touch()
 
-        Driver(adapter, host_safe, emit, duration=EXECUTION_CEILING_S).run()
+        driver = Driver(
+            adapter,
+            host_safe,
+            emit,
+            duration=(
+                ENGINEERING_SMOKE_EXECUTION_CEILING_S
+                if options.engineering_smoke
+                else EXECUTION_CEILING_S
+            ),
+        )
+        if options.engineering_smoke:
+            driver.run_engineering_smoke()
+            status = 0
+            return {
+                "classification": "NATIVE_ENGINEERING_SMOKE_PASS",
+                "session": session,
+                "submission_count": 1,
+                "scientific_campaign": False,
+                "retries": 0,
+            }
+
+        driver.run()
         parity = validate_native_parity(driver_events)
         parity_path = root / "native-parity.json"
         parity_path.write_text(json.dumps(parity, sort_keys=True, indent=2) + "\n")
@@ -213,6 +249,11 @@ def main() -> None:
     parser.add_argument("--baseline-snapshot", type=Path, required=True)
     parser.add_argument("--stop-epoch", type=float, required=True)
     parser.add_argument("--minimum-free-bytes", type=int, required=True)
+    parser.add_argument(
+        "--engineering-smoke",
+        action="store_true",
+        help="run one isolated native request to qualify observer wiring only",
+    )
     options = parser.parse_args()
     result = run(options)
     print(json.dumps(result, sort_keys=True, indent=2))

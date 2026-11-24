@@ -32,9 +32,15 @@ def dispatch_preflight_validators(
 ):
     """Run the exact live binding validators required by this preflight mode."""
     validators = {"Recipes": recipes_validator, "Rich": rich_validator}
-    if mode in {"rich2-stage1", "rich2-metadata", "native", "native-metadata"}:
+    if mode in {
+        "rich2-stage1",
+        "rich2-metadata",
+        "native",
+        "native-smoke",
+        "native-metadata",
+    }:
         return {"Recipes": recipes_validator()}, rich2_validator()
-    if mode in {"metadata", "isolated", "native"}:
+    if mode in {"metadata", "isolated", "native", "native-smoke"}:
         return {label: validator() for label, validator in validators.items()}, None
     raise ValueError("unsupported preflight mode")
 
@@ -648,6 +654,7 @@ def main():
             "metadata",
             "isolated",
             "native",
+            "native-smoke",
             "native-metadata",
             "rich2-stage1",
             "rich2-metadata",
@@ -662,13 +669,13 @@ def main():
     bindings_path = Path(sys.argv[3])
     output_bindings = Path(sys.argv[4]) if len(sys.argv) == 5 else None
     require(
-        (output_bindings is None and mode != "native")
-        or (output_bindings is not None and mode == "native"),
+        (output_bindings is None and mode not in {"native", "native-smoke"})
+        or (output_bindings is not None and mode in {"native", "native-smoke"}),
         "native mode requires its binding output and other modes forbid it",
     )
     manifest = json.loads(manifest_path.read_text())
     native_manifest_path = manifest_path.parent / "NATIVE_SETTINGS_RICH2.json"
-    if mode in {"native", "native-metadata"}:
+    if mode in {"native", "native-smoke", "native-metadata"}:
         from native_contract import (
             load_manifest,
             validate_scientific_settings,
@@ -727,7 +734,7 @@ def main():
         rich2_validator=validate_rich2,
     )
     rich2_binding = rich2_state.get("binding")
-    if mode in {"native", "native-metadata"}:
+    if mode in {"native", "native-smoke", "native-metadata"}:
         rich_workspace = rich2["workspace"]
         rich_publication = rich2_binding["publication"]
         rich_source = rich2_binding["source"]["identity"]
@@ -745,7 +752,7 @@ def main():
             rich2["corpus_name"],
             None,
         )
-    if mode in {"native", "native-metadata"}:
+    if mode in {"native", "native-smoke", "native-metadata"}:
         validate_scientific_settings(
             {label: binding for label, (binding, _, _) in actual.items()},
             native_settings,
@@ -754,12 +761,13 @@ def main():
         all(
             binding == frozen[label]
             for label, (binding, _, _) in actual.items()
-            if label != "Rich" or mode not in {"native", "native-metadata"}
+            if label != "Rich"
+            or mode not in {"native", "native-smoke", "native-metadata"}
         ),
         "binding drift",
     )
     verify_models(settings, manifest)
-    if mode == "native":
+    if mode in {"native", "native-smoke"}:
         require(
             settings.project.strict_offline is True
             and settings.deployment.qdrant_mode == "local"
@@ -796,7 +804,7 @@ def main():
         # Contains only workspace/snapshot/source identifiers, no content or
         # credentials; host driver and same-UID app container must both read it.
         os.chmod(output_bindings, 0o644)
-    if mode in {"isolated", "native", "rich2-stage1"}:
+    if mode in {"isolated", "native", "native-smoke", "rich2-stage1"}:
         import torch
 
         from offline_rag.app.runtime import default_resource_factories

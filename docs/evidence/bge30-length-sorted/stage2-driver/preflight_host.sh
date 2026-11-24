@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 dir=$PWD/docs/evidence/bge30-length-sorted/stage2-driver
 inputs=$PWD/docs/evidence/bge30-length-sorted/stage2-integration
-mode=${1:?metadata, isolated, native, rich2-metadata or rich2-stage1}
+mode=${1:?metadata, isolated, native, native-smoke, rich2-metadata or rich2-stage1}
 data=$(realpath -e "${2:?data path}")
 models=$(realpath -e "${3:?models path}")
 cpuset=${4:?four-CPU set}
@@ -14,11 +14,15 @@ IFS=, read -r -a cpu_ids <<< "$cpuset"
 [[ $models == /srv/seneca/models ]]
 extra_mounts=()
 extra_args=()
-if [[ $mode == isolated || $mode == native || $mode == rich2-stage1 ]]; then
+if [[ $mode == isolated || $mode == native || $mode == native-smoke || $mode == rich2-stage1 ]]; then
     stop_epoch=${5:?verified automatic STOP epoch}
     [[ $stop_epoch =~ ^[0-9]+$ ]]
-    (( stop_epoch - $(date +%s) >= 4800 ))
-    if [[ $mode == native ]]; then
+    minimum_stop_remaining=4800
+    # The one-request smoke runs after service stop; only its restore reserve
+    # is checked here. native_stage2 enforces runtime + restore reserve.
+    [[ $mode != native-smoke ]] || minimum_stop_remaining=900
+    (( stop_epoch - $(date +%s) >= minimum_stop_remaining ))
+    if [[ $mode == native || $mode == native-smoke ]]; then
         output=$(realpath -e "${6:?native binding output directory}")
         [[ -d $output && -z $(find "$output" -mindepth 1 -maxdepth 1 -print -quit) ]]
         [[ $(stat -c '%a' "$output") == 777 ]]
@@ -28,7 +32,7 @@ if [[ $mode == isolated || $mode == native || $mode == rich2-stage1 ]]; then
         extra_args=(/review/output/native-bindings.json)
     fi
 elif [[ $mode != metadata && $mode != rich2-metadata && $mode != native-metadata ]]; then
-    printf 'mode must be metadata, isolated, native, rich2-metadata or rich2-stage1\n' >&2
+    printf 'mode must be metadata, isolated, native, native-smoke, rich2-metadata or rich2-stage1\n' >&2
     exit 2
 fi
 awk '/^MemAvailable:/ {found=1; if ($2 < 2097152) exit 1} END {if (!found) exit 1}' /proc/meminfo
@@ -44,7 +48,7 @@ case "$mode" in
     [[ $data == /srv/seneca/data ]]
     data_mount="type=bind,src=$data,dst=/data,readonly"
     ;;
-  isolated|native)
+  isolated|native|native-smoke)
     if [[ $mode == isolated ]]; then
       [[ $data == /var/tmp/seneca-stage2-copy.*/data ]]
     fi
@@ -85,7 +89,7 @@ esac
 # No container start, stop, restart or image swap for the live service occurs.
 preflight_mode=$mode
 workloads="$inputs/workloads.json"
-if [[ $mode == native || $mode == native-metadata ]]; then
+if [[ $mode == native || $mode == native-smoke || $mode == native-metadata ]]; then
   workloads="$inputs/workloads-rich2.json"
 fi
 timeout -k 5 180 docker run --rm --name "seneca-stage2-preflight-$$" \

@@ -88,6 +88,124 @@ def test_missing_terminal_aborts_without_retry():
     assert fixture.closed == 1
 
 
+def test_failed_load_settlement_is_emitted_before_outcome_validation():
+    class FailedFixture(Fixture):
+        def submit(self, case, *, timeout):
+            assert case.ordinal == 1
+            assert timeout == 195
+            return {
+                "ordinal": case.ordinal,
+                "settled": True,
+                "admission": "accepted",
+                "operation": "failed-operation",
+                "terminal": "failed",
+                "worker_returned": True,
+                "http_status": 500,
+                "server_events": [{"event": "worker_failed", "exception": "AppError"}],
+            }
+
+    events = []
+    fixture = FailedFixture()
+    with pytest.raises(RuntimeError, match="accepted load did not complete"):
+        Driver(fixture, lambda: True, events.append).run()
+
+    assert [event["event"] for event in events] == ["send_attempt", "settled"]
+    assert events[-1]["http_status"] == 500
+    assert fixture.closed == 1
+
+
+def test_engineering_smoke_sends_one_request_and_requires_complete_observation():
+    class SmokeFixture(Fixture):
+        def submit(self, case, *, timeout):
+            record = super().submit(case, timeout=timeout)
+            latency = {
+                "hybrid_rerank": 12,
+                "context_expand": 3,
+                "total": 15,
+                "hybrid_rerank_breakdown": {
+                    "hybrid": 8,
+                    "pair_build": 1,
+                    "rerank_infer": 5,
+                    "sort": 1,
+                    "total": 10,
+                    "hybrid_breakdown": {
+                        "dense": 2,
+                        "lexical": 3,
+                        "fusion": 1,
+                        "total": 6,
+                    },
+                },
+            }
+            record["server_events"] = [
+                {
+                    "event": "native_scores",
+                    "score_count": 30,
+                    "score_associations": [
+                        {
+                            "candidate_id_sha256": f"{index:064x}",
+                            "pair_input_sha256": f"{index + 100:064x}",
+                            "raw_logit": index / 10,
+                        }
+                        for index in range(30)
+                    ],
+                },
+                {
+                    "event": "native_ranked_candidates",
+                    "candidate_count": 30,
+                    "ranked_candidate_order": [
+                        f"{index + 200:064x}" for index in range(30)
+                    ],
+                    "tie_break": "chunk-id-asc-v1",
+                },
+                {"event": "native_context", "latency_ms": latency},
+                {"event": "scorer_returned", "scorer_wall_ms": 11, "scorer_cpu_ms": 9},
+                {
+                    "event": "forward_returned",
+                    "elapsed_ms": 5,
+                    "process_cpu_ms": 4,
+                    "shape": [16, 128],
+                },
+                {
+                    "event": "forward_returned",
+                    "elapsed_ms": 6,
+                    "process_cpu_ms": 5,
+                    "shape": [14, 128],
+                },
+                {
+                    "event": "synthetic_generator_returned",
+                    "elapsed_ms": 1,
+                    "process_cpu_ms": 1,
+                },
+                {
+                    "event": "native_citations",
+                    "citation_chunk_count": 1,
+                    "citation_evidence_unit_count": 1,
+                },
+                {
+                    "event": "worker_returned",
+                    "process_cpu_ms": 100,
+                    "process_rss_kib": 2000,
+                    "process_peak_rss_kib": 2500,
+                },
+            ]
+            return record
+
+    events = []
+    fixture = SmokeFixture()
+    result = Driver(fixture, lambda: True, events.append).run_engineering_smoke()
+
+    assert result["http_status"] == 200
+    assert len(fixture.submitted) == 1
+    assert fixture.submitted[0].workload == "Recipes"
+    assert fixture.submitted[0].strategy == "consecutive"
+    assert [event["event"] for event in events] == [
+        "send_attempt",
+        "settled",
+        "engineering_smoke_complete",
+    ]
+    assert fixture.closed == 1
+
+
 def test_watchdog_stops_new_submissions_and_releases_fixture():
     fixture = Fixture(held=True)
     events = []

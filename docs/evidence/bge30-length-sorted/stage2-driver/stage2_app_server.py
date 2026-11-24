@@ -6,11 +6,14 @@ import argparse
 import contextvars
 import hashlib
 import json
+import math
 import os
+import resource
 import shutil
 import sys
 import threading
 import time
+import traceback
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -71,6 +74,133 @@ def event(kind: str, ordinal: int | None = None, **values: object) -> None:
             os.fsync(stream.fileno())
 
 
+def process_measurement() -> dict[str, int]:
+    """Return Linux process CPU and resident-memory measurements."""
+    pages = int(Path("/proc/self/statm").read_text().split()[1])
+    page_size_kib = os.sysconf("SC_PAGE_SIZE") // 1024
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    return {
+        "process_cpu_ns": time.process_time_ns(),
+        "process_rss_kib": pages * page_size_kib,
+        "process_peak_rss_kib": int(usage.ru_maxrss),
+    }
+
+
+def process_measurement_delta(start: dict[str, int]) -> dict[str, float | int]:
+    """Project request-local process CPU time and current/peak RSS."""
+    end = process_measurement()
+    return {
+        "process_cpu_ms": (end["process_cpu_ns"] - start["process_cpu_ns"]) / 1_000_000,
+        "process_rss_start_kib": start["process_rss_kib"],
+        "process_rss_kib": end["process_rss_kib"],
+        "process_peak_rss_kib": end["process_peak_rss_kib"],
+    }
+
+
+def exception_diagnostics(exc: BaseException) -> dict[str, object]:
+    """Capture exception types and traceback frames without messages or locals."""
+    chain: list[dict[str, object]] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    relation = "outer"
+    while current is not None and id(current) not in seen and len(chain) < 8:
+        seen.add(id(current))
+        frames = traceback.extract_tb(current.__traceback__)
+        chain.append(
+            {
+                "relation": relation,
+                "exception_type": type(current).__name__,
+                "frames": [
+                    {
+                        "file": Path(frame.filename).name,
+                        "line": frame.lineno,
+                        "function": frame.name,
+                    }
+                    for frame in frames[-32:]
+                ],
+            }
+        )
+        if current.__cause__ is not None:
+            current = current.__cause__
+            relation = "cause"
+        elif current.__context__ is not None and not current.__suppress_context__:
+            current = current.__context__
+            relation = "context"
+        else:
+            current = None
+    return {"exception_chain": chain}
+
+
+def failure_trace_projection(trace) -> dict[str, object]:
+    """Return only bounded failure and timing fields from a product trace."""
+    failure = trace.internal_failure
+    execution = trace.execution
+    return {
+        "trace_id": trace.trace_id,
+        "error_code": trace.error_code,
+        "failure": (
+            None
+            if failure is None
+            else {
+                "stage": failure.stage,
+                "failure_class": failure.failure_class,
+                "exception_type": failure.exception_type,
+                "causal_exception_types": failure.causal_exception_types,
+            }
+        ),
+        "execution": {
+            "generator_invoked": execution.generator_invoked,
+            "attempt_count": execution.attempt_count,
+            "context_latency_ms": execution.context_latency_ms,
+            "generation_latency_ms": execution.generation_latency_ms,
+            "total_latency_ms": execution.total_latency_ms,
+            "citation_count": execution.citation_count,
+        },
+    }
+
+
+def latency_projection(value: object) -> dict[str, object]:
+    """Keep only finite numeric values in nested stage-latency metadata."""
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, object] = {}
+    for key, item in value.items():
+        if isinstance(item, dict):
+            nested = latency_projection(item)
+            if nested:
+                result[str(key)] = nested
+        elif isinstance(item, (int, float)) and not isinstance(item, bool):
+            if math.isfinite(float(item)):
+                result[str(key)] = item
+    return result
+
+
+def observe_fixture_generation(request, respond) -> str:
+    """Run the deterministic provider fixture and persist bounded timing."""
+    ordinal = _ordinal.get()
+    wall_start = time.perf_counter_ns()
+    cpu_start = time.process_time_ns()
+    event("synthetic_generator_invoked", ordinal)
+    try:
+        response = respond(request)
+    except BaseException as exc:
+        event(
+            "synthetic_generator_failed",
+            ordinal,
+            exception=type(exc).__name__,
+            elapsed_ms=(time.perf_counter_ns() - wall_start) / 1_000_000,
+            process_cpu_ms=(time.process_time_ns() - cpu_start) / 1_000_000,
+        )
+        raise
+    event(
+        "synthetic_generator_returned",
+        ordinal,
+        elapsed_ms=(time.perf_counter_ns() - wall_start) / 1_000_000,
+        process_cpu_ms=(time.process_time_ns() - cpu_start) / 1_000_000,
+    )
+    return response
+
+
 class Stage2RequestObserver:
     """Pure ASGI observer; preserves the application's original receive path."""
 
@@ -111,7 +241,13 @@ class Stage2RequestObserver:
             await self.app(scope, receive, observe_send)
         except BaseException as exc:
             if ordinal is not None:
-                event("http_handler_raised", ordinal, exception=type(exc).__name__)
+                event(
+                    "http_handler_raised",
+                    ordinal,
+                    exception=type(exc).__name__,
+                    **exception_diagnostics(exc),
+                    **process_measurement(),
+                )
             raise
         finally:
             _ordinal.reset(token)
@@ -565,6 +701,7 @@ def install_observers(app, runtime, counters, *, native_mode=False, strategy=Non
 
         def tracked_worker():
             token = _ordinal.set(ordinal)
+            worker_measurement = process_measurement()
             event("worker_started", ordinal, operation_id=operation.op_id)
             try:
                 value = original_worker()
@@ -581,6 +718,15 @@ def install_observers(app, runtime, counters, *, native_mode=False, strategy=Non
                     # error code in OperationHandle.checkpoint().
                     detail_reason = "query_deadline_exceeded"
                 trace_id = getattr(exc, "trace_id", None)
+                trace_summary = None
+                if trace_id:
+                    try:
+                        trace = ProductTraceStore(runtime.settings).get(trace_id)
+                        if trace is not None:
+                            trace_summary = failure_trace_projection(trace)
+                    except Exception as trace_exc:  # noqa: BLE001
+                        # Diagnostics must not mask the worker's original error.
+                        trace_summary = {"read_error_type": type(trace_exc).__name__}
                 event(
                     "worker_failed",
                     ordinal,
@@ -589,11 +735,10 @@ def install_observers(app, runtime, counters, *, native_mode=False, strategy=Non
                     error_code=error_code,
                     reason=detail_reason,
                     trace_id=trace_id,
-                    query_trace_present=(
-                        ProductTraceStore(runtime.settings).get(trace_id) is not None
-                        if trace_id
-                        else False
-                    ),
+                    query_trace_present=(trace_summary is not None),
+                    failure_trace=trace_summary,
+                    **exception_diagnostics(exc),
+                    **process_measurement_delta(worker_measurement),
                 )
                 raise
             else:
@@ -620,6 +765,7 @@ def install_observers(app, runtime, counters, *, native_mode=False, strategy=Non
                         if conversation_trace_id
                         else False
                     ),
+                    **process_measurement_delta(worker_measurement),
                 )
                 return value
             finally:
@@ -643,25 +789,7 @@ def install_observers(app, runtime, counters, *, native_mode=False, strategy=Non
             if native_mode and response.query_trace_id:
                 trace = ProductTraceStore(runtime.settings).get(response.query_trace_id)
                 if trace is not None:
-                    citation_chunk_ids = trace.execution.citation_chunk_ids
-                    citation_evidence_unit_ids = (
-                        trace.execution.citation_evidence_unit_ids
-                    )
-                    if not citation_chunk_ids or not citation_evidence_unit_ids:
-                        raise RuntimeError(
-                            "native provider fixture produced no citations"
-                        )
-                    event(
-                        "native_citations",
-                        ordinal,
-                        query_trace_id=response.query_trace_id,
-                        citation_chunk_ids_sha256=hash_json(citation_chunk_ids),
-                        citation_evidence_unit_ids_sha256=hash_json(
-                            citation_evidence_unit_ids
-                        ),
-                        citation_chunk_count=len(citation_chunk_ids),
-                        citation_evidence_unit_count=len(citation_evidence_unit_ids),
-                    )
+                    observe_native_citations(response, trace, ordinal=ordinal)
         return response
 
     def begin_drain(self):
@@ -726,6 +854,9 @@ def install_observers(app, runtime, counters, *, native_mode=False, strategy=Non
         Stage2IdentityMiddleware,
         identity_provider=diagnostic_identity,
     )
+    if native_mode:
+        install_native_ranking_observer()
+        install_native_context_observer()
 
     @app.post("/__stage2/drain")
     async def diagnostic_drain():
@@ -922,11 +1053,9 @@ def native_resource_factories() -> ResourceFactories:
     from provider_fixture import respond
 
     def fixture_generator(_settings):
-        def observed_response(request):
-            event("synthetic_generator_invoked", _ordinal.get())
-            return respond(request)
-
-        return FakeGenerator(response_fn=observed_response)
+        return FakeGenerator(
+            response_fn=lambda request: observe_fixture_generation(request, respond)
+        )
 
     return replace(defaults, generator_client=fixture_generator)
 
@@ -938,6 +1067,8 @@ def install_native_scorer_observer(counters: dict[str, int]) -> None:
     def observed_score_pairs(scorer, pairs):
         global _native_model_verified
         ordinal = _ordinal.get()
+        scorer_wall_start = time.perf_counter_ns()
+        scorer_cpu_start = time.process_time_ns()
         counters["native_scorer_calls"] = counters.get("native_scorer_calls", 0) + 1
         counters["native_candidate_pairs"] = len(pairs)
         event("scorer_entered", ordinal, pair_count=len(pairs), mode="native")
@@ -957,7 +1088,7 @@ def install_native_scorer_observer(counters: dict[str, int]) -> None:
                 raise RuntimeError("native BGE tensors are not CPU FP32")
             _native_model_verified = True
         control = current_control(ordinal)
-        start_ns: list[int] = []
+        forward_starts: list[tuple[int, int]] = []
 
         def before(_module, _args, kwargs):
             marker = EVENTS.parent / f"{ordinal}.forward_entered"
@@ -981,19 +1112,24 @@ def install_native_scorer_observer(counters: dict[str, int]) -> None:
                         raise TimeoutError("native forward barrier expired")
                     time.sleep(0.01)
                 event("forward_released", ordinal)
-            start_ns.append(time.perf_counter_ns())
+            forward_starts.append((time.perf_counter_ns(), time.process_time_ns()))
             shape = list(kwargs["input_ids"].shape)
             event("forward_started", ordinal, shape=shape, mode="native")
 
         def after(_module, _args, output):
-            if not start_ns:
+            if not forward_starts:
                 return
-            elapsed_ms = (time.perf_counter_ns() - start_ns.pop()) / 1_000_000
+            wall_start, cpu_start = forward_starts.pop()
+            elapsed_ms = (time.perf_counter_ns() - wall_start) / 1_000_000
             logits = getattr(output, "logits", None)
+            process = process_measurement()
             event(
                 "forward_returned",
                 ordinal,
                 elapsed_ms=elapsed_ms,
+                process_cpu_ms=(time.process_time_ns() - cpu_start) / 1_000_000,
+                process_rss_kib=process["process_rss_kib"],
+                process_peak_rss_kib=process["process_peak_rss_kib"],
                 logits_shape=(list(logits.shape) if logits is not None else None),
                 mode="native",
             )
@@ -1003,7 +1139,14 @@ def install_native_scorer_observer(counters: dict[str, int]) -> None:
         try:
             result = original(scorer, pairs)
         except BaseException as exc:
-            event("scorer_failed", ordinal, exception=type(exc).__name__, mode="native")
+            event(
+                "scorer_failed",
+                ordinal,
+                exception=type(exc).__name__,
+                scorer_wall_ms=(time.perf_counter_ns() - scorer_wall_start) / 1_000_000,
+                scorer_cpu_ms=(time.process_time_ns() - scorer_cpu_start) / 1_000_000,
+                mode="native",
+            )
             raise
         else:
             event(
@@ -1024,7 +1167,14 @@ def install_native_scorer_observer(counters: dict[str, int]) -> None:
                 ],
                 score_count=len(result),
             )
-            event("scorer_returned", ordinal, score_count=len(result), mode="native")
+            event(
+                "scorer_returned",
+                ordinal,
+                score_count=len(result),
+                scorer_wall_ms=(time.perf_counter_ns() - scorer_wall_start) / 1_000_000,
+                scorer_cpu_ms=(time.process_time_ns() - scorer_cpu_start) / 1_000_000,
+                mode="native",
+            )
             return result
         finally:
             pre_hook.remove()
@@ -1032,7 +1182,33 @@ def install_native_scorer_observer(counters: dict[str, int]) -> None:
 
     CrossEncoderReranker.score_pairs = observed_score_pairs
 
-    from offline_rag.context.assemble import HybridRerankContextAssembler
+
+def hash_json(value) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def observe_native_ranking(ordered, *, ordinal: int | None = None) -> None:
+    """Persist candidate identity from canonical ``(candidate, score)`` pairs."""
+    candidates = [candidate for candidate, _score in ordered]
+    event(
+        "native_ranked_candidates",
+        ordinal,
+        candidate_count=len(candidates),
+        ranked_candidate_ids_sha256=hash_json(
+            [candidate.chunk_id for candidate in candidates]
+        ),
+        ranked_candidate_order=[
+            hashlib.sha256(candidate.chunk_id.encode("utf-8")).hexdigest()
+            for candidate in candidates
+        ],
+        tie_break=CHUNK_ID_ASC_TIE_BREAK,
+        mode="native",
+    )
+
+
+def install_native_ranking_observer() -> None:
+    """Observe the canonical tuple-valued reranker sort boundary."""
     from offline_rag.rerank import retrieve as rerank_retrieve
 
     original_sort_scored = rerank_retrieve._sort_scored
@@ -1041,55 +1217,67 @@ def install_native_scorer_observer(counters: dict[str, int]) -> None:
         ordered = original_sort_scored(pool, scores)
         if len(ordered) != len(pool):
             raise RuntimeError("native reranker ranking lost a candidate")
-        event(
-            "native_ranked_candidates",
-            _ordinal.get(),
-            candidate_count=len(ordered),
-            ranked_candidate_ids_sha256=hash_json(
-                [candidate.chunk_id for candidate in ordered]
-            ),
-            ranked_candidate_order=[
-                hashlib.sha256(candidate.chunk_id.encode("utf-8")).hexdigest()
-                for candidate in ordered
-            ],
-            tie_break=CHUNK_ID_ASC_TIE_BREAK,
-            mode="native",
-        )
+        observe_native_ranking(ordered, ordinal=_ordinal.get())
         return ordered
 
     rerank_retrieve._sort_scored = observed_sort_scored
+
+
+def observe_native_context(result, *, ordinal: int | None = None) -> None:
+    """Persist context identity and canonical nested latency metadata."""
+    event(
+        "native_context",
+        ordinal,
+        anchor_ids_sha256=hash_json([item.chunk_id for item in result.anchors]),
+        anchor_order=[
+            hashlib.sha256(str(item.chunk_id).encode("utf-8")).hexdigest()
+            for item in result.anchors
+        ],
+        evidence_unit_ids_sha256=hash_json(
+            [item.evidence_unit_id for item in result.evidence_units]
+        ),
+        context_sha256=hashlib.sha256(
+            result.assembled_text.encode("utf-8")
+        ).hexdigest(),
+        context_token_count=result.context_token_count,
+        evidence_unit_count=len(result.evidence_units),
+        reranker_execution=result.metadata.get("reranker_execution"),
+        latency_ms=latency_projection(result.metadata.get("latency_ms")),
+    )
+
+
+def install_native_context_observer() -> None:
+    """Observe canonical context results without altering assembly behavior."""
+    from offline_rag.context.assemble import HybridRerankContextAssembler
 
     original_assemble = HybridRerankContextAssembler.assemble
 
     def observed_assemble(assembler, *args, **kwargs):
         result = original_assemble(assembler, *args, **kwargs)
-        ordinal = _ordinal.get()
-        event(
-            "native_context",
-            ordinal,
-            anchor_ids_sha256=hash_json([item.chunk_id for item in result.anchors]),
-            anchor_order=[
-                hashlib.sha256(str(item.chunk_id).encode("utf-8")).hexdigest()
-                for item in result.anchors
-            ],
-            evidence_unit_ids_sha256=hash_json(
-                [item.evidence_unit_id for item in result.evidence_units]
-            ),
-            context_sha256=hashlib.sha256(
-                result.assembled_text.encode("utf-8")
-            ).hexdigest(),
-            context_token_count=result.context_token_count,
-            evidence_unit_count=len(result.evidence_units),
-            reranker_execution=result.metadata.get("reranker_execution"),
-        )
+        observe_native_context(result, ordinal=_ordinal.get())
         return result
 
     HybridRerankContextAssembler.assemble = observed_assemble
 
 
-def hash_json(value) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(encoded).hexdigest()
+def observe_native_citations(response, trace, *, ordinal: int | None = None) -> None:
+    """Persist citation identity from the canonical product trace."""
+    chunk_ids = trace.execution.citation_chunk_ids
+    evidence_unit_ids = trace.execution.citation_evidence_unit_ids
+    if not chunk_ids or not evidence_unit_ids:
+        raise RuntimeError("native provider fixture produced no citations")
+    event(
+        "native_citations",
+        ordinal,
+        query_trace_id=response.query_trace_id,
+        citation_chunk_ids_sha256=hash_json(chunk_ids),
+        citation_evidence_unit_ids_sha256=hash_json(evidence_unit_ids),
+        citation_chunk_count=len(chunk_ids),
+        citation_evidence_unit_count=len(evidence_unit_ids),
+        context_latency_ms=trace.execution.context_latency_ms,
+        generation_latency_ms=trace.execution.generation_latency_ms,
+        total_latency_ms=trace.execution.total_latency_ms,
+    )
 
 
 def main() -> None:

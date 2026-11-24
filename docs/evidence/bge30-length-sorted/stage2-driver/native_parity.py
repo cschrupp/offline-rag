@@ -17,7 +17,7 @@ def _events_for(row: dict, event_name: str) -> list[dict]:
     ]
 
 
-def _completed_observations(path: Path) -> dict[str, list[dict]]:
+def _load_observations(path: Path) -> tuple[dict[str, list[dict]], dict]:
     attempts = {}
     settled = {}
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -25,36 +25,99 @@ def _completed_observations(path: Path) -> dict[str, list[dict]]:
             continue
         row = json.loads(line)
         if row.get("event") == "send_attempt":
+            if row.get("ordinal") in attempts:
+                raise NativeParityError("duplicate submission attempt ordinal")
             attempts[row["ordinal"]] = row
         elif row.get("event") == "settled":
+            if row.get("ordinal") in settled:
+                raise NativeParityError("duplicate submission settlement ordinal")
             settled[row["ordinal"]] = row
     output = {"Recipes": [], "Rich": []}
-    for ordinal, result in settled.items():
-        case = attempts.get(ordinal)
-        if case is None or case.get("case") != "load":
+    capacity_rejections = {
+        workload: {
+            strategy: {
+                "query_preflight_capacity_exhausted": 0,
+                "query_capacity_exhausted": 0,
+            }
+            for strategy in ("consecutive", "length_sorted_8")
+        }
+        for workload in ("Recipes", "Rich")
+    }
+    load_attempts = {
+        ordinal: case
+        for ordinal, case in attempts.items()
+        if case.get("case") == "load"
+    }
+    if len(load_attempts) != 28:
+        raise NativeParityError("native journal must contain all 28 load attempts")
+    attempted_by_cell = {
+        (workload, strategy): 0
+        for workload in output
+        for strategy in ("consecutive", "length_sorted_8")
+    }
+    for ordinal, case in load_attempts.items():
+        result = settled.get(ordinal)
+        if result is None:
+            raise NativeParityError("load attempt is missing its persisted settlement")
+        workload = case.get("workload")
+        strategy = case.get("strategy")
+        if workload not in output or strategy not in {
+            "consecutive",
+            "length_sorted_8",
+        }:
+            raise NativeParityError("unknown workload or strategy in request ledger")
+        attempted_by_cell[(workload, strategy)] += 1
+        if result.get("ordinal") != ordinal or result.get("settled") is not True:
+            raise NativeParityError("load settlement is not correlated or terminal")
+        admission = result.get("admission")
+        if admission in {"preflight_rejected", "query_rejected"}:
+            expected_reason = (
+                "query_preflight_capacity_exhausted"
+                if admission == "preflight_rejected"
+                else "query_capacity_exhausted"
+            )
+            if (
+                result.get("http_status") != 503
+                or result.get("reason") != expected_reason
+            ):
+                raise NativeParityError("invalid capacity-rejection settlement")
+            if admission == "preflight_rejected" and (
+                result.get("terminal") is not None
+                or result.get("operation") is not None
+                or result.get("worker_returned") is not False
+                or result.get("scientific_trace_ids") != []
+            ):
+                raise NativeParityError("invalid preflight-capacity rejection")
+            if admission == "query_rejected" and (
+                result.get("terminal") != "failed"
+                or result.get("worker_returned") is not True
+                or result.get("scientific_trace_ids") != []
+            ):
+                raise NativeParityError("invalid query-capacity rejection")
+            capacity_rejections[workload][strategy][expected_reason] += 1
             continue
-        if (
-            result.get("admission") != "accepted"
-            or result.get("terminal") != "completed"
-        ):
-            continue
+        if admission != "accepted" or result.get("terminal") != "completed":
+            raise NativeParityError("load request did not complete successfully")
         if result.get("http_status") != 200:
-            continue
-        strategy = case["strategy"]
-        if strategy not in {"consecutive", "length_sorted_8"}:
-            raise NativeParityError("unknown execution strategy in request ledger")
+            raise NativeParityError("completed load did not return HTTP 200")
         scores = _events_for(result, "native_scores")
         rankings = _events_for(result, "native_ranked_candidates")
         contexts = _events_for(result, "native_context")
         citations = _events_for(result, "native_citations")
+        generator = _events_for(result, "synthetic_generator_returned")
         if (
             len(scores) != 1
             or len(rankings) != 1
             or len(contexts) != 1
             or len(citations) != 1
+            or len(generator) != 1
         ):
             raise NativeParityError("completed load is missing native parity evidence")
-        output[case["workload"]].append(
+        if case["workload"] not in output:
+            raise NativeParityError("unknown workload in request ledger")
+        if strategy not in {"consecutive", "length_sorted_8"}:
+            raise NativeParityError("unknown execution strategy in request ledger")
+        output[workload].append(
             {
                 "ordinal": ordinal,
                 "strategy": strategy,
@@ -67,7 +130,11 @@ def _completed_observations(path: Path) -> dict[str, list[dict]]:
                 ],
             }
         )
-    return output
+    if any(count != 7 for count in attempted_by_cell.values()):
+        raise NativeParityError(
+            "each workload and strategy cell requires seven attempts"
+        )
+    return output, capacity_rejections
 
 
 def _assert_shapes(item: dict, workload: str) -> None:
@@ -155,16 +222,16 @@ def _compare(left: dict, right: dict, *, workload: str) -> None:
 
 
 def validate(path: Path) -> dict:
-    observations = _completed_observations(path)
+    observations, capacity_rejections = _load_observations(path)
     summary = {}
     for workload, rows in observations.items():
         by_strategy = {
             strategy: [row for row in rows if row["strategy"] == strategy]
             for strategy in ("consecutive", "length_sorted_8")
         }
-        if any(len(by_strategy[strategy]) != 7 for strategy in by_strategy):
+        if any(not by_strategy[strategy] for strategy in by_strategy):
             raise NativeParityError(
-                f"{workload} requires all seven completed load requests per arm"
+                f"{workload} requires at least one completed request per arm"
             )
         reference = by_strategy["consecutive"][0]
         for candidate in rows:
@@ -172,6 +239,7 @@ def validate(path: Path) -> dict:
         summary[workload] = {
             "consecutive_completed": len(by_strategy["consecutive"]),
             "length_sorted_8_completed": len(by_strategy["length_sorted_8"]),
+            "capacity_rejections": capacity_rejections[workload],
             "candidate_count": len(reference["scores"]["score_associations"]),
             "parity": "PASS",
         }
