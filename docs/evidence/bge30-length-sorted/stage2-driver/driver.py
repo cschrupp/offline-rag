@@ -256,7 +256,7 @@ class Driver:
             while not self.stop.wait(self.watchdog):
                 try:
                     safe = monotonic() < deadline and self.host_safe()
-                except OSError, ValueError:
+                except (OSError, ValueError):  # fmt: skip
                     safe = False
                 if not safe:
                     with self.lock:
