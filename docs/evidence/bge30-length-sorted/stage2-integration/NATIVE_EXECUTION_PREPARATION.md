@@ -12,14 +12,14 @@ This runbook is a preparation artifact. It does not authorize VM startup, mainte
 | Original service | container `seneca-review`, image ref `seneca-review:9c92e706c4b9` |
 | Original data / models | `/srv/seneca/data` / `/srv/seneca/models` |
 | Integrated application source | `1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e` |
-| Diagnostic image | `sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04` |
+| Diagnostic image | `sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee` |
 | BGE | `BAAI/bge-reranker-v2-m3`, revision `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`, FP32, raw logits, `input_k=30`, `output_k=10` |
 | Embedding | Qwen3 revision `97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3`, `cpu_onnx_fp32_v1`, `onnx_fp32_v1`, ORT 8/1 |
 | Request lifecycle | 180-second query deadline, 30-second application shutdown grace |
-| Workloads | Recipes revision 4 / frozen 603-passage snapshot / selected source; Rich revision 2 / frozen 10-candidate snapshot / all active |
+| Workloads | Recipes revision 4 / frozen 603-passage snapshot / selected source; Rich 2 revision 2 / qualified 10-candidate snapshot / all active |
 | Calls | 28 load + 8 lifecycle = exactly 36; zero retries |
 
-The complete hashes and immutable bindings are in [`NATIVE_SETTINGS_MANIFEST.json`](NATIVE_SETTINGS_MANIFEST.json), `workloads.json`, and `stage1-bindings.json`.
+The complete hashes and immutable bindings are in [`NATIVE_SETTINGS_RICH2.json`](NATIVE_SETTINGS_RICH2.json), `workloads-rich2.json`, `rich2-stage1-binding.json`, and historical `stage1-bindings.json`.
 
 ## Step 1 — Read-only cloud identity check
 
@@ -59,7 +59,7 @@ After this preparation revision has been pushed, use the recorded code candidate
 ```bash
 REPO=/path/to/offline-rag
 CODE=/var/tmp/seneca-stage2-native-code
-CANDIDATE_SHA=69c46fb0796eea4287b8aec6111077f08c4ec38f
+: "${CANDIDATE_SHA:?set to the reviewed Stage 2 integration commit}"
 git -C "$REPO" fetch origin prep/stage2-docker-transport
 git -C "$REPO" worktree add --detach "$CODE" "$CANDIDATE_SHA"
 test -z "$(git -C "$CODE" status --porcelain)"
@@ -85,7 +85,7 @@ CPUSET=$(python3 -c 'import os; print(",".join(map(str, sorted(os.sched_getaffin
 test "$(python3 -c 'import os; print(len(os.sched_getaffinity(0)))')" -ge 4
 test "$((STOP_EPOCH - $(date +%s)))" -ge 4800
 python3 "$DRIVER/native_host_control.py" capture "$ROOT/original-container.json"
-bash "$DRIVER/preflight_host.sh" metadata /srv/seneca/data /srv/seneca/models "$CPUSET" > "$ROOT/baseline-publications.json"
+bash "$DRIVER/preflight_host.sh" native-metadata /srv/seneca/data /srv/seneca/models "$CPUSET" > "$ROOT/baseline-publications.json"
 chmod 0600 "$ROOT/baseline-publications.json"
 ```
 
@@ -101,32 +101,6 @@ DATA_BYTES=$(du -sb /srv/seneca/data | cut -f1)
 AVAILABLE_BYTES=$(df -B1 --output=avail /var/tmp | tail -n1 | tr -d ' ')
 REQUIRED_BYTES=$((2 * DATA_BYTES + 2147483648))
 test "$AVAILABLE_BYTES" -ge "$REQUIRED_BYTES"
-docker stop --time 30 seneca-review
-test "$(docker inspect --format '{{.State.Running}}' seneca-review)" = false
-for ARM in A B; do
-  install -d -m 0700 -o 10001 -g 10001 "$ROOT/$ARM/data"
-  sudo cp -a /srv/seneca/data/. "$ROOT/$ARM/data/"
-  docker run --rm --network none --user 10001:10001 \
-    --mount "type=bind,src=$ROOT/$ARM/data,dst=/data" \
-    --entrypoint python \
-    sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04 \
-    -B -c 'from pathlib import Path; p=Path("/data/.stage2-write-check"); p.write_text("ok"); p.unlink()'
-  install -d -m 0777 -o 10001 -g 10001 "$ROOT/$ARM/preflight"
-  python3 "$DRIVER/native_host_control.py" check-qdrant "$ROOT/$ARM/data/qdrant"
-  bash "$DRIVER/preflight_host.sh" native \
-    "$ROOT/$ARM/data" /srv/seneca/models "$CPUSET" "$STOP_EPOCH" \
-    "$ROOT/$ARM/preflight"
-done
-cmp "$ROOT/A/preflight/native-bindings.json" "$ROOT/B/preflight/native-bindings.json"
-```
-
-The preflight container is network-disabled, uses the exact image, reads models read-only, verifies model artifact hashes, current snapshot backing, selected source resolution, strict-offline configuration, four effective CPUs, and Torch/ORT settings. Any mismatch is a stop condition; do not repair or rewrite the source workspace to make it pass.
-
-## Step 5 — Independent watchdog, exact campaign, restoration
-
-This step is included to make the restoration handoff executable; it still requires separate native-campaign authority. Start the independent watchdog before the runner. Keep it alive independently of the SSH shell:
-
-```bash
 cd "$CODE"
 SUPERVISOR_CEILING=$(python3 -c 'import time; print(time.monotonic() + 2400)')
 nohup python3 "$DRIVER/native_host_control.py" supervise \
@@ -138,11 +112,61 @@ nohup python3 "$DRIVER/native_host_control.py" supervise \
   --abort supervisor.abort \
   --ceiling-epoch "$SUPERVISOR_CEILING" \
   --metadata-baseline "$ROOT/baseline-publications.json" \
+  --metadata-mode native-metadata \
   --cpuset "$CPUSET" \
   > "$ROOT/supervisor.log" 2>&1 < /dev/null &
 echo $! > "$ROOT/supervisor.pid"
 sleep 1
 kill -0 "$(cat "$ROOT/supervisor.pid")"
+restore_on_exit() {
+  status=$?
+  trap - EXIT INT TERM
+  if [[ ! -e "$ROOT/driver_done.json" ]]; then
+    python3 "$DRIVER/native_host_control.py" signal-failure --abort "$ROOT/supervisor.abort" --done "$ROOT/driver_done.json" || status=1
+  fi
+  wait "$(cat "$ROOT/supervisor.pid")" || status=1
+  exit "$status"
+}
+trap restore_on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+check_supervisor() {
+  kill -0 "$(cat "$ROOT/supervisor.pid")"
+  test ! -e "$ROOT/supervisor.abort"
+  test ! -e "$ROOT/driver_done.json"
+  test "$((STOP_EPOCH - $(date +%s)))" -ge 4800
+  awk '/^MemAvailable:/ {if ($2 < 2097152) exit 1; found=1} END {if (!found) exit 1}' /proc/meminfo
+}
+check_supervisor
+docker stop --time 30 seneca-review
+test "$(docker inspect --format '{{.State.Running}}' seneca-review)" = false
+for ARM in A B; do
+  check_supervisor
+  sudo install -d -m 0700 -o 10001 -g 10001 "$ROOT/$ARM/data"
+  sudo cp -a /srv/seneca/data/. "$ROOT/$ARM/data/"
+  docker run --rm --network none --user 10001:10001 \
+    --mount "type=bind,src=$ROOT/$ARM/data,dst=/data" \
+    --entrypoint python \
+    sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee \
+    -B -c 'from pathlib import Path; p=Path("/data/.stage2-write-check"); p.write_text("ok"); p.unlink()'
+  sudo install -d -m 0777 -o 10001 -g 10001 "$ROOT/$ARM/preflight"
+  python3 "$DRIVER/native_host_control.py" check-qdrant "$ROOT/$ARM/data/qdrant"
+  check_supervisor
+  bash "$DRIVER/preflight_host.sh" native \
+    "$ROOT/$ARM/data" /srv/seneca/models "$CPUSET" "$STOP_EPOCH" \
+    "$ROOT/$ARM/preflight"
+done
+cmp "$ROOT/A/preflight/native-bindings.json" "$ROOT/B/preflight/native-bindings.json"
+```
+
+The preflight container is network-disabled, uses the exact image, reads models read-only, verifies model artifact hashes, current snapshot backing, selected source resolution, strict-offline configuration, four effective CPUs, and Torch/ORT settings. Any mismatch is a stop condition; do not repair or rewrite the source workspace to make it pass.
+
+## Step 5 — Independent watchdog, exact campaign, restoration
+
+This step is included to make the restoration handoff executable; it still requires separate native-campaign authority. The independent watchdog was started before the service stop in Step 4. Start the runner in the same guarded shell:
+
+```bash
+check_supervisor
 python3 "$DRIVER/native_stage2.py" \
   --session "$SESSION" \
   --root "$ROOT" \
@@ -166,3 +190,7 @@ seneca-review  TERMINATED  us-central1-a
 ```
 
 No SSH, host preflight, container start, maintenance, data copy, model load, or Stage 2 submission was performed. Host-dependent checks remain unavailable until the intended host is running under separate authority. A terminated VM is not evidence of a failed application or a passed native preflight.
+
+## Rich 2 qualification and image provenance
+
+Rich 2 is a separately qualified workload, not a claim of equivalence to the historical Rich workspace. The single probe observation is retained in `../stage2-driver/RICH2_STAGE1_OBSERVATION.json`. The watchdog failed its immediate startup health check; the original service subsequently passed both health endpoints and publication verification, and privileged lsof found no scratch Qdrant owner. The original watchdog error remains in `../stage2-driver/RICH2_STAGE1_WATCHDOG_FAILURE.txt`. The accepted VM-built image uses base `sha256:3bc83208a7526a49abed1b9bd9586b5ae4fd041771732e03030c3ac20419e692`; the historical diagnostic image digest was `sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04`. Source hashes, runtime versions, fixture, and reranker fingerprint matched the recorded manifest. Cold startup costs must be reported separately from subsequent measurements when timing observations support this distinction.

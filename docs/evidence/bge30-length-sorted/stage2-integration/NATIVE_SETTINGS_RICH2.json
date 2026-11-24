@@ -1,0 +1,120 @@
+{
+  "schema": "seneca-stage2-native-settings-v1",
+  "status": "prepared_not_execution_authority",
+  "application_source_commit": "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e",
+  "diagnostic_image_digest": "sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee",
+  "host_contract": {
+    "cloud_project": "seneca-515016",
+    "instance": "seneca-review",
+    "zone": "us-central1-a",
+    "original_container": "seneca-review",
+    "original_image_ref": "seneca-review:9c92e706c4b9",
+    "original_data_mount": "/srv/seneca/data",
+    "model_mount": "/srv/seneca/models",
+    "effective_cpus": 4
+  },
+  "effective_config": {
+    "path": "/app/config/base.yaml",
+    "sha256": "dc45247f1c807237cf09e8570d26b2600e685f637f967b7f162ed84cf9db77f0"
+  },
+  "workloads_file": "workloads-rich2.json",
+  "workloads_file_sha256": "c76c462ce04fcbe5e16e5253b8748ce4cc664a24bda18743b384f3129a1e2177",
+  "stage1_binding_file": "stage1-bindings.json",
+  "stage1_binding_file_sha256": "7bfc80f1ab7455077e41672d547b3b9938b18fd630f1615e80822477796af9f7",
+  "provider_fixture": {
+    "file": "provider_fixture.py",
+    "sha256": "07f3e9daaeffc2d46e0cd421fd57487fa8603020ff1d3271d923c94aae7ad3a0",
+    "external_calls": 0
+  },
+  "scientific_settings_hash": "5dce337dc1875b2aa615d62ee771a0ae384559c2da14be384e067ded035f5417",
+  "scientific_profile": {
+    "embedding": {
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "dimension": 1024,
+      "device_policy": "auto",
+      "required_resolved_profile": "cpu_onnx_fp32_v1",
+      "required_representation": "onnx_fp32_v1",
+      "required_backend_family": "sentence_transformers_onnx",
+      "required_resolved_device": "cpu",
+      "required_precision": "fp32",
+      "required_provider": "CPUExecutionProvider",
+      "ort_intra_inter": [
+        8,
+        1
+      ]
+    },
+    "reranker": {
+      "model_id": "BAAI/bge-reranker-v2-m3",
+      "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+      "precision": "fp32",
+      "device_policy": "auto",
+      "required_resolved_device": "cpu",
+      "input_k": 30,
+      "output_k": 10,
+      "input_construction": "plain-pair-v1",
+      "batch_size": 16,
+      "max_length": 1024,
+      "score_transform": "raw-logit-v1",
+      "sequence_contract": "seq-trunc-1024-passage-right-v1",
+      "tie_break": "chunk-id-asc-v1",
+      "truncation": "only_second",
+      "torch_intra_inter": [
+        2,
+        2
+      ]
+    },
+    "api": {
+      "query_capacity": 1,
+      "query_deadline_seconds": 180,
+      "shutdown_grace_seconds": 30
+    },
+    "network": "none",
+    "models_mount": "read-only"
+  },
+  "arms": {
+    "consecutive": "consecutive",
+    "length_sorted_8": "length_sorted_8"
+  },
+  "budget": {
+    "load_submissions": 28,
+    "lifecycle_submissions": 8,
+    "total_submissions": 36,
+    "retries": 0,
+    "client_watchdog_seconds": 195,
+    "diagnostic_execution_ceiling_seconds": 2400,
+    "minimum_host_available_memory_bytes": 2147483648,
+    "maximum_diagnostic_rss_bytes": 6442450944,
+    "minimum_seconds_to_automatic_stop": 4800,
+    "restoration_reserve_seconds": 900
+  },
+  "workload_bindings": {
+    "Recipes": {
+      "workspace_id": "ws_198edc9159d04d4fa9527bef1c7dc513",
+      "revision": 4,
+      "snapshot_id": "snap_89eb8d5cfc93c444b970ee8da72b177967009d22ba059f12e318efb45a422196",
+      "document_id": "doc_9003163ffd08a33afac073364154bdd1dd7148719a31550a1a62962bde9fba70",
+      "source_mode": "selected",
+      "expected_candidates": 30
+    },
+    "Rich": {
+      "workspace_id": "ws_73a29d6defb545e8958746d78ac80775",
+      "revision": 2,
+      "snapshot_id": "snap_62fce56e749ccf0e7b3bad46f82c153c4d0ba032f500509a1da37755babc97ca",
+      "document_id": "doc_c3084e336e87f2bbcc915a3c12b0e9bbd6128d8c34298637abbfb0ea6ac390cc",
+      "source_mode": "all_active",
+      "expected_candidates": 10
+    }
+  },
+  "storage_and_restoration_gates": {
+    "independent_copies_per_arm": true,
+    "exclusive_qdrant_owner_per_copy": true,
+    "production_container_stopped_before_copy": true,
+    "original_container_identity_preserved": true,
+    "original_container_restarted_not_recreated": true,
+    "verify_health_live_and_ready": true,
+    "verify_image_mounts_restart_policy_and_publication_signatures": true,
+    "remove_scratch_only_after_restoration": true
+  },
+  "rich2_binding_sha256": "b3e2fcae6140ca3d1e87c3d925f3ec281d8c48889ff44723739def4cbd0db7a1"
+}

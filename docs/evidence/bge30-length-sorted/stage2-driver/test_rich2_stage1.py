@@ -466,7 +466,7 @@ def test_committed_binding_passes_complete_deterministic_preflight(
         preflight.validate_rich2_binding(settings, binding)
 
 
-@pytest.mark.parametrize("mode", ["metadata", "isolated", "native"])
+@pytest.mark.parametrize("mode", ["metadata", "isolated"])
 def test_original_preflight_modes_do_not_require_rich2(mode, monkeypatch):
     calls = []
     preflight = load_preflight_with_deterministic_dependencies(monkeypatch)
@@ -482,7 +482,9 @@ def test_original_preflight_modes_do_not_require_rich2(mode, monkeypatch):
     assert rich2 is None
 
 
-@pytest.mark.parametrize("mode", ["rich2-metadata", "rich2-stage1"])
+@pytest.mark.parametrize(
+    "mode", ["rich2-metadata", "rich2-stage1", "native", "native-metadata"]
+)
 def test_rich2_preflight_modes_use_recipes_and_rich2_not_live_historical_rich(
     mode, monkeypatch
 ):
@@ -761,6 +763,62 @@ def test_restoration_health_checks_both_endpoints(monkeypatch):
     assert calls[1][-1] == "health/ready"
 
 
+def test_restoration_health_retries_startup(monkeypatch):
+    import subprocess
+
+    attempts = []
+
+    def probe(*args, **_kwargs):
+        attempts.append(args[-1])
+        if len(attempts) == 1:
+            raise subprocess.CalledProcessError(1, args)
+        return ""
+
+    monkeypatch.setattr(native_host_control, "docker", probe)
+    monkeypatch.setattr(native_host_control.time, "sleep", lambda _seconds: None)
+    native_host_control.health("original-id", timeout=10)
+    assert attempts == ["health/live", "health/live", "health/ready"]
+
+
+def test_restoration_health_fails_after_deadline(monkeypatch):
+    import subprocess
+
+    def unavailable(*args, **_kwargs):
+        raise subprocess.CalledProcessError(1, args)
+
+    monkeypatch.setattr(native_host_control, "docker", unavailable)
+    with pytest.raises(subprocess.CalledProcessError):
+        native_host_control.health("original-id", timeout=0)
+
+
+def test_stage2_completion_record_accepted_and_fail_closed(tmp_path):
+    done = tmp_path / "done"
+    done.write_text(
+        json.dumps(
+            {"session": "0123456789abcdef", "exit_code": 0, "ended_at_unix": 1.0}
+        )
+    )
+    native_host_control.validate_completion_record(
+        done, session="0123456789abcdef", layout="stage2"
+    )
+    with pytest.raises(RuntimeError, match="completion record is invalid"):
+        native_host_control.validate_completion_record(
+            done, session="fedcba9876543210", layout="stage2"
+        )
+
+
+def test_qdrant_ownership_uses_privileged_lsof(tmp_path, monkeypatch):
+    commands = []
+
+    def run(command, **_kwargs):
+        commands.append(command)
+        return types.SimpleNamespace(returncode=1, stdout="", stderr="")
+
+    monkeypatch.setattr(native_host_control.subprocess, "run", run)
+    native_host_control.assert_qdrant_unowned(tmp_path)
+    assert commands == [["sudo", "-n", "lsof", "+D", str(tmp_path)]]
+
+
 def test_completed_rich2_session_requires_qdrant_directory(tmp_path, monkeypatch):
     monkeypatch.setattr(native_host_control, "docker", lambda *_args: "")
 
@@ -768,6 +826,17 @@ def test_completed_rich2_session_requires_qdrant_directory(tmp_path, monkeypatch
         native_host_control.verify_scratch_unowned(
             tmp_path, layout="rich2-stage1", allow_missing_qdrant=False
         )
+
+
+def test_aborted_stage2_accepts_missing_scratch_but_completed_does_not(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(native_host_control, "docker", lambda *_args: "")
+    native_host_control.verify_scratch_unowned(
+        tmp_path, layout="stage2", allow_missing_qdrant=True
+    )
+    with pytest.raises(RuntimeError, match="Qdrant storage is missing"):
+        native_host_control.verify_scratch_unowned(tmp_path, layout="stage2")
 
 
 def test_aborted_session_still_rejects_surviving_scratch_container(
@@ -1062,6 +1131,8 @@ def test_preflight_failure_releases_watchdog_to_restore_original(tmp_path, monke
 def test_existing_stage2_restoration_layout_keeps_both_qdrant_checks(
     tmp_path, monkeypatch
 ):
+    for arm in ("A", "B"):
+        (tmp_path / arm / "data" / "qdrant").mkdir(parents=True)
     observed = []
     monkeypatch.setattr(native_host_control, "docker", lambda *_args: "")
     monkeypatch.setattr(

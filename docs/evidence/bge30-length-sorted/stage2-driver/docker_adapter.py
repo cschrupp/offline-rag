@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 from time import monotonic, monotonic_ns, sleep
 
-IMAGE = "sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04"
+IMAGE = "sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee"
 SOURCE = "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e"
 LABEL = "io.seneca.stage2.session"
 

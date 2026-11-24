@@ -32,7 +32,7 @@ def dispatch_preflight_validators(
 ):
     """Run the exact live binding validators required by this preflight mode."""
     validators = {"Recipes": recipes_validator, "Rich": rich_validator}
-    if mode in {"rich2-stage1", "rich2-metadata"}:
+    if mode in {"rich2-stage1", "rich2-metadata", "native", "native-metadata"}:
         return {"Recipes": recipes_validator()}, rich2_validator()
     if mode in {"metadata", "isolated", "native"}:
         return {label: validator() for label, validator in validators.items()}, None
@@ -648,6 +648,7 @@ def main():
             "metadata",
             "isolated",
             "native",
+            "native-metadata",
             "rich2-stage1",
             "rich2-metadata",
         },
@@ -666,8 +667,8 @@ def main():
         "native mode requires its binding output and other modes forbid it",
     )
     manifest = json.loads(manifest_path.read_text())
-    native_manifest_path = manifest_path.parent / "NATIVE_SETTINGS_MANIFEST.json"
-    if mode == "native":
+    native_manifest_path = manifest_path.parent / "NATIVE_SETTINGS_RICH2.json"
+    if mode in {"native", "native-metadata"}:
         from native_contract import (
             load_manifest,
             validate_scientific_settings,
@@ -690,7 +691,7 @@ def main():
         bool(os.statvfs("/models").f_flag & os.ST_RDONLY), "model mount is writable"
     )
     data_read_only = bool(os.statvfs("/data").f_flag & os.ST_RDONLY)
-    data_should_be_read_only = mode in {"metadata", "rich2-metadata"}
+    data_should_be_read_only = mode in {"metadata", "rich2-metadata", "native-metadata"}
     require(
         data_read_only == data_should_be_read_only,
         "data mount mode mismatch",
@@ -726,13 +727,35 @@ def main():
         rich2_validator=validate_rich2,
     )
     rich2_binding = rich2_state.get("binding")
-    if mode == "native":
+    if mode in {"native", "native-metadata"}:
+        rich_workspace = rich2["workspace"]
+        rich_publication = rich2_binding["publication"]
+        rich_source = rich2_binding["source"]["identity"]
+        actual["Rich"] = (
+            {
+                "workspace_id": rich_workspace.workspace_id,
+                "workspace_revision": rich_workspace.revision,
+                "snapshot_id": rich_publication["snapshot_id"],
+                "document_id": rich_source["document_id"],
+                "source_inventory_sha256": rich2["workspace_record_sha256"],
+                "snapshot_manifest_sha256": rich2["snapshot_manifest_sha256"],
+                "published_pointer": rich_publication["published_pointer"],
+                "science_settings_hash": rich2["settings_hash"],
+            },
+            rich2["corpus_name"],
+            None,
+        )
+    if mode in {"native", "native-metadata"}:
         validate_scientific_settings(
             {label: binding for label, (binding, _, _) in actual.items()},
             native_settings,
         )
     require(
-        all(binding == frozen[label] for label, (binding, _, _) in actual.items()),
+        all(
+            binding == frozen[label]
+            for label, (binding, _, _) in actual.items()
+            if label != "Rich" or mode not in {"native", "native-metadata"}
+        ),
         "binding drift",
     )
     verify_models(settings, manifest)

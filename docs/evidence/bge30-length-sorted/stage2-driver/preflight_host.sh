@@ -27,20 +27,20 @@ if [[ $mode == isolated || $mode == native || $mode == rich2-stage1 ]]; then
         extra_mounts=(--mount "type=bind,src=$output,dst=/review/output")
         extra_args=(/review/output/native-bindings.json)
     fi
-elif [[ $mode != metadata && $mode != rich2-metadata ]]; then
+elif [[ $mode != metadata && $mode != rich2-metadata && $mode != native-metadata ]]; then
     printf 'mode must be metadata, isolated, native, rich2-metadata or rich2-stage1\n' >&2
     exit 2
 fi
 awk '/^MemAvailable:/ {found=1; if ($2 < 2097152) exit 1} END {if (!found) exit 1}' /proc/meminfo
 [[ -d "$data" && -d "$models" && "$data" != "$models" ]]
-image=seneca-stage2-diagnostic:1f79eca0e30e
-digest=sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04
+image=seneca-rich2-local:1f79eca0
+digest=sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee
 docker image inspect "$image" | python3 -c '
 import json,sys
 assert json.load(sys.stdin)[0]["Descriptor"]["digest"] == sys.argv[1]
 ' "$digest"
 case "$mode" in
-  metadata|rich2-metadata)
+  metadata|rich2-metadata|native-metadata)
     [[ $data == /srv/seneca/data ]]
     data_mount="type=bind,src=$data,dst=/data,readonly"
     ;;
@@ -84,6 +84,10 @@ esac
 # The caller must provide an exclusively owned scratch copy for isolated mode.
 # No container start, stop, restart or image swap for the live service occurs.
 preflight_mode=$mode
+workloads="$inputs/workloads.json"
+if [[ $mode == native || $mode == native-metadata ]]; then
+  workloads="$inputs/workloads-rich2.json"
+fi
 timeout -k 5 180 docker run --rm --name "seneca-stage2-preflight-$$" \
   --network none --cpuset-cpus "$cpuset" --memory 6g --memory-swap 6g \
   --mount "$data_mount" \
@@ -95,5 +99,5 @@ timeout -k 5 180 docker run --rm --name "seneca-stage2-preflight-$$" \
   -e OFFLINE_RAG_DATA_DIR=/data -e OFFLINE_RAG_MODELS_DIR=/models \
   -e OFFLINE_RAG_STRICT_OFFLINE=true -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
   --entrypoint timeout "$digest" -k 2 170 python -B /review/driver/preflight.py "$preflight_mode" \
-  /review/inputs/workloads.json /review/inputs/stage1-bindings.json \
+  "/review/inputs/$(basename "$workloads")" /review/inputs/stage1-bindings.json \
   "${extra_args[@]}"

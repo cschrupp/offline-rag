@@ -2,8 +2,8 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 base=docs/evidence/bge30-length-sorted/stage2-integration
-image=seneca-stage2-diagnostic:1f79eca0e30e
-digest=sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04
+image=seneca-rich2-local:1f79eca0
+digest=sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee
 docker image inspect "$image" | python3 -c '
 import json, sys
 image=json.load(sys.stdin)[0]

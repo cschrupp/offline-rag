@@ -7,15 +7,18 @@ import json
 from pathlib import Path
 
 NATIVE_SETTINGS_SHA256 = (
-    "20a3aafb91c25d14851a0dda6bf009665cc2fc663308bf1bf84fcbb5a33e0ce6"
+    "503573bb732f4e2d4e348d11d3e321ebd4979cfff78e9fef1c5cb5ab2cbf090b"
 )
 SOURCE_COMMIT = "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e"
-IMAGE_DIGEST = "sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04"
+IMAGE_DIGEST = "sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee"
 SCIENCE_SETTINGS_SHA256 = (
     "5dce337dc1875b2aa615d62ee771a0ae384559c2da14be384e067ded035f5417"
 )
 STAGE1_BINDINGS_SHA256 = (
     "7bfc80f1ab7455077e41672d547b3b9938b18fd630f1615e80822477796af9f7"
+)
+RICH2_BINDING_SHA256 = (
+    "b3e2fcae6140ca3d1e87c3d925f3ec281d8c48889ff44723739def4cbd0db7a1"
 )
 
 
@@ -29,8 +32,8 @@ def sha256(path: Path) -> str:
 
 def load_manifest(inputs: Path) -> dict:
     """Verify the exact static native settings manifest and its linked inputs."""
-    manifest_path = inputs / "NATIVE_SETTINGS_MANIFEST.json"
-    workloads_path = inputs / "workloads.json"
+    manifest_path = inputs / "NATIVE_SETTINGS_RICH2.json"
+    workloads_path = inputs / "workloads-rich2.json"
     stage1_path = inputs / "stage1-bindings.json"
     provider_path = inputs / "provider_fixture.py"
     if sha256(manifest_path) != NATIVE_SETTINGS_SHA256:
@@ -63,6 +66,10 @@ def load_manifest(inputs: Path) -> dict:
         or manifest.get("stage1_binding_file_sha256") != STAGE1_BINDINGS_SHA256
         or sha256(stage1_path) != STAGE1_BINDINGS_SHA256
         or workloads.get("stage1_binding_file_sha256") != STAGE1_BINDINGS_SHA256
+        or manifest.get("rich2_binding_sha256") != RICH2_BINDING_SHA256
+        or sha256(inputs / "rich2-stage1-binding.json") != RICH2_BINDING_SHA256
+        or workloads.get("rich2_binding_sha256")
+        != sha256(inputs / "rich2-stage1-binding.json")
         or manifest.get("provider_fixture") != workloads.get("provider")
         or manifest["provider_fixture"].get("sha256") != sha256(provider_path)
         or manifest.get("budget", {}).get("total_submissions") != 36
@@ -94,7 +101,7 @@ def verify_config_file(manifest: dict, path: Path) -> None:
 def validate_bindings(envelope: dict, *, inputs: Path) -> dict[str, dict]:
     """Validate resolved source IDs against the exact frozen workspace set."""
     load_manifest(inputs)
-    workloads_path = inputs / "workloads.json"
+    workloads_path = inputs / "workloads-rich2.json"
     stage1_path = inputs / "stage1-bindings.json"
     workloads = json.loads(workloads_path.read_text(encoding="utf-8"))["workloads"]
     actual = envelope.get("workloads")

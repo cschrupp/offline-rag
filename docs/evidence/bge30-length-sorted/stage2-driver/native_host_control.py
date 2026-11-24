@@ -182,16 +182,21 @@ def _sha256_json(value: object) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def validate_completion_record(path: Path, *, session: str) -> None:
+def validate_completion_record(
+    path: Path, *, session: str, layout: str = "rich2-stage1"
+) -> None:
     """Require a complete, session-bound success record before accepting done."""
     rich2_stage1_container_identity(session)
     record = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(record, dict):
         raise TypeError("watchdog completion record is invalid")
     ended_at = record.get("ended_at_unix")
+    expected_keys = {"session", "exit_code", "ended_at_unix"}
+    if layout == "rich2-stage1":
+        expected_keys.add("schema")
     if (
-        set(record) != {"schema", "session", "exit_code", "ended_at_unix"}
-        or record.get("schema") != COMPLETION_SCHEMA
+        set(record) != expected_keys
+        or (layout == "rich2-stage1" and record.get("schema") != COMPLETION_SCHEMA)
         or record.get("session") != session
         or type(record.get("exit_code")) is not int
         or record["exit_code"] != 0
@@ -232,18 +237,27 @@ def inspect_named(name: str) -> dict:
     }
 
 
-def health(container_id: str) -> None:
+def health(container_id: str, *, timeout: float = 120) -> None:
+    deadline = time.monotonic() + timeout
+    health_errors = (subprocess.CalledProcessError, subprocess.TimeoutExpired)
     for endpoint in ("/health/live", "/health/ready"):
-        docker(
-            "exec",
-            container_id,
-            "python",
-            "-B",
-            "-c",
-            "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/' + sys.argv[1], timeout=3).status == 200 else 1)",
-            endpoint.lstrip("/"),
-            timeout=8,
-        )
+        while True:
+            try:
+                docker(
+                    "exec",
+                    container_id,
+                    "python",
+                    "-B",
+                    "-c",
+                    "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/' + sys.argv[1], timeout=3).status == 200 else 1)",
+                    endpoint.lstrip("/"),
+                    timeout=8,
+                )
+                break
+            except health_errors:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(1)
 
 
 def capture(path: Path) -> None:
@@ -349,7 +363,11 @@ def verify_scratch_unowned(
             raise RuntimeError("isolated Qdrant storage is missing")
     elif layout == "stage2":
         for strategy in ("A", "B"):
-            assert_qdrant_unowned(root / strategy / "data" / "qdrant")
+            qdrant_path = root / strategy / "data" / "qdrant"
+            if qdrant_path.exists() or qdrant_path.is_symlink():
+                assert_qdrant_unowned(qdrant_path)
+            elif not allow_missing_qdrant:
+                raise RuntimeError("isolated Qdrant storage is missing")
     else:
         raise ValueError("unsupported scratch layout")
 
@@ -359,7 +377,7 @@ def assert_qdrant_unowned(path: Path) -> None:
         raise RuntimeError("isolated Qdrant storage is missing")
     try:
         lsof = subprocess.run(
-            ["lsof", "+D", str(path)],
+            ["sudo", "-n", "lsof", "+D", str(path)],
             capture_output=True,
             text=True,
             check=False,
@@ -388,7 +406,9 @@ def main() -> None:
     verify_parser.add_argument("--abort", type=Path)
     verify_parser.add_argument("--metadata-baseline", type=Path)
     verify_parser.add_argument(
-        "--metadata-mode", choices=("metadata", "rich2-metadata"), default="metadata"
+        "--metadata-mode",
+        choices=("metadata", "rich2-metadata", "native-metadata"),
+        default="metadata",
     )
     verify_parser.add_argument("--cpuset")
     verify_parser.add_argument(
@@ -418,7 +438,7 @@ def main() -> None:
         supervise_parser.add_argument("--metadata-baseline", type=Path, required=True)
         supervise_parser.add_argument(
             "--metadata-mode",
-            choices=("metadata", "rich2-metadata"),
+            choices=("metadata", "rich2-metadata", "native-metadata"),
             default="metadata",
         )
         supervise_parser.add_argument("--cpuset", required=True)
@@ -505,7 +525,11 @@ def main() -> None:
             stop_timeout=30,
         )
         if status == 0:
-            validate_completion_record(root / options.done, session=options.session)
+            validate_completion_record(
+                root / options.done,
+                session=options.session,
+                layout=options.scratch_layout,
+            )
         raise SystemExit(status)
 
 

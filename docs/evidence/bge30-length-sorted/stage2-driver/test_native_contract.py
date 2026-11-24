@@ -16,10 +16,10 @@ INPUTS = Path(__file__).parents[1] / "stage2-integration"
 
 
 def binding_envelope(inputs: Path = INPUTS):
-    workloads = json.loads((inputs / "workloads.json").read_text())
+    workloads = json.loads((inputs / "workloads-rich2.json").read_text())
     return {
         "schema": "seneca-stage2-native-bindings-v1",
-        "workloads_sha256": sha256(inputs / "workloads.json"),
+        "workloads_sha256": sha256(inputs / "workloads-rich2.json"),
         "stage1_bindings_sha256": sha256(inputs / "stage1-bindings.json"),
         "native_settings_manifest_sha256": NATIVE_SETTINGS_SHA256,
         "workloads": {
@@ -49,17 +49,48 @@ def test_native_manifest_matches_frozen_application_and_artifacts():
     assert manifest["host_contract"]["model_mount"] == "/srv/seneca/models"
 
 
+def test_rich2_workload_preserves_original_scientific_contract():
+    historical = json.loads((INPUTS / "workloads.json").read_text())
+    current = json.loads((INPUTS / "workloads-rich2.json").read_text())
+    binding = json.loads((INPUTS / "rich2-stage1-binding.json").read_text())
+    assert current["models"] == historical["models"]
+    assert current["provider"] == historical["provider"]
+    assert current["workloads"]["Recipes"] == historical["workloads"]["Recipes"]
+    rich = dict(current["workloads"]["Rich"])
+    assert rich.pop("workspace_id") == binding["workspace"]["workspace_id"]
+    assert rich.pop("revision") == binding["workspace"]["revision"]
+    original = dict(historical["workloads"]["Rich"])
+    original.pop("workspace_id")
+    original.pop("revision")
+    assert rich == original
+    assert current["rich2_binding_sha256"] == sha256(
+        INPUTS / "rich2-stage1-binding.json"
+    )
+
+
+def test_schedule_retains_28_load_and_8_lifecycle_submissions():
+    from driver import schedule
+
+    submissions = [submission for wave in schedule() for submission in wave]
+    assert len(submissions) == 36
+    assert sum(item.case == "load" for item in submissions) == 28
+    assert sum(item.case != "load" for item in submissions) == 8
+    assert {item.strategy for item in submissions} == {"consecutive", "length_sorted_8"}
+    assert [item.ordinal for item in submissions] == list(range(1, 37))
+
+
 def test_native_manifest_tampering_fails_closed(tmp_path):
     copied_inputs = tmp_path / "inputs"
     copied_inputs.mkdir()
     for name in (
-        "NATIVE_SETTINGS_MANIFEST.json",
-        "workloads.json",
+        "NATIVE_SETTINGS_RICH2.json",
+        "workloads-rich2.json",
         "stage1-bindings.json",
         "provider_fixture.py",
+        "rich2-stage1-binding.json",
     ):
         shutil.copy2(INPUTS / name, copied_inputs / name)
-    path = copied_inputs / "NATIVE_SETTINGS_MANIFEST.json"
+    path = copied_inputs / "NATIVE_SETTINGS_RICH2.json"
     data = json.loads(path.read_text())
     data["scientific_settings_hash"] = "changed"
     path.write_text(json.dumps(data))
@@ -71,10 +102,11 @@ def test_changed_stage1_bindings_fail_before_native_preflight(tmp_path):
     copied_inputs = tmp_path / "inputs"
     copied_inputs.mkdir()
     for name in (
-        "NATIVE_SETTINGS_MANIFEST.json",
-        "workloads.json",
+        "NATIVE_SETTINGS_RICH2.json",
+        "workloads-rich2.json",
         "stage1-bindings.json",
         "provider_fixture.py",
+        "rich2-stage1-binding.json",
     ):
         shutil.copy2(INPUTS / name, copied_inputs / name)
     (copied_inputs / "stage1-bindings.json").write_bytes(b"{}\n")

@@ -40,7 +40,7 @@ from offline_rag.rerank.cross_encoder import CrossEncoderReranker
 EVENTS = Path("/stage2-journal/events.jsonl")
 CONTROL = Path("/stage2-control")
 DIAGNOSTIC_IMAGE_DIGEST = (
-    "sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04"
+    "sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee"
 )
 _event_lock = threading.Lock()
 _ordinal = contextvars.ContextVar("stage2_ordinal", default=None)
@@ -849,7 +849,7 @@ def validate_native_settings(settings, strategy: str) -> None:
         or manifest.get("scientific_settings_hash")
         != "5dce337dc1875b2aa615d62ee771a0ae384559c2da14be384e067ded035f5417"
         or hashlib.sha256(
-            Path("/review/inputs/workloads.json").read_bytes()
+            Path("/review/inputs/workloads-rich2.json").read_bytes()
         ).hexdigest()
         != manifest.get("workloads_file_sha256")
         or hashlib.sha256(
