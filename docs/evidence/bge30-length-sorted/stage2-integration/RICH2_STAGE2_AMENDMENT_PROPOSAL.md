@@ -67,6 +67,39 @@ Any missing backing, source/snapshot/config drift, candidate population or
 scope mismatch, incomplete instrumentation, resource-policy violation, or
 restoration failure leaves the amendment unqualified.
 
+## Failure-safe order for the future authorized probe
+
+The independent restore watchdog must be running **before** the original
+container is stopped. First capture its exact identity and the read-only
+`rich2-metadata` publication baseline while the service is healthy. Create the
+unique scratch/session directory, empty `stage1` output directory, and absent
+`done`/`abort` markers. Then launch
+`native_host_control.py supervise` independently with the captured container
+snapshot, metadata baseline, `--scratch-layout rich2-stage1`,
+`--metadata-mode rich2-metadata`, the verified CPU set, and the bounded
+monotonic ceiling.
+
+Only after the supervisor is confirmed alive may the coordinator stop the
+original container, copy `/srv/seneca/data`, verify exclusive Qdrant ownership,
+and run isolated preflight. A shell `EXIT`/signal handler must call
+`native_host_control.py signal-failure --abort "$ABORT" --done "$DONE"` on
+any failure after watchdog startup, then wait for that supervisor's restoration
+and verification before returning failure. This includes stop, copy and
+preflight errors, even when no diagnostic container was created. On a normal
+one-shot completion, the coordinator records the exit status in `done`, waits
+for the supervisor, and treats any nonzero diagnostic or supervisor status as
+qualification failure.
+
+The diagnostic container name and ownership label must come from
+`native_host_control.py rich2-identity "$SESSION"`. The required pair is
+`seneca-stage2-$SESSION` and
+`io.seneca.stage2.session=$SESSION`; verify the created container with the
+existing `docker_adapter.owned_container()` check before starting it. The
+watchdog then terminates only that exact session-owned container. Successful
+completion requires the watchdog's post-restore checks: original container
+identity/image/mounts/restart policy, both health endpoints, unchanged
+read-only publication metadata, and unowned scratch Qdrant storage.
+
 ## Explicit boundary
 
 This proposal authorizes no VM startup, host maintenance, production

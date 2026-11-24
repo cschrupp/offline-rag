@@ -27,6 +27,18 @@ def require(ok, message):
         raise ValueError(message)
 
 
+def dispatch_preflight_validators(
+    mode: str, *, recipes_validator, rich_validator, rich2_validator
+):
+    """Run the exact live binding validators required by this preflight mode."""
+    validators = {"Recipes": recipes_validator, "Rich": rich_validator}
+    if mode in {"rich2-stage1", "rich2-metadata"}:
+        return {"Recipes": recipes_validator()}, rich2_validator()
+    if mode in {"metadata", "isolated", "native"}:
+        return {label: validator() for label, validator in validators.items()}, None
+    raise ValueError("unsupported preflight mode")
+
+
 def recipes(settings):
     global stage
     question = normalize_product_question(
@@ -367,7 +379,7 @@ def validate_rich2_binding(settings, binding: dict, *, qdrant=None) -> dict:
         "Rich 2 workspace record/inventory hash drift",
     )
     require(
-        workspace.backing_corpus_name == publication_binding["backing_corpus_name"],
+        workspace.backing_corpus_name == workspace_binding["backing_corpus_name"],
         "Rich 2 corpus binding drift",
     )
     require(
@@ -403,8 +415,8 @@ def validate_rich2_binding(settings, binding: dict, *, qdrant=None) -> dict:
         expected_scope
         == {
             "mode": "all_active",
-            "source_ids": [source["source_id"]],
-            "document_ids": [source["document_id"]],
+            "source_ids": [source_binding["identity"]["source_id"]],
+            "document_ids": [source_binding["identity"]["document_id"]],
         },
         "Rich 2 binding scope is malformed",
     )
@@ -692,19 +704,24 @@ def main():
         and settings.reranker.max_length == 1024,
         "scorer settings drift",
     )
-    from rich2_stage1 import validate_binding_document, workload_labels_for_mode
+    rich2_state = {}
 
-    workload_validators = {"Recipes": recipes, "Rich": rich}
-    actual = {
-        label: workload_validators[label](settings)
-        for label in workload_labels_for_mode(mode)
-    }
-    rich2_binding_path = manifest_path.parent / "rich2-stage1-binding.json"
-    rich2_binding = json.loads(rich2_binding_path.read_text(encoding="utf-8"))
+    def validate_rich2():
+        from rich2_stage1 import validate_binding_document
 
-    historical_binding_sha = digest(bindings_path)
-    validate_binding_document(rich2_binding, historical_binding_sha)
-    rich2 = validate_rich2_binding(settings, rich2_binding)
+        rich2_binding_path = manifest_path.parent / "rich2-stage1-binding.json"
+        rich2_binding = json.loads(rich2_binding_path.read_text(encoding="utf-8"))
+        validate_binding_document(rich2_binding, digest(bindings_path))
+        rich2_state["binding"] = rich2_binding
+        return validate_rich2_binding(settings, rich2_binding)
+
+    actual, rich2 = dispatch_preflight_validators(
+        mode,
+        recipes_validator=lambda: recipes(settings),
+        rich_validator=lambda: rich(settings),
+        rich2_validator=validate_rich2,
+    )
+    rich2_binding = rich2_state.get("binding")
     if mode == "native":
         validate_scientific_settings(
             {label: binding for label, (binding, _, _) in actual.items()},
@@ -790,64 +807,57 @@ def main():
                     == binding["snapshot_id"],
                     "backing resolution mismatch",
                 )
-            rich2_snapshot = registry.resolve_snapshot(
-                rich2["corpus_name"], rich2_binding["publication"]["snapshot_id"]
-            )
-            require(
-                rich2_snapshot.snapshot_id
-                == rich2_binding["publication"]["snapshot_id"],
-                "Rich 2 backing resolution mismatch",
-            )
+            if rich2 is not None:
+                rich2_snapshot = registry.resolve_snapshot(
+                    rich2["corpus_name"],
+                    rich2_binding["publication"]["snapshot_id"],
+                )
+                require(
+                    rich2_snapshot.snapshot_id
+                    == rich2_binding["publication"]["snapshot_id"],
+                    "Rich 2 backing resolution mismatch",
+                )
         finally:
             backend.close()
-    print(
-        json.dumps(
-            {
-                "mode": mode,
-                "strategies": settings.reranker.batching_strategy,
-                "bindings": {
-                    label: {
-                        "workspace_id": b["workspace_id"],
-                        "workspace_revision": b["workspace_revision"],
-                        "snapshot_id": b["snapshot_id"],
-                        "document_id": b["document_id"],
-                        "source_mode": manifest["workloads"][label]["source_mode"],
-                        "source_ids": ids,
-                        "source_inventory_sha256": b["source_inventory_sha256"],
-                        "snapshot_manifest_sha256": b["snapshot_manifest_sha256"],
-                        "published_pointer": b["published_pointer"],
-                    }
-                    for label, (b, _, ids) in actual.items()
-                },
-                "Rich2": {
-                    "workspace_id": rich2["workspace"].workspace_id,
-                    "workspace_revision": rich2["workspace"].revision,
-                    "source_inventory_sha256": rich2["workspace_record_sha256"],
-                    "source_ids": sorted(rich2["source_scope"].source_ids),
-                    "document_ids": sorted(rich2["document_ids"]),
-                    "snapshot_id": rich2_binding["publication"]["snapshot_id"],
-                    "snapshot_manifest_sha256": rich2["snapshot_manifest_sha256"],
-                    "published_pointer": rich2_binding["publication"][
-                        "published_pointer"
-                    ],
-                    "scientific_settings_sha256": rich2["settings_hash"],
-                },
-                "historical_Rich": (
-                    {
-                        "status": "preserved_historical_binding_not_live_resolved",
-                        **rich2_binding["historical_rich_binding"],
-                    }
-                    if mode in {"rich2-stage1", "rich2-metadata"}
-                    else None
-                ),
-                "scientific_settings": {
-                    label: b["science_settings_hash"]
-                    for label, (b, _, _) in actual.items()
-                },
-            },
-            sort_keys=True,
-        )
-    )
+    output = {
+        "mode": mode,
+        "strategies": settings.reranker.batching_strategy,
+        "bindings": {
+            label: {
+                "workspace_id": b["workspace_id"],
+                "workspace_revision": b["workspace_revision"],
+                "snapshot_id": b["snapshot_id"],
+                "document_id": b["document_id"],
+                "source_mode": manifest["workloads"][label]["source_mode"],
+                "source_ids": ids,
+                "source_inventory_sha256": b["source_inventory_sha256"],
+                "snapshot_manifest_sha256": b["snapshot_manifest_sha256"],
+                "published_pointer": b["published_pointer"],
+            }
+            for label, (b, _, ids) in actual.items()
+        },
+        "scientific_settings": {
+            label: b["science_settings_hash"] for label, (b, _, _) in actual.items()
+        },
+    }
+    if rich2 is not None:
+        output["Rich2"] = {
+            "workspace_id": rich2["workspace"].workspace_id,
+            "workspace_revision": rich2["workspace"].revision,
+            "source_inventory_sha256": rich2["workspace_record_sha256"],
+            "source_ids": sorted(rich2["source_scope"].source_ids),
+            "document_ids": sorted(rich2["document_ids"]),
+            "snapshot_id": rich2_binding["publication"]["snapshot_id"],
+            "snapshot_manifest_sha256": rich2["snapshot_manifest_sha256"],
+            "published_pointer": rich2_binding["publication"]["published_pointer"],
+            "scientific_settings_sha256": rich2["settings_hash"],
+        }
+        if mode in {"rich2-stage1", "rich2-metadata"}:
+            output["historical_Rich"] = {
+                "status": "preserved_historical_binding_not_live_resolved",
+                **rich2_binding["historical_rich_binding"],
+            }
+    print(json.dumps(output, sort_keys=True))
 
 
 if __name__ == "__main__":

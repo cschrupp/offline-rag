@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import importlib.util
 import json
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -13,6 +15,7 @@ import pytest
 DRIVER_DIR = Path(__file__).parent
 sys.path.insert(0, str(DRIVER_DIR))
 
+import docker_watchdog
 import native_host_control
 from rich2_stage1 import (
     Rich2Stage1Error,
@@ -20,7 +23,6 @@ from rich2_stage1 import (
     _require_single_use_paths_available,
     validate_binding_document,
     validate_observation,
-    workload_labels_for_mode,
 )
 
 INPUTS = DRIVER_DIR.parent / "stage2-integration"
@@ -32,6 +34,60 @@ def load_binding() -> tuple[dict, str]:
     binding = json.loads(BINDING_PATH.read_text(encoding="utf-8"))
     historical_sha = hashlib.sha256(HISTORICAL_PATH.read_bytes()).hexdigest()
     return binding, historical_sha
+
+
+def load_preflight_with_deterministic_dependencies(monkeypatch):
+    """Load preflight without importing the app's provider/model modules."""
+    package_names = (
+        "offline_rag.app",
+        "offline_rag.app.workspace",
+        "offline_rag.config",
+        "offline_rag.context",
+        "offline_rag.dense",
+        "offline_rag.lexical",
+    )
+    for name in package_names:
+        package = types.ModuleType(name)
+        package.__path__ = []
+        monkeypatch.setitem(sys.modules, name, package)
+
+    stubs = {
+        "offline_rag.app.publication": {
+            "ProductPublicationRegistry": object,
+            "snapshot_manifest_path": lambda *_args: None,
+        },
+        "offline_rag.app.query": {
+            "_resolve_workspace_source_scope": None,
+            "normalize_product_question": lambda value: value,
+        },
+        "offline_rag.app.snapshot": {
+            "CanonicalSnapshotManifest": object,
+            "compute_snapshot_id": lambda _manifest: "",
+        },
+        "offline_rag.app.workspace.store": {"WorkspaceStore": object},
+        "offline_rag.app.workspace.vault": {"RawSourceVault": object},
+        "offline_rag.config.loader": {"load_settings": lambda: None},
+        "offline_rag.context.store": {
+            "load_structure_store_for_chunk_manifest": lambda *_args: None
+        },
+        "offline_rag.dense.persistence": {"load_index_manifest": lambda _path: None},
+        "offline_rag.lexical.backend": {"LocalInvertedIndexBackend": object},
+        "offline_rag.lexical.persistence": {
+            "load_lexical_index_manifest": lambda _path: None
+        },
+    }
+    for name, attributes in stubs.items():
+        module_stub = types.ModuleType(name)
+        for key, value in attributes.items():
+            setattr(module_stub, key, value)
+        monkeypatch.setitem(sys.modules, name, module_stub)
+
+    path = DRIVER_DIR / "preflight.py"
+    spec = importlib.util.spec_from_file_location("rich2_preflight_under_test", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def valid_observation() -> dict:
@@ -69,18 +125,324 @@ def test_rich2_binding_is_distinct_and_historical_binding_is_unchanged():
     assert binding["historical_rich_binding"]["preserved_sha256"] == historical_sha
 
 
-@pytest.mark.parametrize(
-    ("mode", "expected"),
-    [
-        ("metadata", ("Recipes", "Rich")),
-        ("isolated", ("Recipes", "Rich")),
-        ("native", ("Recipes", "Rich")),
-        ("rich2-metadata", ("Recipes",)),
-        ("rich2-stage1", ("Recipes",)),
-    ],
-)
-def test_rich2_modes_preserve_historical_rich_validation_path(mode, expected):
-    assert workload_labels_for_mode(mode) == expected
+def test_committed_binding_passes_complete_deterministic_preflight(
+    tmp_path, monkeypatch
+):
+    binding, historical_sha = load_binding()
+    validate_binding_document(binding, historical_sha)
+    preflight = load_preflight_with_deterministic_dependencies(monkeypatch)
+    publication = binding["publication"]
+    artifact_binding = binding["artifacts"]
+    workspace_binding = binding["workspace"]
+    source_identity = binding["source"]["identity"]
+    snapshot_identity = publication["snapshot_identity"]
+
+    roots = {
+        name: tmp_path / name
+        for name in (
+            "workspaces",
+            "corpora",
+            "manifests",
+            "chunk_manifests",
+            "index_manifests",
+            "lexical_index_manifests",
+            "qdrant",
+            "lexical_indexes",
+            "chunks",
+        )
+    }
+    for root in roots.values():
+        root.mkdir()
+    settings = types.SimpleNamespace(
+        paths=types.SimpleNamespace(
+            workspaces=roots["workspaces"],
+            corpora=roots["corpora"],
+            manifests=roots["manifests"],
+            chunk_manifests=roots["chunk_manifests"],
+            index_manifests=roots["index_manifests"],
+            lexical_index_manifests=roots["lexical_index_manifests"],
+            qdrant_storage=roots["qdrant"],
+            lexical_indexes=roots["lexical_indexes"],
+            chunks=roots["chunks"],
+        ),
+        **{
+            name: types.SimpleNamespace(model_dump=lambda **_kwargs: {})
+            for name in (
+                "dense",
+                "reranker",
+                "fusion",
+                "context",
+                "lexical",
+                "indexing",
+            )
+        },
+    )
+
+    source = types.SimpleNamespace(
+        **source_identity,
+        vault_object_id="vault-object-fixture",
+    )
+    workspace = types.SimpleNamespace(
+        status="active",
+        revision=workspace_binding["revision"],
+        current_snapshot_id=publication["snapshot_id"],
+        backing_corpus_name=workspace_binding["backing_corpus_name"],
+        sources=[source],
+    )
+
+    class FakeWorkspaceStore:
+        def __init__(self, _settings):
+            pass
+
+        def get(self, _workspace_id):
+            return workspace
+
+        def workspace_path(self, _workspace_id):
+            return types.SimpleNamespace(read_bytes=lambda: b"workspace fixture")
+
+    class FakeVault:
+        def __init__(self, _root):
+            pass
+
+        def verify_object(self, _workspace_id, _object_id):
+            return types.SimpleNamespace(
+                content_hash=binding["source"]["content_sha256"],
+                byte_size=binding["source"]["byte_size"],
+            )
+
+    class FakeManifest:
+        corpus_manifest = "corpus-fixture.json"
+        chunk_manifest = "chunk-fixture.json"
+        dense_index_manifest = "dense-fixture.json"
+        lexical_index_manifest = "lexical-fixture.json"
+
+        @classmethod
+        def model_validate_json(cls, _data):
+            return cls()
+
+        def model_dump(self, **_kwargs):
+            return snapshot_identity
+
+    class FakeDenseBackend:
+        def __init__(self, _root):
+            pass
+
+        def index_exists(self, _index_id):
+            return True
+
+        def validate(self, _index_id):
+            return True
+
+    monkeypatch.setattr(preflight, "WorkspaceStore", FakeWorkspaceStore)
+    monkeypatch.setattr(preflight, "RawSourceVault", FakeVault)
+    monkeypatch.setattr(preflight, "CanonicalSnapshotManifest", FakeManifest)
+    monkeypatch.setattr(
+        preflight,
+        "_resolve_workspace_source_scope",
+        lambda _workspace, source_ids: (
+            types.SimpleNamespace(model_dump=lambda **_kwargs: binding["source_scope"]),
+            None,
+            frozenset(binding["source_scope"]["document_ids"]),
+        ),
+    )
+    monkeypatch.setattr(
+        preflight,
+        "compute_snapshot_id",
+        lambda _manifest: publication["snapshot_id"],
+    )
+    snapshot_file = roots["corpora"] / "snapshot.json"
+    snapshot_file.write_bytes(b"snapshot fixture")
+    monkeypatch.setattr(
+        preflight,
+        "snapshot_manifest_path",
+        lambda *_args: snapshot_file,
+    )
+
+    manifest_paths = {
+        "corpus": roots["manifests"] / FakeManifest.corpus_manifest,
+        "chunk": roots["chunk_manifests"] / FakeManifest.chunk_manifest,
+        "dense": roots["index_manifests"] / FakeManifest.dense_index_manifest,
+        "lexical": roots["lexical_index_manifests"]
+        / FakeManifest.lexical_index_manifest,
+    }
+    for path in manifest_paths.values():
+        path.write_bytes(b"manifest fixture")
+    expected_dense = artifact_binding["dense"]
+    expected_lexical = artifact_binding["lexical"]
+    monkeypatch.setattr(
+        preflight,
+        "load_index_manifest",
+        lambda _path: types.SimpleNamespace(
+            index_id=snapshot_identity["dense_index_id"],
+            expected_child_count=10,
+            indexed_child_count=10,
+            collection_name=expected_dense["collection_name"],
+        ),
+    )
+    lexical_backend_module = sys.modules["offline_rag.lexical.backend"]
+    monkeypatch.setattr(
+        lexical_backend_module,
+        "LocalInvertedIndexBackend",
+        FakeDenseBackend,
+    )
+    lexical_persistence = sys.modules["offline_rag.lexical.persistence"]
+    monkeypatch.setattr(
+        lexical_persistence,
+        "load_lexical_index_manifest",
+        lambda _path: types.SimpleNamespace(
+            lexical_index_id=snapshot_identity["lexical_index_id"],
+            expected_child_count=10,
+            indexed_child_count=10,
+            document_count=10,
+        ),
+    )
+    lexical_dir = roots["lexical_indexes"] / snapshot_identity["lexical_index_id"]
+    lexical_dir.mkdir()
+    for filename in expected_lexical["lexical_files_sha256"]:
+        (lexical_dir / filename).write_bytes(b"lexical fixture")
+    dense_collection = (
+        roots["qdrant"] / "collection" / expected_dense["collection_name"]
+    )
+    dense_collection.mkdir(parents=True)
+    structures = object()
+    monkeypatch.setattr(
+        sys.modules["offline_rag.context.store"],
+        "load_structure_store_for_chunk_manifest",
+        lambda *_args: structures,
+    )
+    monkeypatch.setattr(
+        preflight,
+        "load_structure_store_for_chunk_manifest",
+        lambda *_args: structures,
+    )
+
+    class FakeRegistry:
+        def __init__(self, _settings, **_kwargs):
+            pass
+
+        def published_snapshot_id(self, _corpus):
+            return publication["snapshot_id"]
+
+    monkeypatch.setattr(
+        sys.modules["offline_rag.app.publication"],
+        "ProductPublicationRegistry",
+        FakeRegistry,
+    )
+    monkeypatch.setattr(preflight, "ProductPublicationRegistry", FakeRegistry)
+
+    expected_settings_hash_payload = json.dumps(
+        {
+            name: {}
+            for name in (
+                "dense",
+                "reranker",
+                "fusion",
+                "context",
+                "lexical",
+                "indexing",
+            )
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+    real_sha256 = hashlib.sha256
+
+    class FakeDigest:
+        def __init__(self, value):
+            self.value = value
+
+        def hexdigest(self):
+            return self.value
+
+    def deterministic_sha256(value=b""):
+        if value == b"workspace fixture":
+            return FakeDigest(workspace_binding["workspace_record_sha256"])
+        if value == b"snapshot fixture":
+            return FakeDigest(publication["snapshot_manifest_sha256"])
+        if value == expected_settings_hash_payload:
+            return FakeDigest(publication["science_settings_sha256"])
+        return real_sha256(value)
+
+    monkeypatch.setattr(preflight.hashlib, "sha256", deterministic_sha256)
+    expected_by_name = {
+        path.name: artifact_binding["manifest_sha256"][name]
+        for name, path in manifest_paths.items()
+    }
+    expected_by_name.update(expected_lexical["lexical_files_sha256"])
+
+    def deterministic_file_hash(path):
+        if path == snapshot_file:
+            return publication["snapshot_manifest_sha256"]
+        if path == Path("/app/config/base.yaml"):
+            return binding["effective_config"]["sha256"]
+        return expected_by_name[path.name]
+
+    monkeypatch.setattr(preflight, "_sha256", deterministic_file_hash)
+    monkeypatch.setenv("OFFLINE_RAG_CONFIG", "/app/config/base.yaml")
+    monkeypatch.setattr(
+        sys.modules["offline_rag.lexical.backend"],
+        "LocalInvertedIndexBackend",
+        FakeDenseBackend,
+    )
+
+    actual_bindings, validated = preflight.dispatch_preflight_validators(
+        "rich2-stage1",
+        recipes_validator=lambda: "recipes binding fixture",
+        rich_validator=lambda: pytest.fail(
+            "Rich 2 preflight attempted live historical Rich validation"
+        ),
+        rich2_validator=lambda: preflight.validate_rich2_binding(settings, binding),
+    )
+
+    assert actual_bindings == {"Recipes": "recipes binding fixture"}
+    assert validated["corpus_name"] == workspace_binding["backing_corpus_name"]
+    assert validated["workspace"] is workspace
+    assert validated["structures"] is structures
+    assert validated["document_ids"] == frozenset(
+        binding["source_scope"]["document_ids"]
+    )
+
+    workspace.backing_corpus_name = "unexpected-corpus"
+    with pytest.raises(ValueError, match="corpus binding drift"):
+        preflight.validate_rich2_binding(settings, binding)
+    workspace.backing_corpus_name = workspace_binding["backing_corpus_name"]
+
+    dense_collection.rmdir()
+    with pytest.raises(ValueError, match="dense collection directory is missing"):
+        preflight.validate_rich2_binding(settings, binding)
+
+
+@pytest.mark.parametrize("mode", ["metadata", "isolated", "native"])
+def test_original_preflight_modes_do_not_require_rich2(mode, monkeypatch):
+    calls = []
+    preflight = load_preflight_with_deterministic_dependencies(monkeypatch)
+    actual, rich2 = preflight.dispatch_preflight_validators(
+        mode,
+        recipes_validator=lambda: calls.append("Recipes") or "recipes",
+        rich_validator=lambda: calls.append("Rich") or "rich",
+        rich2_validator=lambda: pytest.fail("original mode dispatched Rich 2"),
+    )
+
+    assert actual == {"Recipes": "recipes", "Rich": "rich"}
+    assert calls == ["Recipes", "Rich"]
+    assert rich2 is None
+
+
+@pytest.mark.parametrize("mode", ["rich2-metadata", "rich2-stage1"])
+def test_rich2_preflight_modes_use_recipes_and_rich2_not_live_historical_rich(
+    mode, monkeypatch
+):
+    calls = []
+    preflight = load_preflight_with_deterministic_dependencies(monkeypatch)
+    actual, rich2 = preflight.dispatch_preflight_validators(
+        mode,
+        recipes_validator=lambda: calls.append("Recipes") or "recipes",
+        rich_validator=lambda: pytest.fail("Rich 2 mode dispatched historical Rich"),
+        rich2_validator=lambda: calls.append("Rich2") or "rich2",
+    )
+
+    assert actual == {"Recipes": "recipes"}
+    assert calls == ["Recipes", "Rich2"]
+    assert rich2 == "rich2"
 
 
 @pytest.mark.parametrize(
@@ -234,6 +596,47 @@ def test_rich2_restoration_layout_checks_its_only_qdrant_copy(tmp_path, monkeypa
     native_host_control.verify_scratch_unowned(tmp_path, layout="rich2-stage1")
 
     assert observed == [tmp_path / "data" / "qdrant"]
+
+
+def test_rich2_container_identity_uses_watchdog_session_label():
+    from docker_adapter import LABEL
+
+    name, label = native_host_control.rich2_stage1_container_identity(
+        "0123456789abcdef"
+    )
+
+    assert name == "seneca-stage2-0123456789abcdef"
+    assert label == f"{LABEL}=0123456789abcdef"
+
+
+def test_preflight_failure_releases_watchdog_to_restore_original(tmp_path, monkeypatch):
+    done = tmp_path / "done"
+    abort = tmp_path / "abort"
+    native_host_control.mark_watchdog_failure(done=done, abort=abort)
+    calls = []
+    monkeypatch.setattr(docker_watchdog, "owned_container", lambda *_args: None)
+    monkeypatch.setattr(
+        docker_watchdog, "terminate", lambda *args, **kwargs: calls.append("terminate")
+    )
+    monkeypatch.setattr(
+        docker_watchdog.subprocess,
+        "run",
+        lambda command, **_kwargs: calls.append(command[0]),
+    )
+
+    result = docker_watchdog.supervise(
+        name="seneca-stage2-0123456789abcdef",
+        session="0123456789abcdef",
+        deadline=1e20,
+        done=done,
+        abort=abort,
+        restore=["restore-original"],
+        verify=["verify-restoration"],
+    )
+
+    assert abort.exists() and done.exists()
+    assert calls == ["terminate", "restore-original", "verify-restoration"]
+    assert result == 124
 
 
 def test_existing_stage2_restoration_layout_keeps_both_qdrant_checks(

@@ -5,15 +5,33 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 
-from docker_adapter import docker
+from docker_adapter import LABEL, docker
 from docker_watchdog import supervise as supervise_docker_session
 
 APP_NAME = "seneca-review"
 EXPECTED_APP_IMAGE_REF = "seneca-review:9c92e706c4b9"
+STAGE2_CONTAINER_PREFIX = "seneca-stage2-"
+
+
+def rich2_stage1_container_identity(session: str) -> tuple[str, str]:
+    """Return the exact name and ownership label watched by the Stage 2 tools."""
+    if re.fullmatch(r"[a-f0-9]{16}", session) is None:
+        raise ValueError("invalid diagnostic session identity")
+    return (
+        STAGE2_CONTAINER_PREFIX + session,
+        f"{LABEL}={session}",
+    )
+
+
+def mark_watchdog_failure(*, done: Path, abort: Path) -> None:
+    """Release a preflight-failed session to the independent restore watchdog."""
+    abort.touch(exist_ok=True)
+    done.touch(exist_ok=True)
 
 
 def inspect_named(name: str) -> dict:
@@ -199,6 +217,11 @@ def main() -> None:
     )
     qdrant_parser = commands.add_parser("check-qdrant")
     qdrant_parser.add_argument("path", type=Path)
+    failure_parser = commands.add_parser("signal-failure")
+    failure_parser.add_argument("--done", type=Path, required=True)
+    failure_parser.add_argument("--abort", type=Path, required=True)
+    identity_parser = commands.add_parser("rich2-identity")
+    identity_parser.add_argument("session")
     if len(sys.argv) > 1 and sys.argv[1] == "supervise":
         supervise_parser = commands.add_parser("supervise")
         supervise_parser.add_argument("--session", required=True)
@@ -236,6 +259,11 @@ def main() -> None:
         )
     elif options.command == "check-qdrant":
         assert_qdrant_unowned(options.path.resolve(strict=True))
+    elif options.command == "signal-failure":
+        mark_watchdog_failure(done=options.done, abort=options.abort)
+    elif options.command == "rich2-identity":
+        name, label = rich2_stage1_container_identity(options.session)
+        print(json.dumps({"name": name, "label": label}, sort_keys=True))
     else:
         root = options.scratch.resolve(strict=True)
         snapshot = options.snapshot.resolve(strict=True)

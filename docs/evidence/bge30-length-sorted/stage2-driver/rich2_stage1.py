@@ -35,13 +35,6 @@ class Rich2Stage1Error(RuntimeError):
     """A Rich 2 Stage 1 input or observation failed closed validation."""
 
 
-def workload_labels_for_mode(mode: str) -> tuple[str, ...]:
-    """Select live workload bindings without rewriting historical Rich state."""
-    if mode in {"rich2-stage1", "rich2-metadata"}:
-        return ("Recipes",)
-    return ("Recipes", "Rich")
-
-
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
