@@ -1,6 +1,6 @@
 # Native Stage 2 execution preparation
 
-**State:** locally prepared; host-dependent preflight unavailable; native campaign not authorized.
+**State:** split Campaign A / Campaign B execution path. Campaign A is authorized first; Campaign B uses a separate session when its own host window qualifies. This runbook does not replace the active Human execution authority.
 
 This runbook is a preparation artifact. It does not authorize VM startup, maintenance, workspace queries, deployment, merge, or batching activation. The synthetic rehearsal at the accepted evidence commit is not repeated.
 
@@ -17,7 +17,9 @@ This runbook is a preparation artifact. It does not authorize VM startup, mainte
 | Embedding | Qwen3 revision `97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3`, `cpu_onnx_fp32_v1`, `onnx_fp32_v1`, ORT 8/1 |
 | Request lifecycle | 180-second query deadline, 30-second application shutdown grace |
 | Workloads | Recipes revision 4 / frozen 603-passage snapshot / selected source; Rich 2 revision 2 / qualified 10-candidate snapshot / all active |
-| Calls | 28 load + 8 lifecycle = exactly 36; zero retries |
+| Campaign A | 28 load submissions across both strategies and both workloads; zero retries |
+| Campaign B | Eight lifecycle submissions across both strategies; zero retries |
+| Combined design | 36 total submissions in two separate, independently evidenced sessions |
 
 The complete hashes and immutable bindings are in [`NATIVE_SETTINGS_RICH2.json`](NATIVE_SETTINGS_RICH2.json), `workloads-rich2.json`, `rich2-stage1-binding.json`, and historical `stage1-bindings.json`.
 
@@ -176,6 +178,7 @@ This step is included to make the restoration handoff executable; it still requi
 ```bash
 check_supervisor
 python3 "$DRIVER/native_stage2.py" \
+  --campaign performance \
   --session "$SESSION" \
   --root "$ROOT" \
   --models /srv/seneca/models \
@@ -187,7 +190,9 @@ python3 "$DRIVER/native_stage2.py" \
   --minimum-free-bytes 2147483648
 ```
 
-The runner consumes only the time remaining to the maintenance-entry deadline; elapsed copying and preflight therefore reduce available campaign runtime. It enforces the shared 3,600-second ceiling, 900-second restoration reserve, 2-GiB host-available-memory floor, 2-GiB remaining-disk floor, and 36 sends. The native preflight requires at least 4,500 seconds to STOP before starting either arm. Each arm uses an independent writable copy, the model tree is mounted read-only, the app container has no network, four CPUs, and a 6-GiB memory limit with no swap. Native teardown uses the accepted 30-second app shutdown grace; synthetic mode retains its previously qualified accelerated settings.
+The runner consumes only the time remaining to the maintenance-entry deadline; elapsed copying and preflight therefore reduce available campaign runtime. Campaign A uses its own session root and parity record, and enforces the shared 3,600-second ceiling, 900-second restoration reserve, 2-GiB host-available-memory floor, 2-GiB remaining-disk floor, and exactly 28 load submissions. The existing concurrency waves (1, 2, 4) are retained for each strategy/workload cell. The native preflight requires at least 4,500 seconds to STOP before starting either arm. Each arm uses an independent writable copy, the model tree is mounted read-only, the app container has no network, four CPUs, and a 6-GiB memory limit with no swap. Native teardown uses the accepted 30-second app shutdown grace; synthetic mode retains its previously qualified accelerated settings.
+
+Campaign B is a separate execution session, with a new unique session/root, fresh capture/preflight and the same watchdog/restoration controls. Invoke the same runner with `--campaign lifecycle`; it executes exactly the eight frozen lifecycle cases and writes a separate `native-lifecycle.json`. Do not reuse Campaign A's session directory or combine its completion record with Campaign B. If the VM window cannot satisfy the same entry, execution-ceiling and restoration gates, leave Campaign B for a fresh VM window.
 
 The watchdog stops/removes only its session-labeled container, restarts the same original container, checks its exact identity/image/mounts/restart policy and both health endpoints, confirms scratch Qdrant has no owner, and reruns metadata preflight. It treats any publication/workspace metadata drift as restoration failure. Preserve all scratch evidence until those checks pass; then archive authorized sanitized evidence before removing the scratch tree.
 

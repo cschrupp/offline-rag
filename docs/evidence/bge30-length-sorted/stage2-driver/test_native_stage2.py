@@ -3,7 +3,8 @@ import uuid
 from pathlib import Path
 
 import pytest
-from native_stage2 import _check_arm, _check_root
+from driver import schedule
+from native_stage2 import _check_arm, _check_root, _validate_lifecycle_campaign
 from stage2_settings import configure_fixture_generation
 
 from offline_rag.config.models import AppSettings
@@ -58,3 +59,51 @@ def test_native_fixture_generation_is_valid_under_strict_offline_policy():
     assert configured.generation.base_url == "http://127.0.0.1:9/v1"
     assert configured.generation.model == "stage2-synthetic-provider"
     assert configured.generation.api_key is None
+
+
+def test_lifecycle_campaign_requires_all_eight_correlated_settlements(tmp_path):
+    import json
+    from dataclasses import asdict
+
+    rows = []
+    for wave in schedule("lifecycle"):
+        case = wave[0]
+        terminal = "timed_out" if case.case == "deadline" else "cancelled"
+        reason = {
+            "disconnect_before": "client_disconnect",
+            "disconnect_during": "client_disconnect",
+            "deadline": "query_deadline_exceeded",
+            "drain": "shutdown",
+        }[case.case]
+        transport = (
+            "client_disconnected" if case.case.startswith("disconnect") else "response"
+        )
+        rows.extend(
+            (
+                {"event": "send_attempt", **asdict(case)},
+                {
+                    "event": "settled",
+                    "ordinal": case.ordinal,
+                    "settled": True,
+                    "admission": "accepted",
+                    "operation": f"op-{case.ordinal}",
+                    "terminal": terminal,
+                    "reason": reason,
+                    "worker_returned": True,
+                    "http_status": 504 if case.case == "deadline" else None,
+                    "transport": transport,
+                },
+            )
+        )
+    journal = tmp_path / "driver-events.jsonl"
+    journal.write_text("".join(json.dumps(row) + "\n" for row in rows))
+
+    summary = _validate_lifecycle_campaign(journal)
+
+    assert summary["classification"] == "NATIVE_STAGE2_LIFECYCLE_COMPLETE"
+    assert summary["submission_count"] == 8
+    assert len(summary["outcomes"]) == 8
+
+    journal.write_text("".join(json.dumps(row) + "\n" for row in rows[:-2]))
+    with pytest.raises(RuntimeError, match="coverage differs"):
+        _validate_lifecycle_campaign(journal)

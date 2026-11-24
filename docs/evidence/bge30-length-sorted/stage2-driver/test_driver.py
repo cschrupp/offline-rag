@@ -74,8 +74,66 @@ def test_exact_full_schedule():
         case for wave in schedule() for case in wave
     ]
     assert [len(wave) for wave in schedule()] == [1, 2, 4, 1, 2, 4, 1, 1, 1, 1] * 2
-    assert events[-1] == {"event": "complete", "attempts": 36}
+    assert events[-1] == {
+        "event": "complete",
+        "campaign": "full",
+        "attempts": 36,
+    }
     assert fixture.closed == 2
+
+
+def test_performance_campaign_preserves_all_load_waves_and_only_loads():
+    events = []
+    fixture = Fixture()
+    Driver(fixture, lambda: True, events.append).run(campaign="performance")
+
+    scheduled = [case for wave in schedule("performance") for case in wave]
+    assert len(scheduled) == 28
+    assert [len(wave) for wave in schedule("performance")] == [1, 2, 4] * 4
+    assert sorted(fixture.submitted, key=lambda case: case.ordinal) == scheduled
+    assert all(case.case == "load" for case in fixture.submitted)
+    assert events[-1] == {
+        "event": "complete",
+        "campaign": "performance",
+        "attempts": 28,
+    }
+    assert fixture.closed == 2
+
+
+def test_lifecycle_campaign_contains_all_cases_for_both_strategies():
+    events = []
+    fixture = Fixture()
+    Driver(fixture, lambda: True, events.append).run(campaign="lifecycle")
+
+    scheduled = [case for wave in schedule("lifecycle") for case in wave]
+    assert len(scheduled) == 8
+    assert [len(wave) for wave in schedule("lifecycle")] == [1] * 8
+    assert sorted(fixture.submitted, key=lambda case: case.ordinal) == scheduled
+    assert {(case.strategy, case.case) for case in fixture.submitted} == {
+        (strategy, lifecycle)
+        for strategy in ("consecutive", "length_sorted_8")
+        for lifecycle in (
+            "disconnect_before",
+            "disconnect_during",
+            "deadline",
+            "drain",
+        )
+    }
+    assert events[-1] == {
+        "event": "complete",
+        "campaign": "lifecycle",
+        "attempts": 8,
+    }
+    assert fixture.closed == 2
+
+
+def test_unknown_campaign_fails_before_opening_adapter():
+    fixture = Fixture()
+    with pytest.raises(ValueError, match="unknown Stage 2 campaign"):
+        list(schedule("unexpected"))
+    with pytest.raises(ValueError, match="unknown Stage 2 campaign"):
+        Driver(fixture, lambda: True, lambda _: None).run(campaign="unexpected")
+    assert fixture.closed == 0
 
 
 def test_missing_terminal_aborts_without_retry():

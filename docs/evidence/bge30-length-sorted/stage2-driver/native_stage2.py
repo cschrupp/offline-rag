@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from docker_adapter import IMAGE, LABEL, DockerHTTPAdapter, docker
-from driver import Driver
+from driver import LIFECYCLE, STRATEGIES, Driver, Submission, validate_outcome
 from host_watchdog import available_kib
 from native_contract import load_manifest, validate_bindings
 from native_parity import validate as validate_native_parity
@@ -104,7 +104,71 @@ def _check_arm(root: Path, arm_name: str) -> Path:
     return data
 
 
+def _validate_lifecycle_campaign(path: Path) -> dict:
+    """Require exactly one settled observation for each frozen lifecycle case."""
+    attempts = {}
+    settlements = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if row.get("event") == "send_attempt":
+            ordinal = row.get("ordinal")
+            if ordinal in attempts:
+                raise RuntimeError("duplicate lifecycle submission ordinal")
+            attempts[ordinal] = row
+        elif row.get("event") == "settled":
+            ordinal = row.get("ordinal")
+            if ordinal in settlements:
+                raise RuntimeError("duplicate lifecycle settlement ordinal")
+            settlements[ordinal] = row
+
+    expected = {
+        (strategy, "Recipes", case) for strategy in STRATEGIES for case in LIFECYCLE
+    }
+    observed = {
+        (row.get("strategy"), row.get("workload"), row.get("case"))
+        for row in attempts.values()
+    }
+    if len(attempts) != 8 or observed != expected:
+        raise RuntimeError("lifecycle campaign coverage differs from the frozen set")
+    if set(attempts) != set(settlements):
+        raise RuntimeError("lifecycle campaign has an unsettled submission")
+
+    outcomes = []
+    for ordinal, attempt in sorted(attempts.items()):
+        case = Submission(
+            ordinal=ordinal,
+            strategy=attempt["strategy"],
+            workload=attempt["workload"],
+            wave=attempt["wave"],
+            case=attempt["case"],
+        )
+        settlement = settlements[ordinal]
+        validate_outcome(settlement, case)
+        outcomes.append(
+            {
+                "ordinal": ordinal,
+                "strategy": case.strategy,
+                "case": case.case,
+                "terminal": settlement.get("terminal"),
+                "reason": settlement.get("reason"),
+                "http_status": settlement.get("http_status"),
+            }
+        )
+    return {
+        "classification": "NATIVE_STAGE2_LIFECYCLE_COMPLETE",
+        "submission_count": len(outcomes),
+        "outcomes": outcomes,
+    }
+
+
 def run(options) -> dict:
+    if not options.engineering_smoke and options.campaign not in {
+        "performance",
+        "lifecycle",
+    }:
+        raise RuntimeError("native campaign must be selected explicitly")
     if options.root.is_symlink():
         raise ValueError("native scratch root must not be a symlink")
     root = options.root.resolve(strict=True)
@@ -116,6 +180,7 @@ def run(options) -> dict:
     if done.exists() or done.with_suffix(".json.tmp").exists():
         raise RuntimeError("native session result file already exists")
     status = 1
+    campaign = None
     try:
         manifest = load_manifest(INPUTS)
         if options.models.resolve(strict=True) != Path("/srv/seneca/models"):
@@ -153,6 +218,7 @@ def run(options) -> dict:
             )
             execution_budget = ENGINEERING_SMOKE_EXECUTION_CEILING_S
         else:
+            campaign = options.campaign
             if (
                 options.maintenance_entry_epoch is None
                 or options.maintenance_entry_monotonic is None
@@ -247,20 +313,27 @@ def run(options) -> dict:
                 "retries": 0,
             }
 
-        driver.run()
-        parity = validate_native_parity(driver_events)
-        parity_path = root / "native-parity.json"
-        parity_path.write_text(json.dumps(parity, sort_keys=True, indent=2) + "\n")
-        os.chmod(parity_path, 0o600)
+        driver.run(campaign=campaign)
+        if campaign == "performance":
+            evidence = validate_native_parity(driver_events)
+            evidence_path = root / "native-parity.json"
+        else:
+            evidence = _validate_lifecycle_campaign(driver_events)
+            evidence_path = root / "native-lifecycle.json"
+        evidence_path.write_text(json.dumps(evidence, sort_keys=True, indent=2) + "\n")
+        os.chmod(evidence_path, 0o600)
         status = 0
         return {
-            "classification": "NATIVE_STAGE2_COMPLETE",
+            "classification": evidence["classification"],
             "session": session,
-            "submission_count": 36,
+            "campaign": campaign,
+            "submission_count": evidence["submission_count"]
+            if campaign == "lifecycle"
+            else 28,
             "retries": 0,
             "execution_budget_seconds_at_launch": execution_budget,
             "campaign_deadline_monotonic": execution_deadline,
-            "parity": parity,
+            "evidence": evidence,
         }
     finally:
         _write_done(done, status=status, session=session)
@@ -275,6 +348,11 @@ def main() -> None:
     parser.add_argument("--bindings", type=Path, required=True)
     parser.add_argument("--baseline-snapshot", type=Path, required=True)
     parser.add_argument("--stop-epoch", type=float, required=True)
+    parser.add_argument(
+        "--campaign",
+        choices=("performance", "lifecycle"),
+        help="select one independently owned Stage 2 campaign",
+    )
     parser.add_argument("--maintenance-entry-epoch", type=float)
     parser.add_argument("--maintenance-entry-monotonic", type=float)
     parser.add_argument("--minimum-free-bytes", type=int, required=True)

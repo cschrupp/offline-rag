@@ -20,19 +20,26 @@ class Submission:
     case: str
 
 
-def schedule():
+def schedule(campaign="full"):
+    """Yield the frozen workload waves for one independently owned campaign."""
+    if campaign not in {"full", "performance", "lifecycle"}:
+        raise ValueError(f"unknown Stage 2 campaign: {campaign}")
     ordinal = 0
     for strategy in STRATEGIES:
-        for workload in WORKLOADS:
-            for size in (1, 2, 4):
-                wave = []
-                for _ in range(size):
-                    ordinal += 1
-                    wave.append(Submission(ordinal, strategy, workload, size, "load"))
-                yield tuple(wave)
-        for case in LIFECYCLE:
-            ordinal += 1
-            yield (Submission(ordinal, strategy, "Recipes", 1, case),)
+        if campaign in {"full", "performance"}:
+            for workload in WORKLOADS:
+                for size in (1, 2, 4):
+                    wave = []
+                    for _ in range(size):
+                        ordinal += 1
+                        wave.append(
+                            Submission(ordinal, strategy, workload, size, "load")
+                        )
+                    yield tuple(wave)
+        if campaign in {"full", "lifecycle"}:
+            for case in LIFECYCLE:
+                ordinal += 1
+                yield (Submission(ordinal, strategy, "Recipes", 1, case),)
 
 
 def validate_outcome(record, case):
@@ -239,13 +246,14 @@ class Driver:
         self.stop = Event()
         self.lock = Lock()
         self.sends = set()
+        self.submission_budget = 36
 
     def _send_one(self, case):
         with self.lock:
             if self.stop.is_set() or not self.host_safe():
                 self.stop.set()
                 raise RuntimeError("submission safety gate closed")
-            if case.ordinal in self.sends or len(self.sends) >= 36:
+            if case.ordinal in self.sends or len(self.sends) >= self.submission_budget:
                 raise RuntimeError("submission budget exceeded")
             self.sends.add(case.ordinal)
             self.emit({"event": "send_attempt", **asdict(case)})
@@ -293,7 +301,11 @@ class Driver:
             monitor_thread.join(timeout=2)
             self.adapter.close()
 
-    def run(self):
+    def run(self, campaign="full"):
+        cases = tuple(case for wave in schedule(campaign) for case in wave)
+        self.submission_budget = len(cases)
+        if not self.submission_budget:
+            raise RuntimeError("Stage 2 campaign has no submissions")
         deadline = monotonic() + self.duration
         monitor_thread = self._start_monitor(deadline)
 
@@ -306,7 +318,7 @@ class Driver:
 
         active = None
         try:
-            for wave in schedule():
+            for wave in schedule(campaign):
                 if self.stop.is_set():
                     raise RuntimeError("campaign aborted")
                 strategy = wave[0].strategy
@@ -320,7 +332,7 @@ class Driver:
                     futures = [pool.submit(send, case, barrier) for case in wave]
                     for future in futures:
                         future.result()
-            if self.stop.is_set() or len(self.sends) != 36:
+            if self.stop.is_set() or len(self.sends) != self.submission_budget:
                 raise RuntimeError("campaign incomplete")
         except BaseException:
             self.stop.set()
@@ -330,4 +342,10 @@ class Driver:
             self.stop.set()
             monitor_thread.join(timeout=2)
             self.adapter.close()
-        self.emit({"event": "complete", "attempts": len(self.sends)})
+        self.emit(
+            {
+                "event": "complete",
+                "campaign": campaign,
+                "attempts": len(self.sends),
+            }
+        )
