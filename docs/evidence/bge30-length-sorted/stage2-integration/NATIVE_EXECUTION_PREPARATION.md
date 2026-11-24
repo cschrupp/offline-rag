@@ -50,7 +50,7 @@ gcloud compute ssh user@seneca-review \
  docker exec seneca-review python -B -c "import urllib.request; print(urllib.request.urlopen(\"http://127.0.0.1:8080/health/live\",timeout=3).status); print(urllib.request.urlopen(\"http://127.0.0.1:8080/health/ready\",timeout=3).status)"'
 ```
 
-If `gcloud` proposes creating/registering an SSH key or changing access, cancel; do not alter credentials. Verify the automatic STOP epoch from the existing VM lifecycle controller. Do not infer it from the VM start time. Require at least 4,800 seconds remaining; otherwise stop.
+If `gcloud` proposes creating/registering an SSH key or changing access, cancel; do not alter credentials. Verify the automatic STOP epoch from the existing VM lifecycle controller. Do not infer it from the VM start time. Require at least 6,000 seconds remaining at maintenance entry; otherwise stop.
 
 ## Step 2 — Verify exact preparation checkout
 
@@ -83,9 +83,9 @@ DRIVER="$CODE/docs/evidence/bge30-length-sorted/stage2-driver"
 STOP_EPOCH=<verified-unix-epoch-from-existing-lifecycle-controller>
 CPUSET=$(python3 -c 'import os; print(",".join(map(str, sorted(os.sched_getaffinity(0))[:4])))')
 test "$(python3 -c 'import os; print(len(os.sched_getaffinity(0)))')" -ge 4
-test "$((STOP_EPOCH - $(date +%s)))" -ge 4800
+test "$((STOP_EPOCH - $(date +%s)))" -ge 6000
 python3 "$DRIVER/native_host_control.py" capture "$ROOT/original-container.json"
-bash "$DRIVER/preflight_host.sh" native-metadata /srv/seneca/data /srv/seneca/models "$CPUSET" > "$ROOT/baseline-publications.json"
+bash "$DRIVER/preflight_host.sh" native-metadata /srv/seneca/data /srv/seneca/models "$CPUSET" "$STOP_EPOCH" > "$ROOT/baseline-publications.json"
 chmod 0600 "$ROOT/baseline-publications.json"
 ```
 
@@ -102,7 +102,10 @@ AVAILABLE_BYTES=$(df -B1 --output=avail /var/tmp | tail -n1 | tr -d ' ')
 REQUIRED_BYTES=$((2 * DATA_BYTES + 2147483648))
 test "$AVAILABLE_BYTES" -ge "$REQUIRED_BYTES"
 cd "$CODE"
-SUPERVISOR_CEILING=$(python3 -c 'import time; print(time.monotonic() + 2400)')
+MAINTENANCE_ENTRY_EPOCH=$(date +%s)
+MAINTENANCE_ENTRY_MONOTONIC=$(python3 -c 'import time; print(time.monotonic())')
+test "$((STOP_EPOCH - MAINTENANCE_ENTRY_EPOCH))" -ge 6000
+SUPERVISOR_CEILING=$(PYTHONPATH="$DRIVER" python3 -c 'import sys; from stage2_timing import campaign_deadline_monotonic; print(campaign_deadline_monotonic(maintenance_entry_epoch=float(sys.argv[1]), maintenance_entry_monotonic=float(sys.argv[2]), stop_epoch=float(sys.argv[3])))' "$MAINTENANCE_ENTRY_EPOCH" "$MAINTENANCE_ENTRY_MONOTONIC" "$STOP_EPOCH")
 nohup python3 "$DRIVER/native_host_control.py" supervise \
   --session "$SESSION" \
   --container "seneca-stage2-$SESSION" \
@@ -111,6 +114,9 @@ nohup python3 "$DRIVER/native_host_control.py" supervise \
   --done driver_done.json \
   --abort supervisor.abort \
   --ceiling-epoch "$SUPERVISOR_CEILING" \
+  --stop-epoch "$STOP_EPOCH" \
+  --maintenance-entry-epoch "$MAINTENANCE_ENTRY_EPOCH" \
+  --maintenance-entry-monotonic "$MAINTENANCE_ENTRY_MONOTONIC" \
   --metadata-baseline "$ROOT/baseline-publications.json" \
   --metadata-mode native-metadata \
   --cpuset "$CPUSET" \
@@ -134,7 +140,8 @@ check_supervisor() {
   kill -0 "$(cat "$ROOT/supervisor.pid")"
   test ! -e "$ROOT/supervisor.abort"
   test ! -e "$ROOT/driver_done.json"
-  test "$((STOP_EPOCH - $(date +%s)))" -ge 4800
+  test "$((STOP_EPOCH - $(date +%s)))" -ge 900
+  python3 -c 'import sys,time; sys.exit(0 if time.monotonic() < float(sys.argv[1]) else 1)' "$SUPERVISOR_CEILING"
   awk '/^MemAvailable:/ {if ($2 < 2097152) exit 1; found=1} END {if (!found) exit 1}' /proc/meminfo
 }
 check_supervisor
@@ -174,10 +181,12 @@ python3 "$DRIVER/native_stage2.py" \
   --bindings "$ROOT/A/preflight/native-bindings.json" \
   --baseline-snapshot "$ROOT/original-container.json" \
   --stop-epoch "$STOP_EPOCH" \
+  --maintenance-entry-epoch "$MAINTENANCE_ENTRY_EPOCH" \
+  --maintenance-entry-monotonic "$MAINTENANCE_ENTRY_MONOTONIC" \
   --minimum-free-bytes 2147483648
 ```
 
-The runner enforces the 2,400-second ceiling, 900-second restoration reserve, 2-GiB host-available-memory floor, 2-GiB remaining-disk floor, and 36 sends. Each arm uses an independent writable copy, the model tree is mounted read-only, the app container has no network, four CPUs, and a 6-GiB memory limit with no swap. Native teardown uses the accepted 30-second app shutdown grace; synthetic mode retains its previously qualified accelerated settings.
+The runner consumes only the time remaining to the maintenance-entry deadline; elapsed copying and preflight therefore reduce available campaign runtime. It enforces the shared 3,600-second ceiling, 900-second restoration reserve, 2-GiB host-available-memory floor, 2-GiB remaining-disk floor, and 36 sends. The native preflight requires at least 4,500 seconds to STOP before starting either arm. Each arm uses an independent writable copy, the model tree is mounted read-only, the app container has no network, four CPUs, and a 6-GiB memory limit with no swap. Native teardown uses the accepted 30-second app shutdown grace; synthetic mode retains its previously qualified accelerated settings.
 
 The watchdog stops/removes only its session-labeled container, restarts the same original container, checks its exact identity/image/mounts/restart policy and both health endpoints, confirms scratch Qdrant has no owner, and reruns metadata preflight. It treats any publication/workspace metadata drift as restoration failure. Preserve all scratch evidence until those checks pass; then archive authorized sanitized evidence before removing the scratch tree.
 

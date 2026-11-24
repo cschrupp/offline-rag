@@ -15,6 +15,7 @@ from pathlib import Path
 
 from docker_adapter import LABEL, docker
 from docker_watchdog import supervise as supervise_docker_session
+from stage2_timing import require_matching_campaign_deadline
 
 APP_NAME = "seneca-review"
 EXPECTED_APP_IMAGE_REF = "seneca-review:9c92e706c4b9"
@@ -435,6 +436,9 @@ def main() -> None:
         supervise_parser.add_argument("--done", type=Path, required=True)
         supervise_parser.add_argument("--abort", type=Path, required=True)
         supervise_parser.add_argument("--ceiling-epoch", type=float, required=True)
+        supervise_parser.add_argument("--stop-epoch", type=float)
+        supervise_parser.add_argument("--maintenance-entry-epoch", type=float)
+        supervise_parser.add_argument("--maintenance-entry-monotonic", type=float)
         supervise_parser.add_argument("--metadata-baseline", type=Path, required=True)
         supervise_parser.add_argument(
             "--metadata-mode",
@@ -490,6 +494,20 @@ def main() -> None:
         expected_name, _ = rich2_stage1_container_identity(options.session)
         if options.container != expected_name:
             raise RuntimeError("watchdog container name does not match its session")
+        if options.scratch_layout == "stage2":
+            required_timing = (
+                options.stop_epoch,
+                options.maintenance_entry_epoch,
+                options.maintenance_entry_monotonic,
+            )
+            if any(value is None for value in required_timing):
+                raise RuntimeError("Stage 2 watchdog timing inputs are required")
+            require_matching_campaign_deadline(
+                supplied_deadline_monotonic=options.ceiling_epoch,
+                maintenance_entry_epoch=options.maintenance_entry_epoch,
+                maintenance_entry_monotonic=options.maintenance_entry_monotonic,
+                stop_epoch=options.stop_epoch,
+            )
         root = options.scratch.resolve(strict=True)
         snapshot = options.snapshot.resolve(strict=True)
         restore = [sys.executable, __file__, "restore", str(snapshot)]

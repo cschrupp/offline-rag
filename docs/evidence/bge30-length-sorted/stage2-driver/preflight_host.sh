@@ -17,10 +17,17 @@ extra_args=()
 if [[ $mode == isolated || $mode == native || $mode == native-smoke || $mode == rich2-stage1 ]]; then
     stop_epoch=${5:?verified automatic STOP epoch}
     [[ $stop_epoch =~ ^[0-9]+$ ]]
-    minimum_stop_remaining=4800
-    # The one-request smoke runs after service stop; only its restore reserve
-    # is checked here. native_stage2 enforces runtime + restore reserve.
-    [[ $mode != native-smoke ]] || minimum_stop_remaining=900
+    case $mode in
+        native)
+            minimum_stop_remaining=$(PYTHONPATH="$dir" python3 -c 'from stage2_timing import MINIMUM_POST_PREPARATION_WINDOW_SECONDS; print(MINIMUM_POST_PREPARATION_WINDOW_SECONDS)')
+            ;;
+        native-smoke)
+            minimum_stop_remaining=900
+            ;;
+        *)
+            minimum_stop_remaining=4800
+            ;;
+    esac
     (( stop_epoch - $(date +%s) >= minimum_stop_remaining ))
     if [[ $mode == native || $mode == native-smoke ]]; then
         output=$(realpath -e "${6:?native binding output directory}")
@@ -34,6 +41,12 @@ if [[ $mode == isolated || $mode == native || $mode == native-smoke || $mode == 
 elif [[ $mode != metadata && $mode != rich2-metadata && $mode != native-metadata ]]; then
     printf 'mode must be metadata, isolated, native, native-smoke, rich2-metadata or rich2-stage1\n' >&2
     exit 2
+fi
+if [[ $mode == native-metadata && $# -ge 5 ]]; then
+    stop_epoch=$5
+    [[ $stop_epoch =~ ^[0-9]+$ ]]
+    minimum_stop_remaining=$(PYTHONPATH="$dir" python3 -c 'from stage2_timing import MINIMUM_MAINTENANCE_ENTRY_WINDOW_SECONDS; print(MINIMUM_MAINTENANCE_ENTRY_WINDOW_SECONDS)')
+    (( stop_epoch - $(date +%s) >= minimum_stop_remaining ))
 fi
 awk '/^MemAvailable:/ {found=1; if ($2 < 2097152) exit 1} END {if (!found) exit 1}' /proc/meminfo
 [[ -d "$data" && -d "$models" && "$data" != "$models" ]]

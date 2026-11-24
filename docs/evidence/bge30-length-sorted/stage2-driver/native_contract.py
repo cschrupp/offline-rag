@@ -6,8 +6,15 @@ import hashlib
 import json
 from pathlib import Path
 
+from stage2_timing import (
+    CAMPAIGN_EXECUTION_CEILING_SECONDS,
+    MAINTENANCE_PREPARATION_ALLOWANCE_SECONDS,
+    MINIMUM_MAINTENANCE_ENTRY_WINDOW_SECONDS,
+    RESTORATION_RESERVE_SECONDS,
+)
+
 NATIVE_SETTINGS_SHA256 = (
-    "503573bb732f4e2d4e348d11d3e321ebd4979cfff78e9fef1c5cb5ab2cbf090b"
+    "017ed15283d80d34f69773c642db39e4e9bc1f8e3ef465a3f94a9d2e70d05ee3"
 )
 SOURCE_COMMIT = "1f79eca0e30eb1afb79a5aa9bb0dcff5f0ac2e0e"
 IMAGE_DIGEST = "sha256:59252d0655267001c4c9ac42e5a2045131b4086bb1ab84e10dbfd98f2e831dee"
@@ -74,6 +81,18 @@ def load_manifest(inputs: Path) -> dict:
         or manifest["provider_fixture"].get("sha256") != sha256(provider_path)
         or manifest.get("budget", {}).get("total_submissions") != 36
         or manifest.get("budget", {}).get("retries") != 0
+        or manifest.get("budget", {}).get("diagnostic_execution_ceiling_seconds")
+        != CAMPAIGN_EXECUTION_CEILING_SECONDS
+        or manifest.get("budget", {}).get("minimum_seconds_to_automatic_stop")
+        != MINIMUM_MAINTENANCE_ENTRY_WINDOW_SECONDS
+        or manifest.get("budget", {}).get("restoration_reserve_seconds")
+        != RESTORATION_RESERVE_SECONDS
+        or manifest.get("budget", {}).get("maintenance_preparation_allowance_seconds")
+        != MAINTENANCE_PREPARATION_ALLOWANCE_SECONDS
+        or manifest.get("scientific_profile", {})
+        .get("api", {})
+        .get("query_deadline_seconds")
+        != 180
     ):
         raise NativeContractError("native settings manifest provenance mismatch")
     return manifest

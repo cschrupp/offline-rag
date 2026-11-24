@@ -14,12 +14,19 @@ from driver import Driver
 from host_watchdog import available_kib
 from native_contract import load_manifest, validate_bindings
 from native_parity import validate as validate_native_parity
+from stage2_timing import (
+    CAMPAIGN_EXECUTION_CEILING_SECONDS,
+    MINIMUM_MAINTENANCE_ENTRY_WINDOW_SECONDS,
+    RESTORATION_RESERVE_SECONDS,
+    campaign_deadline_monotonic,
+    remaining_campaign_seconds,
+)
 
 DRIVER_DIR = Path(__file__).resolve().parent
 INPUTS = DRIVER_DIR.parent / "stage2-integration"
 MIN_AVAILABLE_KIB = 2 * 1024 * 1024
-RESTORATION_RESERVE_S = 900
-EXECUTION_CEILING_S = 2400
+RESTORATION_RESERVE_S = RESTORATION_RESERVE_SECONDS
+EXECUTION_CEILING_S = CAMPAIGN_EXECUTION_CEILING_SECONDS
 ENGINEERING_SMOKE_EXECUTION_CEILING_S = 300
 ENGINEERING_SMOKE_MIN_STOP_REMAINING_S = (
     ENGINEERING_SMOKE_EXECUTION_CEILING_S + RESTORATION_RESERVE_S
@@ -135,13 +142,42 @@ def run(options) -> dict:
         )
         if baseline.get("running") is not True:
             raise RuntimeError("captured original service state was not running")
-        minimum_stop_remaining = (
-            ENGINEERING_SMOKE_MIN_STOP_REMAINING_S
-            if options.engineering_smoke
-            else 4800
-        )
-        if options.stop_epoch - time.time() < minimum_stop_remaining:
-            raise RuntimeError("automatic STOP reserve is below the mode minimum")
+        if options.engineering_smoke:
+            if (
+                options.stop_epoch - time.time()
+                < ENGINEERING_SMOKE_MIN_STOP_REMAINING_S
+            ):
+                raise RuntimeError("automatic STOP reserve is below the smoke minimum")
+            execution_deadline = (
+                time.monotonic() + ENGINEERING_SMOKE_EXECUTION_CEILING_S
+            )
+            execution_budget = ENGINEERING_SMOKE_EXECUTION_CEILING_S
+        else:
+            if (
+                options.maintenance_entry_epoch is None
+                or options.maintenance_entry_monotonic is None
+            ):
+                raise RuntimeError("native campaign maintenance entry is required")
+            if (
+                options.stop_epoch - options.maintenance_entry_epoch
+                < MINIMUM_MAINTENANCE_ENTRY_WINDOW_SECONDS
+            ):
+                raise RuntimeError("maintenance entry STOP window is insufficient")
+            execution_deadline = campaign_deadline_monotonic(
+                maintenance_entry_epoch=options.maintenance_entry_epoch,
+                maintenance_entry_monotonic=options.maintenance_entry_monotonic,
+                stop_epoch=options.stop_epoch,
+            )
+            execution_budget = remaining_campaign_seconds(
+                deadline_monotonic=execution_deadline,
+                stop_epoch=options.stop_epoch,
+                now_monotonic=time.monotonic(),
+                now_epoch=time.time(),
+            )
+            if execution_budget <= 0:
+                raise RuntimeError(
+                    "campaign deadline expired during maintenance preparation"
+                )
         if available_kib() < MIN_AVAILABLE_KIB:
             raise RuntimeError("host available memory is below 2 GiB")
         if shutil.disk_usage(root).free < options.minimum_free_bytes:
@@ -182,17 +218,10 @@ def run(options) -> dict:
             bindings=bindings,
             shutdown_grace_seconds=30,
         )
-        started = time.monotonic()
 
         def host_safe() -> bool:
             return (
-                time.monotonic()
-                < started
-                + (
-                    ENGINEERING_SMOKE_EXECUTION_CEILING_S
-                    if options.engineering_smoke
-                    else EXECUTION_CEILING_S
-                )
+                time.monotonic() < execution_deadline
                 and options.stop_epoch - time.time() >= RESTORATION_RESERVE_S
                 and available_kib() >= MIN_AVAILABLE_KIB
             )
@@ -205,11 +234,7 @@ def run(options) -> dict:
             adapter,
             host_safe,
             emit,
-            duration=(
-                ENGINEERING_SMOKE_EXECUTION_CEILING_S
-                if options.engineering_smoke
-                else EXECUTION_CEILING_S
-            ),
+            duration=execution_budget,
         )
         if options.engineering_smoke:
             driver.run_engineering_smoke()
@@ -233,6 +258,8 @@ def run(options) -> dict:
             "session": session,
             "submission_count": 36,
             "retries": 0,
+            "execution_budget_seconds_at_launch": execution_budget,
+            "campaign_deadline_monotonic": execution_deadline,
             "parity": parity,
         }
     finally:
@@ -248,6 +275,8 @@ def main() -> None:
     parser.add_argument("--bindings", type=Path, required=True)
     parser.add_argument("--baseline-snapshot", type=Path, required=True)
     parser.add_argument("--stop-epoch", type=float, required=True)
+    parser.add_argument("--maintenance-entry-epoch", type=float)
+    parser.add_argument("--maintenance-entry-monotonic", type=float)
     parser.add_argument("--minimum-free-bytes", type=int, required=True)
     parser.add_argument(
         "--engineering-smoke",

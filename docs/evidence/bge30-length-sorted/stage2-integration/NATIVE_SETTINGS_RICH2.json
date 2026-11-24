@@ -82,11 +82,12 @@
     "total_submissions": 36,
     "retries": 0,
     "client_watchdog_seconds": 195,
-    "diagnostic_execution_ceiling_seconds": 2400,
+    "diagnostic_execution_ceiling_seconds": 3600,
     "minimum_host_available_memory_bytes": 2147483648,
     "maximum_diagnostic_rss_bytes": 6442450944,
-    "minimum_seconds_to_automatic_stop": 4800,
-    "restoration_reserve_seconds": 900
+    "minimum_seconds_to_automatic_stop": 6000,
+    "restoration_reserve_seconds": 900,
+    "maintenance_preparation_allowance_seconds": 1500
   },
   "workload_bindings": {
     "Recipes": {

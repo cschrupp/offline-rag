@@ -97,10 +97,12 @@ historical evidence. Stage 2 cannot establish production p95.
 
 ## Preflight, abort and restore
 
-Before maintenance reserve at least 4,800 s to automatic VM STOP,
-including 900 s for restoration. Preserve the 2,400 s diagnostic
-execution ceiling and abort if the reviewed time estimate cannot fit
-within it. Require 6 GiB diagnostic RSS ceiling, at least 2 GiB host
+Before maintenance entry reserve at least 6,000 s to automatic VM STOP.
+The shared campaign deadline is established at maintenance entry and is
+capped at 3,600 s; setup and isolated preflight consume that same window.
+Keep 900 s protected for restoration. Driver and independent watchdog use
+the identical deadline, additionally clamped to STOP minus the restoration
+reserve. Require 6 GiB diagnostic RSS ceiling, at least 2 GiB host
 available RAM throughout, sufficient disk for copy and rollback images,
 no competing process or active production request, and an always-armed
 host watchdog. Verify the limit applies during native calls. Use a
