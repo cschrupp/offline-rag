@@ -2,7 +2,11 @@ import json
 
 import docker_adapter as adapter_module
 import pytest
-from docker_adapter import project_submission, wait_for_event
+from docker_adapter import (
+    project_submission,
+    wait_for_event,
+    wait_for_worker_release,
+)
 from driver import Submission
 
 
@@ -60,6 +64,82 @@ def test_complete_correlated_http_worker_and_release_passes():
     assert result["terminal"] == "completed"
     assert result["scientific_trace_ids"] == ["qt_fixture"]
     assert result["slot_released"] is True
+
+
+def test_disconnected_request_waits_for_worker_release_without_http_response():
+    rows = accepted_events()
+    rows = [row for row in rows if row["event"] != "http_response"]
+    rows = [
+        row for row in rows if row["event"] not in {"worker_returned", "slot_released"}
+    ]
+    rows.append(
+        {
+            "event": "cancel_signaled",
+            "ordinal": 1,
+            "operation_id": "opq_fixture",
+            "reason": "client_disconnect",
+        }
+    )
+    rows.append(
+        {
+            "event": "worker_failed",
+            "ordinal": 1,
+            "operation_id": "opq_fixture",
+            "reason": "client_disconnect",
+            "error_code": "request_cancelled",
+            "trace_id": None,
+        }
+    )
+    rows.append(
+        {
+            "event": "slot_released",
+            "ordinal": 1,
+            "operation_id": "opq_fixture",
+            "worker_returned": True,
+            "operation_released": True,
+            "global_query_capacity_empty": True,
+            "active_count": 0,
+            "query_capacity_held": 0,
+        }
+    )
+    result = project_submission(
+        Submission(1, "consecutive", "Recipes", 1, "disconnect_during"),
+        {
+            "transport": "client_disconnected",
+            "http_status": None,
+            "body": None,
+        },
+        rows,
+        "/v1/workspaces/ws_fixture/conversation/turn",
+    )
+
+    assert result["terminal"] == "cancelled"
+    assert result["reason"] == "client_disconnect"
+    assert result["server_http_status"] is None
+    assert result["worker_returned"] is True
+    assert result["slot_released"] is True
+
+
+def test_wait_for_worker_release_requires_terminal_and_release_events(tmp_path):
+    (tmp_path / "events.jsonl").write_text(
+        json.dumps({"event": "worker_failed", "ordinal": 16})
+        + "\n"
+        + json.dumps({"event": "slot_released", "ordinal": 16})
+        + "\n",
+        encoding="utf-8",
+    )
+
+    wait_for_worker_release(tmp_path, 16, 0.1)
+
+
+def test_wait_for_worker_release_fails_closed_when_capacity_remains_owned(tmp_path):
+    (tmp_path / "events.jsonl").write_text(
+        json.dumps({"event": "worker_failed", "ordinal": 16}) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(TimeoutError, match="slot release did not settle"):
+        wait_for_worker_release(tmp_path, 16, 0.02)
 
 
 def test_missing_worker_terminal_fails_closed():

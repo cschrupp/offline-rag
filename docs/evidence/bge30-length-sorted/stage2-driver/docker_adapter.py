@@ -207,6 +207,25 @@ def wait_for_event(
     raise TimeoutError(f"missing {name} for ordinal {ordinal}")
 
 
+def wait_for_worker_release(journal: Path, ordinal: int, timeout: float) -> None:
+    """Wait for disconnected work to terminate and relinquish query capacity."""
+    deadline = monotonic() + timeout
+    while monotonic() < deadline:
+        events = events_for(journal, ordinal)
+        terminals = [
+            row
+            for row in events
+            if row.get("event") in {"worker_returned", "worker_failed"}
+        ]
+        releases = [row for row in events if row.get("event") == "slot_released"]
+        if len(terminals) > 1 or len(releases) > 1:
+            raise RuntimeError("duplicate worker terminal or slot release event")
+        if terminals and releases:
+            return
+        sleep(0.01)
+    raise TimeoutError(f"worker or slot release did not settle for ordinal {ordinal}")
+
+
 def project_submission(case, transport, events, expected_path):
     """Create a canonical envelope only from corroborated server evidence."""
     ordinal = case.ordinal
@@ -869,13 +888,20 @@ class DockerHTTPAdapter:
             if not (self.journal / f"{case.ordinal}.sent").is_file():
                 raise RuntimeError("actual socket send marker missing")
             wait_for_event(self.journal, case.ordinal, "http_received", 5)
-            if case.case not in {"disconnect_before", "disconnect_during"} and not any(
-                row["event"]
-                in {"worker_returned", "worker_failed", "preflight_rejected"}
-                for row in events_for(self.journal, case.ordinal)
-            ):
-                raise RuntimeError("no backend terminal worker evidence")
-            wait_for_event(self.journal, case.ordinal, "http_response", 5)
+            if case.case in {"disconnect_before", "disconnect_during"}:
+                wait_for_worker_release(
+                    self.journal,
+                    case.ordinal,
+                    195 if self.mode == "native" else 5,
+                )
+            else:
+                if not any(
+                    row["event"]
+                    in {"worker_returned", "worker_failed", "preflight_rejected"}
+                    for row in events_for(self.journal, case.ordinal)
+                ):
+                    raise RuntimeError("no backend terminal worker evidence")
+                wait_for_event(self.journal, case.ordinal, "http_response", 5)
             if case.case == "drain":
                 wait_for_event(
                     self.journal,
