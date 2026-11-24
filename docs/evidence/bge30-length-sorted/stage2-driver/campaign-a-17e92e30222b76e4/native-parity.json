@@ -1,0 +1,37 @@
+{
+  "classification": "NATIVE_FIXED_DEPTH_PARITY_PASS",
+  "workloads": {
+    "Recipes": {
+      "candidate_count": 30,
+      "capacity_rejections": {
+        "consecutive": {
+          "query_capacity_exhausted": 1,
+          "query_preflight_capacity_exhausted": 3
+        },
+        "length_sorted_8": {
+          "query_capacity_exhausted": 1,
+          "query_preflight_capacity_exhausted": 3
+        }
+      },
+      "consecutive_completed": 3,
+      "length_sorted_8_completed": 3,
+      "parity": "PASS"
+    },
+    "Rich": {
+      "candidate_count": 10,
+      "capacity_rejections": {
+        "consecutive": {
+          "query_capacity_exhausted": 3,
+          "query_preflight_capacity_exhausted": 1
+        },
+        "length_sorted_8": {
+          "query_capacity_exhausted": 4,
+          "query_preflight_capacity_exhausted": 0
+        }
+      },
+      "consecutive_completed": 3,
+      "length_sorted_8_completed": 3,
+      "parity": "PASS"
+    }
+  }
+}
