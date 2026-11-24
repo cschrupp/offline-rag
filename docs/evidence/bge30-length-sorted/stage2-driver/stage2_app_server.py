@@ -19,6 +19,7 @@ import torch
 import uvicorn
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from stage2_settings import configure_fixture_generation
 
 from offline_rag.api.app import create_app
 from offline_rag.app.conversation.traces import ConversationTraceStore
@@ -287,16 +288,7 @@ def settings_for(work_root: Path, strategy: str):
         shutil.rmtree(settings.paths.tokenizer_artifacts)
     shutil.copytree(tokenizer_source, settings.paths.tokenizer_artifacts)
 
-    generation = settings.generation.model_copy(
-        update={
-            "enabled": True,
-            "base_url": "http://127.0.0.1:9/v1",
-            "model": "stage2-synthetic-provider",
-            "approved_endpoints": ["http://127.0.0.1:9/v1"],
-            "approved_models": ["stage2-synthetic-provider"],
-            "api_key": None,
-        }
-    )
+    settings = configure_fixture_generation(settings)
     reranker = settings.reranker.model_copy(
         update={
             "batching_strategy": strategy,
@@ -309,9 +301,7 @@ def settings_for(work_root: Path, strategy: str):
             "shutdown_grace_seconds": 1,
         }
     )
-    return settings.model_copy(
-        update={"generation": generation, "reranker": reranker, "api": api}
-    )
+    return settings.model_copy(update={"reranker": reranker, "api": api})
 
 
 def resource_factories(strategy: str, counters: dict[str, int]) -> ResourceFactories:
@@ -1145,7 +1135,7 @@ def main() -> None:
             raise RuntimeError("native mode requires /data and /models mounts")
         if not os.statvfs("/models").f_flag & os.ST_RDONLY:
             raise RuntimeError("native model mount must be read-only")
-        settings = load_settings()
+        settings = configure_fixture_generation(load_settings())
         settings = settings.model_copy(
             update={
                 "reranker": settings.reranker.model_copy(

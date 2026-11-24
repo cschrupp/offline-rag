@@ -4,6 +4,9 @@ from pathlib import Path
 
 import pytest
 from native_stage2 import _check_arm, _check_root
+from stage2_settings import configure_fixture_generation
+
+from offline_rag.config.models import AppSettings
 
 
 def test_native_arm_names_map_to_independent_data_directories():
@@ -45,3 +48,13 @@ def test_native_arm_rejects_symlinked_data(tmp_path):
 
     with pytest.raises(ValueError, match="missing or unsafe"):
         _check_arm(root, "A")
+
+
+def test_native_fixture_generation_is_valid_under_strict_offline_policy():
+    settings = AppSettings()
+    configured = configure_fixture_generation(settings)
+
+    assert configured.project.strict_offline is True
+    assert configured.generation.base_url == "http://127.0.0.1:9/v1"
+    assert configured.generation.model == "stage2-synthetic-provider"
+    assert configured.generation.api_key is None
