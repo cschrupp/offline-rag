@@ -160,16 +160,24 @@ def test_engineering_smoke_sends_one_request_and_requires_complete_observation()
                 {"event": "native_context", "latency_ms": latency},
                 {"event": "scorer_returned", "scorer_wall_ms": 11, "scorer_cpu_ms": 9},
                 {
+                    "event": "forward_started",
+                    "shape": [16, 128],
+                },
+                {
                     "event": "forward_returned",
                     "elapsed_ms": 5,
                     "process_cpu_ms": 4,
-                    "shape": [16, 128],
+                    "logits_shape": [16, 1],
+                },
+                {
+                    "event": "forward_started",
+                    "shape": [14, 128],
                 },
                 {
                     "event": "forward_returned",
                     "elapsed_ms": 6,
                     "process_cpu_ms": 5,
-                    "shape": [14, 128],
+                    "logits_shape": [14, 1],
                 },
                 {
                     "event": "synthetic_generator_returned",

@@ -176,26 +176,31 @@ def validate_engineering_smoke(record):
         for key in ("scorer_wall_ms", "scorer_cpu_ms")
     ):
         raise RuntimeError("native engineering smoke scorer timings are incomplete")
-    forward = sorted(
-        (item for item in events if item.get("event") == "forward_returned"),
-        key=lambda item: item.get("monotonic_ns", 0),
-    )
-    if len(forward) != 2 or [item.get("shape", [None])[0] for item in forward] != [
-        16,
-        14,
-    ]:
+    forward_started = [
+        item for item in events if item.get("event") == "forward_started"
+    ]
+    forward_returned = [
+        item for item in events if item.get("event") == "forward_returned"
+    ]
+    if (
+        len(forward_started) != 2
+        or len(forward_returned) != 2
+        or [item.get("shape", [None])[0] for item in forward_started] != [16, 14]
+    ):
         raise RuntimeError(
             "native engineering smoke forward measurements are incomplete"
         )
-    for item in forward:
-        shape = item.get("shape")
+    for started, returned in zip(forward_started, forward_returned, strict=True):
+        shape = started.get("shape")
+        logits_shape = returned.get("logits_shape")
         if (
             not isinstance(shape, list)
             or len(shape) != 2
             or not 0 < shape[1] <= 1024
+            or logits_shape != [shape[0], 1]
             or not all(
-                isinstance(item.get(key), (int, float))
-                and math.isfinite(float(item[key]))
+                isinstance(returned.get(key), (int, float))
+                and math.isfinite(float(returned[key]))
                 for key in ("elapsed_ms", "process_cpu_ms")
             )
         ):
