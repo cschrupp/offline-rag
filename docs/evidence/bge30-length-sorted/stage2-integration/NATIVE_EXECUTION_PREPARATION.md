@@ -149,6 +149,7 @@ docker stop --time 30 seneca-review
 test "$(docker inspect --format '{{.State.Running}}' seneca-review)" = false
 for ARM in A B; do
   check_supervisor
+  install -d -m 0700 "$ROOT/$ARM"
   sudo install -d -m 0700 -o 10001 -g 10001 "$ROOT/$ARM/data"
   sudo cp -a /srv/seneca/data/. "$ROOT/$ARM/data/"
   docker run --rm --network none --user 10001:10001 \
