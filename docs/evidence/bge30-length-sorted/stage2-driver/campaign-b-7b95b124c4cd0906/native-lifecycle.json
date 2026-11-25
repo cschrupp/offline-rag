@@ -1,0 +1,70 @@
+{
+  "classification": "NATIVE_STAGE2_LIFECYCLE_COMPLETE",
+  "outcomes": [
+    {
+      "case": "disconnect_before",
+      "http_status": null,
+      "ordinal": 1,
+      "reason": "client_disconnect",
+      "strategy": "consecutive",
+      "terminal": "cancelled"
+    },
+    {
+      "case": "disconnect_during",
+      "http_status": null,
+      "ordinal": 2,
+      "reason": "client_disconnect",
+      "strategy": "consecutive",
+      "terminal": "cancelled"
+    },
+    {
+      "case": "deadline",
+      "http_status": 504,
+      "ordinal": 3,
+      "reason": "query_deadline_exceeded",
+      "strategy": "consecutive",
+      "terminal": "timed_out"
+    },
+    {
+      "case": "drain",
+      "http_status": 500,
+      "ordinal": 4,
+      "reason": "shutdown",
+      "strategy": "consecutive",
+      "terminal": "cancelled"
+    },
+    {
+      "case": "disconnect_before",
+      "http_status": null,
+      "ordinal": 5,
+      "reason": "client_disconnect",
+      "strategy": "length_sorted_8",
+      "terminal": "cancelled"
+    },
+    {
+      "case": "disconnect_during",
+      "http_status": null,
+      "ordinal": 6,
+      "reason": "client_disconnect",
+      "strategy": "length_sorted_8",
+      "terminal": "cancelled"
+    },
+    {
+      "case": "deadline",
+      "http_status": 504,
+      "ordinal": 7,
+      "reason": "query_deadline_exceeded",
+      "strategy": "length_sorted_8",
+      "terminal": "timed_out"
+    },
+    {
+      "case": "drain",
+      "http_status": 500,
+      "ordinal": 8,
+      "reason": "shutdown",
+      "strategy": "length_sorted_8",
+      "terminal": "cancelled"
+    }
+  ],
+  "submission_count": 8
+}
