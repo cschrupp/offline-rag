@@ -1,0 +1,375 @@
+# Seneca — 18D-R Docling Native Runtime Corrective
+
+## Role and authority
+
+You are the implementation agent for OfflineRAG / Seneca.
+
+Repository: `cschrupp/offline-rag`
+
+Read `AGENTS.md`, `DEVELOPMENT_GUIDE.md`, the current Slice 18 release plan, and the existing 18D-R corrective evidence before acting.
+
+This is an explicitly authorized, bounded implementation corrective. Proceed autonomously with ordinary implementation decisions. Do not reopen settled architecture or scientific decisions.
+
+**Starting branch:** `corrective/18d-r-http-idempotency-uuid`
+
+**Last verified remote HEAD:** `d0250895df86a98fd1d206ac45fc99c338ae4cd0`
+
+Create and push:
+
+`corrective/18d-r-docling-native-runtime`
+
+Verify the current remote branch identity and ancestry first. Preserve all existing 18D-R Engineering presentation, Docker UI catalog, and HTTP UUID corrections. If the branch has advanced, inspect the delta and reconcile without discarding accepted work.
+
+Do not implement on `main`. Do not merge or promote.
+
+## 1. Incident and confirmed root cause
+
+The Seneca H1/H2 review VM successfully received uploaded PDF bytes but failed at the document ingestion stage.
+
+The durable error was:
+
+- `code: ingest_failed`
+- `reason: internal_ingest_failure`
+- `parsed_artifacts_generated: 0`
+- `parsed_searchable_document_count: 0`
+
+Two attempts failed: one with five documents and one with a single 184,610-byte PDF.
+
+Direct reproduction using Seneca's canonical `DoclingPdfParser` established the underlying exception:
+
+`ImportError: libxcb.so.1: cannot open shared object file: No such file or directory`
+
+The exception occurred during initialization of Docling's TableFormer model when `docling_ibm_models` imported OpenCV (`cv2`).
+
+The failing environment was:
+
+- Debian GNU/Linux 13 (trixie)
+- Python 3.14
+- Docling 2.126.0
+- Docling Core 2.104.0
+- Docling Parse 7.23.1
+- OpenCV 5.0.0
+- OCR disabled
+- Provisioned Docling models at `/models/docling`
+- Existing CPU-release Docker image
+
+`ldd` identified these unresolved shared libraries:
+
+| Library | Debian package |
+|---|---|
+| libxcb.so.1 | libxcb1 |
+| libGL.so.1 | libgl1 |
+| libglib-2.0.so.0 | libglib2.0-0t64 |
+| libgthread-2.0.so.0 | libglib2.0-0t64 |
+| libXext.so.6 | libxext6 |
+| libX11.so.6 | libx11-6 |
+| libSM.so.6 | libsm6 |
+| libICE.so.6 | libice6 |
+
+Installing these packages manually in the existing review container resolved all observed native dependencies.
+
+Follow-up checks passed:
+
+- No remaining `ldd` missing-library entries for the tested OpenCV shared objects.
+- `import cv2` succeeded.
+- TableFormer `TFPredictor` import succeeded.
+- The user subsequently uploaded the original PDF through Seneca and obtained a grounded-looking answer with the source visible in the Evidence panel.
+
+Therefore, the defect is in Docker runtime packaging, not OpenRouter, PDF validity, or the accepted scientific pipeline.
+
+The manual installation is an operational workaround, not a reproducible release fix.
+
+## 2. Required Dockerfile corrective
+
+Inspect `deploy/Dockerfile`.
+
+The final `runtime` stage currently installs `ca-certificates`, with compiler packages conditionally installed for the CUDA development profile.
+
+Modify this stage to install the required native libraries for the CPU-release image.
+
+Requirements:
+
+1. Use Debian 13-compatible package names.
+2. Install only the packages justified by the observed missing-library evidence and dependency closure.
+3. Preserve the existing CPU/CUDA dependency-profile contract.
+4. Keep `--no-install-recommends`.
+5. Clean `/var/lib/apt/lists`.
+6. Preserve non-root UID/GID 10001.
+7. Preserve the application configuration, model mount contract and execution entrypoint.
+8. Do not install generator runtimes or model weights in the image.
+9. Do not change the Python dependency resolution or lockfile.
+
+The runtime-stage package set must cover `libxcb1`, `libgl1`, `libglib2.0-0t64`, `libxext6`, `libx11-6`, `libsm6` and `libice6`, whether through explicit declarations or a demonstrably stable dependency closure.
+
+Do not replace the OpenCV wheel or disable Docling table extraction to evade the missing dependencies.
+
+## 3. Add a deterministic native-runtime qualification
+
+Create a small project-owned container verification mechanism, placed consistently with the existing repository scripts and testing conventions.
+
+It must operate on the actual final release image, not only the Python builder stage.
+
+Required checks:
+
+**A. Native linkage**
+
+Inspect OpenCV's packaged shared objects and fail if `ldd` reports any `not found` dependency.
+
+The check must have meaningful exit status. An empty `grep` result must not accidentally suppress errors or create a false PASS.
+
+**B. Runtime imports**
+
+Execute with the image's installed Python environment:
+
+- `import cv2`
+- import `TFPredictor` from `docling_ibm_models.tableformer.data_management.tf_predictor`
+
+Both must succeed.
+
+**C. Image identity and contract**
+
+Confirm:
+
+- CPU dependency profile.
+- Correct `org.opencontainers.image.revision` label.
+- Non-root runtime user.
+- Unchanged runtime entrypoint and model/data mount conventions.
+- No accidental inclusion of external secrets or private files.
+
+A test that passes only because the developer's host already has the native libraries is invalid. The verification must exercise the packaged container itself.
+
+## 4. Validate real Docling conversion
+
+Imports alone are not sufficient.
+
+Using a provisioned, isolated release container, run the canonical `DoclingPdfParser` against a known machine-readable PDF.
+
+Use:
+
+- `load_settings()`
+- the existing Docling artifacts path
+- `DoclingPdfParser`
+- OCR disabled
+- table structure processing enabled
+- the accepted parser configuration
+
+Confirm that:
+
+1. Artifact readiness passes.
+2. Pipeline initialization succeeds.
+3. The PDF conversion completes.
+4. The parser returns a valid `ParsedDocument`.
+5. Useful content blocks are produced.
+6. No native shared-library exception occurs.
+
+Use a small existing test fixture or an explicitly approved local test PDF. Do not commit the user's uploaded PDF or workspace bytes.
+
+Prefer an isolated, network-disabled runtime test with mounted, pre-provisioned model assets. Do not download model artifacts during validation.
+
+If real-model execution is unavailable in your environment, report `ENVIRONMENT_BLOCKED` for that qualification, not PASS. Still complete the independently verifiable implementation and container checks.
+
+Do not invent substitute evidence or use fake models to claim real Docling functionality.
+
+## 5. Regression protection
+
+Add or extend automated qualification so this defect would fail a future release candidate before deployment.
+
+The minimum protection must exercise the native imports in the final CPU-release image.
+
+A real PDF conversion check should additionally be available for model-provisioned integration environments.
+
+Do not force large Docling model provisioning into ordinary unit-test CI.
+
+Evaluate how best to integrate the check into the existing release/container workflow without introducing a duplicate test framework.
+
+The existing Slice 16H container smoke focuses on HTTP/static delivery and health. Extend or complement that qualification only as appropriate to detect native parser initialization failures.
+
+Tests must fail closed if the native dependency requirement is not met.
+
+## 6. Build and qualification
+
+Build the complete CPU-release image from the final corrective commit.
+
+Use the accepted Docker build arguments, including:
+
+- `SENECA_DEPENDENCY_PROFILE=cpu-release`
+- `SENECA_SOURCE_SHA` equal to the exact implementation commit
+
+Verify the final image's revision and dependency-profile labels.
+
+Run the relevant tests and static checks.
+
+Record:
+
+- implementation commit and parent SHA;
+- Docker build command and result;
+- image ID and digest where available;
+- image size;
+- native dependency verification result;
+- OpenCV and TableFormer import result;
+- real-PDF conversion result, or explicit environment blocker;
+- relevant Python/UI tests;
+- changed-path inventory;
+- unrelated regression failures, if any.
+
+Distinguish verified results from unexecuted checks.
+
+Do not alter unrelated tests merely to obtain an all-green outcome.
+
+## 7. Provide a safe review VM deployment runbook
+
+The existing Google Cloud review VM has a running container named:
+
+`seneca-review`
+
+The currently deployed image was originally built from implementation commit `872419079b2a709522eb9bf8a2dcc5f03bb815b3`.
+
+The running container was manually patched with Debian native runtime libraries and now supports successful PDF ingestion.
+
+The VM contains persistent workspace data, provisioned retrieval models and operator-selected OpenRouter configuration.
+
+Prepare a complete runbook for replacing this patched container with the newly rebuilt, reproducible image.
+
+**Do not assume that the VM uses Docker Compose.** Inspect the repository's deployment records, and state any live configuration details that require inspection.
+
+The runbook must cover:
+
+### A. Pre-deployment inventory
+
+Provide commands to inspect, without disclosing secrets:
+
+- existing container and image identity;
+- container restart policy;
+- network mode and published ports;
+- data and model bind mounts or volumes;
+- mount read/write attributes;
+- runtime user;
+- deployment profile presence;
+- OpenRouter secret configuration presence without printing its value;
+- Docker daemon boot enablement.
+
+Never echo API keys into terminal logs or evidence.
+
+### B. Preserve existing configuration and state
+
+The runbook must preserve:
+
+- existing `/data` persistent storage;
+- `/models` contents and appropriate read-only mount policy;
+- workspace records and source vault;
+- existing user workspaces;
+- effective OpenRouter profile, selected model and secret;
+- Docker networking and port exposure;
+- service restart policy;
+- all relevant user-visible settings.
+
+Do not migrate, reset, delete or reinitialize persistent workspace data.
+
+Do not modify scientific model assets.
+
+Use an existing secured deployment environment file if one is present. Otherwise provide a safe local method of preserving the required runtime configuration, without committing or displaying secrets.
+
+Preserve the previous image and deployment configuration for rollback.
+
+### C. Build the replacement image
+
+Provide commands to:
+
+1. Fetch the corrective branch.
+2. Check out the exact reviewed commit.
+3. Build the CPU-release image with the correct source SHA.
+4. Verify image labels and native dependencies.
+5. Validate parser initialization and actual PDF conversion before replacing the live container.
+
+The runbook must not depend on manually installing Debian packages inside the running container.
+
+### D. Safe cutover
+
+Provide explicit, ordered commands for:
+
+1. Confirming no ingestion/query operation is active.
+2. Preserving the old container for rollback.
+3. Creating the new container using the preserved configuration.
+4. Starting the new container.
+5. Checking HTTP and readiness.
+6. Checking source and workspace visibility.
+7. Verifying persisted data and model mounts.
+8. Confirming the OpenRouter profile remains configured.
+9. Verifying `--restart unless-stopped` or the accepted equivalent.
+
+Do not force-remove `seneca-review` or its volumes.
+
+If rollback becomes necessary, the procedure must restore the previous container/image using the existing persistent mounts, without resetting workspace data.
+
+Clearly identify any human-only production/VM action.
+
+Do not automatically deploy to the VM unless the active execution environment and authorization explicitly support doing so.
+
+### E. Post-deployment qualification
+
+Require an actual PDF upload, successful ingestion, a grounded query, supporting evidence, and confirmation of the effective generation provider.
+
+Use the existing Feijoada recipe as a known successful manual smoke input if available, but do not commit it.
+
+Also confirm that restarting Docker or rebooting the VM will restore the Seneca service, without performing an unapproved VM reboot.
+
+## 8. Scope boundaries
+
+Explicitly forbidden:
+
+- Python dependency upgrades or lockfile changes;
+- switching OpenCV variants;
+- changing OCR policy;
+- disabling table-structure detection;
+- changing Docling parser semantics;
+- changing embeddings or reranker;
+- changing OpenRouter integration;
+- changing strict-offline defaults;
+- changing retrieval, chunking or citation behavior;
+- changing workspace persistence contracts;
+- modifying Engineering product copy or 18D metric results;
+- deleting user data;
+- publishing secrets;
+- promoting to `main`;
+- claiming H1/H2 acceptance.
+
+This corrective changes packaging and adds the minimum necessary regression/evidence support.
+
+Any genuinely unavoidable contract-level blocker should be reported in one batched SOL handoff, under `AGENTS.md`.
+
+Do not stop for ordinary implementation decisions.
+
+## 9. Evidence and deliverables
+
+Place the corrective evidence under:
+
+`docs/evidence/slice18d_r/docling_native_runtime_corrective/`
+
+Retain these artifacts:
+
+- `AUTHORIZATION_PROMPT.txt` — this entire authorization prompt verbatim;
+- `IMPLEMENTATION_RESULT.md` — change inventory, SHA identities, tests, build, qualification and limitations;
+- `REVIEW_VM_DEPLOYMENT_RUNBOOK.md` — executable operator procedure;
+- `EXECUTION_RESPONSE.txt` — your complete final implementation response verbatim.
+
+Follow existing repository evidence conventions. Avoid redundant bookkeeping or recursive SHA-pin commits.
+
+The final Codex response must include:
+
+1. **Disposition:** COMPLETE, PARTIAL or BLOCKED.
+2. Branch and implementation commit.
+3. Exact changed paths.
+4. Dockerfile modification summary.
+5. Verification commands and results.
+6. Image identity and runtime validation results.
+7. Real PDF conversion result.
+8. Outstanding blockers, if any.
+9. A clear link to the deployment runbook.
+10. Exact commands the Human should execute on the review VM.
+11. Confirmation that no promotion, H1/H2 acceptance or unapproved deployment occurred.
+
+Commit and push the corrective implementation and evidence.
+
+**Stop at the independent technical review handoff.**
+
+The objective is not merely to make today's manually patched container work. The objective is to ensure a clean, reproducibly built Seneca CPU-release image includes every required native Docling dependency and can be safely deployed to the existing review VM without loss of configuration or data.

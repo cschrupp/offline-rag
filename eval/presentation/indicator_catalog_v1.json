@@ -153,6 +153,31 @@
       }
     },
     {
+      "definition_id": "generation.citation_case_count",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "citation-evaluable case count",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "cases",
+      "display_kind": "count",
+      "formula_description": "Count explicitly recorded in the accepted generation evaluation source.",
+      "population_contract": "The cited population for the named generation prompt and outcome.",
+      "aggregation": "As explicitly reported by the frozen source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Number of cases explicitly reported for the named citation evaluation outcome.",
+      "does_not_imply": [
+        "citation entailment",
+        "answer correctness",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 0
+    },
+    {
       "definition_id": "generation.citation_invalid_rate",
       "definition_revision": 1,
       "indicator_class": "scientific_metric",
@@ -354,6 +379,30 @@
         "minimum": 0,
         "maximum": 1
       }
+    },
+    {
+      "definition_id": "generation.question_count",
+      "definition_revision": 1,
+      "indicator_class": "scientific_metric",
+      "display_name": "generation question count",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "questions",
+      "display_kind": "count",
+      "formula_description": "Count explicitly recorded in the accepted generation evaluation source.",
+      "population_contract": "The positive full-22 development population for the named generation prompt.",
+      "aggregation": "As explicitly reported by the frozen source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Number of questions explicitly reported for the named generation outcome.",
+      "does_not_imply": [
+        "answer correctness",
+        "generalization beyond the recorded population"
+      ],
+      "precision": 0
     },
     {
       "definition_id": "gold.contribution_points",
@@ -1042,6 +1091,35 @@
       "precision": 3
     },
     {
+      "definition_id": "release.image_reduction",
+      "definition_revision": 1,
+      "indicator_class": "release_measurement",
+      "display_name": "recorded image-size reduction",
+      "authority_class": "accepted_evidence",
+      "canonical_unit": "fraction",
+      "display_kind": "proportion",
+      "formula_description": "A-to-C image-size reduction recorded in the accepted REL-01 qualification.",
+      "population_contract": "The specific REL-01 A-to-C packaging comparison.",
+      "aggregation": "As explicitly reported by the frozen source; no recomputation.",
+      "availability": [
+        "measured",
+        "unavailable",
+        "unevaluable",
+        "not_applicable"
+      ],
+      "interpretation": "Recorded fractional decrease in image size for the stated historical comparison.",
+      "does_not_imply": [
+        "current image size",
+        "causal attribution to one packaging change",
+        "performance guarantee"
+      ],
+      "precision": 2,
+      "range": {
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
       "definition_id": "retrieval.descriptive_latency_ms",
       "definition_revision": 1,
       "indicator_class": "scientific_metric",
@@ -1281,5 +1359,5 @@
       "precision": 3
     }
   ],
-  "catalog_id": "indicatorcatalog_5dbaa39fb4ef3c7386f218c2c7db71fd5cc13c81ccff89f3ea0f6568b615cd5f"
+  "catalog_id": "indicatorcatalog_24735a5597763f36fb954e9898f206390af6200fecec75daeb8bdc5b29f60586"
 }

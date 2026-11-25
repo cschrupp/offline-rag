@@ -1,0 +1,10 @@
+# Experimental artifact only. build_diagnostic.sh verifies the pinned local base ID.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+ARG INTEGRATED_SHA
+LABEL org.opencontainers.image.revision="${INTEGRATED_SHA}" \
+      io.seneca.purpose="stage2-diagnostic"
+COPY src/offline_rag /diagnostic-src/offline_rag
+COPY provider_fixture.py /diagnostic/provider_fixture.py
+ENV PYTHONPATH=/diagnostic-src
+CMD ["python", "/diagnostic/provider_fixture.py"]

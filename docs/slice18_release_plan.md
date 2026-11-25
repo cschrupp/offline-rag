@@ -12,12 +12,15 @@ slice remains subject to its own authorization and review.
   PROMOTED.
 - **18C — Universal Workstation Distribution & Release Optimization:**
   COMPLETE / HUMAN ACCEPTED / PROMOTED at `c296e21a`.
-- **18D — Product Metrics Audit and Explainability:** DESIGN HUMAN ACCEPTED /
-  IMPLEMENTATION COMPLETE / INDEPENDENT REVIEW PENDING at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`; see `slice18d_metrics_audit.md`
-  and `docs/evidence/slice18d_metrics/IMPLEMENTATION_RESULT.md`.
-- **18E — Canonical Documentation and Portfolio Narrative:** PLANNED /
+- **18D — Product Metrics Audit and Explainability:** COMPLETE / HUMAN
+  ACCEPTED / PROMOTED at `8591aacc`.
+- **18D-R — Engineering Portfolio Explainability & Presentation:** DESIGN
+  HUMAN ACCEPTED / IMPLEMENTATION COMPLETE / AUTOMATED QUALIFICATION PASS /
+  INDEPENDENT AND HUMAN REVIEW PENDING.
+- **18E — Storage Location & Data Root Selection:** PLANNED / NOT AUTHORIZED.
+- **18F — Canonical Documentation and Portfolio Narrative:** PLANNED /
   NOT AUTHORIZED.
-- **18F — Public Release and Demo Assembly:** PLANNED / NOT AUTHORIZED.
+- **18G — Public Release and Demo Assembly:** PLANNED / NOT AUTHORIZED.
 - **Milestone 7 closeout:** NOT AUTHORIZED.
 
 Slice 18B's deferred real-host checks remain:
@@ -25,7 +28,7 @@ Slice 18B's deferred real-host checks remain:
 - `SYSTEMD_USER_RUNTIME = DEFERRED_REAL_HOST_VALIDATION`
 - `WSL_DISTRO_LIFECYCLE = DEFERRED_REAL_HOST_VALIDATION`
 
-They are not implementation gates for Slices 18C–18F unless later evidence or
+They are not implementation gates for Slices 18C–18G unless later evidence or
 authority explicitly makes them so.
 
 ## 18C — Universal Workstation Distribution & Release Optimization
@@ -191,14 +194,19 @@ For every displayed number, a reviewer should be able to ask, “Where did this
 value come from, what exactly does it mean, and how do you know it is correct?”
 Seneca's implementation and documentation should provide a precise answer.
 
-## 18E — Canonical Documentation and Portfolio Narrative
+## 18E — Storage Location & Data Root Selection
+
+This planned slice covers user-controlled storage location and data-root
+selection. It is not authorized by the current 18D-R implementation tranche.
+
+## 18F — Canonical Documentation and Portfolio Narrative
 
 ### Objective
 
 Make public repository documentation pristine, internally consistent,
 technically accurate, and understandable to a competent external reviewer
-without project history. 18E follows 18D so final documentation uses audited
-metric definitions rather than unstable semantics.
+without project history. 18F follows the accepted 18D metric audit so public
+documentation uses audited definitions rather than unstable semantics.
 
 Canonical documentation should clearly answer:
 
@@ -229,7 +237,7 @@ navigation. Create or reconcile a canonical metric glossary from the accepted
 18D audit. Do not introduce unsupported performance, quality, security, or
 privacy claims.
 
-## 18F — Public Release and Demo Assembly
+## 18G — Public Release and Demo Assembly
 
 ### Objective
 
@@ -274,7 +282,7 @@ claims, broken links, and obsolete setup instructions.
 3. **No unsupported public claim.** Every public quality, performance,
    privacy, security, or architecture claim maps to accepted evidence or is
    explicitly labeled as design/limitation rather than observed fact.
-4. **No unnecessary product redesign.** Slices 18C–18F are release/product
+4. **No unnecessary product redesign.** Slices 18C–18G are release/product
    work. Do not reopen retrieval algorithms, Gold truth, reranker science,
    generation semantics, recovery, LangGraph, NeMo, `base.yaml` scientific
    promotion, publication-grade 9G, BETA-CONV-02, or other settled behavior
@@ -300,10 +308,16 @@ claims, broken links, and obsolete setup instructions.
 18D Product Metrics Audit and Explainability
     every user-visible metric correct and defensible
         ↓
-18E Canonical Documentation and Portfolio Narrative
+18D-R Engineering Portfolio Explainability and Presentation
+    human-readable Summary with source-linked Evidence audit surface
+        ↓
+18E Storage Location and Data Root Selection
+    user-controlled storage placement (scope remains to be authorized)
+        ↓
+18F Canonical Documentation and Portfolio Narrative
     coherent, external-facing documentation
         ↓
-18F Public Release and Demo Assembly
+18G Public Release and Demo Assembly
     release / demo / final evidence-backed claims
         ↓
 Milestone 7 closeout (NOT AUTHORIZED)
@@ -318,9 +332,10 @@ RELEASE
 ```
 
 Slice 18C is **COMPLETE / HUMAN ACCEPTED / PROMOTED** at
-`c296e21afa740aa8fa7199d88ffda68c59d1be03`. Slice 18D implementation is
-**COMPLETE / INDEPENDENT REVIEW PENDING** at `e42bc97d540bca129eab6d2c693e563bf7d4afa9`.
+`c296e21afa740aa8fa7199d88ffda68c59d1be03`. Slice 18D is **COMPLETE / HUMAN
+ACCEPTED / PROMOTED** at `8591aacc`; 18D-R is **IMPLEMENTATION COMPLETE /
+AUTOMATED QUALIFICATION PASS / INDEPENDENT AND HUMAN REVIEW PENDING**.
 This does not authorize promotion, registry publication, GitHub Release
-publication, cloud deployment, or work on Slices 18E–18F. Slices 18E–18F and
+publication, cloud deployment, or work on Slices 18E–18G. Slices 18E–18G and
 Milestone 7 closeout remain
 **PLANNED / NOT AUTHORIZED**.

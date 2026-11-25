@@ -1,0 +1,88 @@
+# Seneca 18D-R — Reranker Lazy-Initialization Corrective
+
+## Objective
+
+Investigate and correct the production reranker's unsafe lazy-initialization path while preserving the accepted BGE reranker model, checkpoint, inference semantics, and scientific configuration.
+
+Repository: `cschrupp/offline-rag`
+
+Starting point: current `corrective/18d-r-docling-native-runtime` branch, which contains the technical candidate `c5a973955f20ea29abe473ffe9ae816946eb26ad` and its evidence.
+
+Proposed branch: `corrective/18d-r-reranker-initialization`
+
+Read `AGENTS.md`, applicable development guidance, and the existing 18D-R evidence. No promotion or VM deployment is authorized.
+
+## Observed evidence
+
+The deployed review container returns HTTP 500 for grounded workspace conversation requests.
+
+Two durable traces identify:
+
+- Stage: `rerank`
+- Classification: `reranker_failure`
+- Exception chain: `GroundedAnswerError` → `HybridRerankContextError` → `HybridRerankRetrievalError` → `NotImplementedError`
+- Failure location: `CrossEncoderReranker._load()`, at `model.to(self.device)`
+- Underlying exception: `Cannot copy out of meta tensor; no data!`
+
+Independent diagnostics established:
+
+1. Model checkpoint exists and passes its artifact checks.
+2. Direct Transformers loading produces zero meta parameters and buffers.
+3. No missing, unexpected or mismatched checkpoint keys were reported.
+4. Direct CPU transfer succeeds.
+5. Real scoring through `CrossEncoderReranker.score_pairs()` succeeds.
+6. Real scoring also succeeds inside a Python worker thread.
+7. The failure occurs in Seneca's long-lived HTTP server.
+
+## Investigation requirements
+
+Review `src/offline_rag/rerank/cross_encoder.py`, process-scoped resource ownership, `QueryRuntimeCache`, and the synchronous workspace conversation execution path.
+
+The leading hypothesis is overlapping lazy initialization of the shared reranker.
+
+Determine whether concurrent calls can enter `from_pretrained()` on the same instance. Consider interaction with other model-loading operations and relevant Transformers global state.
+
+Do not claim the hypothesis is proven solely from the existing logs.
+
+Use deterministic, lightweight concurrency tests where possible. Do not launch multiple full BGE checkpoint loads on the review VM.
+
+## Corrective requirements
+
+If the investigation supports the shared initialization hypothesis:
+
+- Add synchronization around first-use model loading.
+- Double-check initialization state inside the synchronization boundary.
+- Publish tokenizer/model references only after successful loading, device transfer and integrity validation.
+- Ensure failed initialization leaves a well-defined retry or terminal-failure state.
+- Reject unmaterialized meta parameters or buffers rather than silently proceeding.
+- Preserve inference-mode evaluation, raw logits, passage-only truncation and scoring order.
+- Do not hold an initialization lock unnecessarily during already-initialized inference.
+
+If the root cause is different, provide supporting evidence and the smallest defensible alternative corrective.
+
+Explicitly forbidden: using `to_empty()` to bypass missing weights; switching model checkpoints; disabling reranking; changing accepted ranking semantics; upgrading Python dependencies or modifying the lockfile without separate authorization.
+
+## Qualification
+
+Provide:
+
+1. A deterministic test that exercises overlapping first-use calls against the same reranker instance, confirming initialization occurs exactly once.
+2. A failed-initialization test that prevents exposure of a partially loaded model.
+3. An explicit meta-tensor integrity regression.
+4. Real model loading and scoring in the final CPU-release image.
+5. A production-equivalent HTTP-query smoke test where the required environment is available.
+6. Clear evidence distinguishing independently executed tests from environment-blocked ones.
+
+Do not claim a unit-test-only PASS establishes production readiness.
+
+## Deployment and evidence
+
+Preserve the current Docker native-library corrective, exact model assets, persistent workspace storage, OpenRouter settings and rollback container.
+
+Document how the review VM should rebuild and qualify the new candidate without deleting rollback images or exhausting available disk space.
+
+Record the complete authorization prompt and final Codex response, alongside implementation evidence and exact commit identities.
+
+Push the branch and stop for independent technical review.
+
+The existing 18D-R H1/H2 acceptance remains pending.

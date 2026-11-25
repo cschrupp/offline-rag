@@ -33,6 +33,7 @@ def _write_env_file(path: Path, *, api_key: str | None) -> dict[str, str]:
         "OFFLINE_RAG_AUTHORING_APPROVED_MODELS": "authoring-test-model",
         "OFFLINE_RAG_AUTHORING_TIMEOUT_SECONDS": "240",
         "OFFLINE_RAG_AUTHORING_NETWORK_POLICY": "localhost_only",
+        "OFFLINE_RAG_RERANKER_BATCHING_STRATEGY": "length_sorted_8",
     }
     if api_key is not None:
         values["OFFLINE_RAG_AUTHORING_API_KEY"] = api_key
@@ -103,6 +104,7 @@ def test_compose_forwards_authoring_bootstrap_and_loads_first_start_settings(
     )
     assert container_env["OFFLINE_RAG_AUTHORING_TIMEOUT_SECONDS"] == "240"
     assert container_env["OFFLINE_RAG_AUTHORING_NETWORK_POLICY"] == "localhost_only"
+    assert container_env["OFFLINE_RAG_RERANKER_BATCHING_STRATEGY"] == "length_sorted_8"
     assert container_env["HF_TOKEN"] == ""
     assert container_env.get("OFFLINE_RAG_AUTHORING_API_KEY") == api_key
 
@@ -125,6 +127,7 @@ def test_compose_forwards_authoring_bootstrap_and_loads_first_start_settings(
     ]
     assert settings.authoring.timeout_seconds == 240
     assert settings.authoring.network_policy == "localhost_only"
+    assert settings.reranker.batching_strategy == "length_sorted_8"
     assert settings.authoring.api_key == (api_key or None)
 
     operator_env = dict(loaded_env)

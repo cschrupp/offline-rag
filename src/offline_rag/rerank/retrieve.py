@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import sys
 import time
 from typing import Any
 
@@ -19,6 +21,7 @@ from offline_rag.domain.indexing import (
 )
 from offline_rag.hybrid.retrieve import HybridRetrievalError, HybridRetriever
 from offline_rag.ingestion.discovery import validate_corpus_name
+from offline_rag.observability.logging import log_event
 from offline_rag.rerank.config_hash import build_reranker_config_hash
 from offline_rag.rerank.cross_encoder import CrossEncoderReranker
 from offline_rag.rerank.fake import FakeReranker
@@ -33,6 +36,28 @@ from offline_rag.retrieval.scope import assert_document_scope
 
 class HybridRerankRetrievalError(RuntimeError):
     pass
+
+
+logger = logging.getLogger(__name__)
+
+
+def _process_peak_rss_bytes() -> int | None:
+    """Return the process lifetime RSS high-water mark on supported hosts."""
+    try:
+        import resource
+    except ImportError:
+        return None
+
+    try:
+        max_rss = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    except OSError, ValueError:
+        return None
+
+    if sys.platform.startswith("linux"):
+        return max_rss * 1024
+    if sys.platform == "darwin":
+        return max_rss
+    return None
 
 
 def _sort_scored(
@@ -181,6 +206,59 @@ class HybridRerankRetriever:
         if not pool:
             total_s = time.perf_counter() - wall_t0
             total_ms = int(total_s * 1000)
+            metadata: dict[str, Any] = {
+                "corpus_id": hybrid_result.metadata.get("corpus_id"),
+                "chunk_set_id": hybrid_result.metadata.get("chunk_set_id"),
+                "input_k": input_k,
+                "input_pool_size": 0,
+                "input_pool_chunk_ids": [],
+                "output_k": final_k,
+                "latency_ms": {
+                    "hybrid": hybrid_ms,
+                    "pair_build": 0,
+                    "rerank_infer": 0,
+                    "sort": 0,
+                    "total": total_ms,
+                    "hybrid_breakdown": hybrid_breakdown,
+                },
+                "latency_seconds": {
+                    "hybrid": hybrid_s,
+                    "pair_build": 0.0,
+                    "rerank_infer": 0.0,
+                    "sort": 0.0,
+                    "rerank": 0.0,
+                    "total": total_s,
+                    "hybrid_breakdown": hybrid_breakdown_s,
+                },
+            }
+            if isinstance(self._reranker, CrossEncoderReranker):
+                peak_rss_bytes = _process_peak_rss_bytes()
+                execution = {
+                    "batching_strategy": self._reranker.batching_strategy,
+                    "configured_batching_strategy": (
+                        self._reranker.configured_batching_strategy
+                    ),
+                    "device": self._reranker.device,
+                    "input_candidate_count": 0,
+                    "output_candidate_count": 0,
+                    "process_peak_rss_bytes": peak_rss_bytes,
+                    "rss_scope": "process_lifetime_high_water",
+                    "scorer_invoked": False,
+                }
+                metadata["reranker_execution"] = execution
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "Cross-encoder retrieval completed without candidates",
+                    event="reranker_completed",
+                    metrics={
+                        **execution,
+                        "retrieval_latency_ms": total_ms,
+                        "scorer_latency_ms": 0,
+                        "candidate_count": 0,
+                        "returned_candidate_count": 0,
+                    },
+                )
             return HybridRerankRetrievalResult(
                 query=query.strip(),
                 method="hybrid-rerank",
@@ -190,39 +268,16 @@ class HybridRerankRetriever:
                 lexical_index_id=hybrid_result.lexical_index_id,
                 fusion_config_hash=hybrid_result.fusion_config_hash,
                 reranker_config_hash=rrk_hash,
-                metadata={
-                    "corpus_id": hybrid_result.metadata.get("corpus_id"),
-                    "chunk_set_id": hybrid_result.metadata.get("chunk_set_id"),
-                    "input_k": input_k,
-                    "input_pool_size": 0,
-                    "input_pool_chunk_ids": [],
-                    "output_k": final_k,
-                    "latency_ms": {
-                        "hybrid": hybrid_ms,
-                        "pair_build": 0,
-                        "rerank_infer": 0,
-                        "sort": 0,
-                        "total": total_ms,
-                        "hybrid_breakdown": hybrid_breakdown,
-                    },
-                    "latency_seconds": {
-                        "hybrid": hybrid_s,
-                        "pair_build": 0.0,
-                        "rerank_infer": 0.0,
-                        "sort": 0.0,
-                        # Semantic rerank envelope: finalized input → ranked output.
-                        "rerank": 0.0,
-                        "total": total_s,
-                        "hybrid_breakdown": hybrid_breakdown_s,
-                    },
-                },
+                metadata=metadata,
             )
 
         t_pairs = time.perf_counter()
         try:
             pairs = self._input_builder.build(query=query, candidates=pool)
         except Exception as exc:
-            raise HybridRerankRetrievalError(f"pair construction failed: {exc}") from exc
+            raise HybridRerankRetrievalError(
+                f"pair construction failed: {exc}"
+            ) from exc
         pair_build_s = time.perf_counter() - t_pairs
         pair_build_ms = int(pair_build_s * 1000)
 
@@ -230,6 +285,29 @@ class HybridRerankRetriever:
         try:
             scores = self._reranker.score_pairs(pairs)
         except Exception as exc:
+            scorer_ms = int((time.perf_counter() - t_infer) * 1000)
+            if isinstance(self._reranker, CrossEncoderReranker):
+                log_event(
+                    logger,
+                    logging.ERROR,
+                    "Cross-encoder reranking failed",
+                    event="reranker_failed",
+                    error_type=type(exc).__name__,
+                    metrics={
+                        "batching_strategy": self._reranker.batching_strategy,
+                        "configured_batching_strategy": (
+                            self._reranker.configured_batching_strategy
+                        ),
+                        "device": self._reranker.device,
+                        "candidate_count": len(pool),
+                        "scorer_latency_ms": scorer_ms,
+                        "retrieval_elapsed_ms": int(
+                            (time.perf_counter() - wall_t0) * 1000
+                        ),
+                        "process_peak_rss_bytes": _process_peak_rss_bytes(),
+                        "rss_scope": "process_lifetime_high_water",
+                    },
+                )
             raise HybridRerankRetrievalError(f"reranker scoring failed: {exc}") from exc
         rerank_infer_s = time.perf_counter() - t_infer
         rerank_infer_ms = int(rerank_infer_s * 1000)
@@ -307,6 +385,38 @@ class HybridRerankRetriever:
                 "hybrid_breakdown": hybrid_breakdown_s,
             },
         }
+        if isinstance(self._reranker, CrossEncoderReranker):
+            peak_rss_bytes = _process_peak_rss_bytes()
+            metadata["reranker_execution"] = {
+                "batching_strategy": self._reranker.batching_strategy,
+                "configured_batching_strategy": (
+                    self._reranker.configured_batching_strategy
+                ),
+                "device": self._reranker.device,
+                "input_candidate_count": len(pool),
+                "output_candidate_count": len(candidates),
+                "process_peak_rss_bytes": peak_rss_bytes,
+                "rss_scope": "process_lifetime_high_water",
+            }
+            log_event(
+                logger,
+                logging.INFO,
+                "Cross-encoder reranking completed",
+                event="reranker_completed",
+                metrics={
+                    "batching_strategy": self._reranker.batching_strategy,
+                    "configured_batching_strategy": (
+                        self._reranker.configured_batching_strategy
+                    ),
+                    "device": self._reranker.device,
+                    "retrieval_latency_ms": total_ms,
+                    "scorer_latency_ms": rerank_infer_ms,
+                    "candidate_count": len(pool),
+                    "returned_candidate_count": len(candidates),
+                    "process_peak_rss_bytes": peak_rss_bytes,
+                    "rss_scope": "process_lifetime_high_water",
+                },
+            )
         return HybridRerankRetrievalResult(
             query=query.strip(),
             method="hybrid-rerank",

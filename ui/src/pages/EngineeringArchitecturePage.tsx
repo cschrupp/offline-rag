@@ -23,7 +23,7 @@ export function EngineeringArchitecturePage() {
             { title: "Dense + BM25 retrieval", detail: "current snapshot evidence" },
             { title: "RRF → BGE reranker", detail: "rank and select context" },
             { title: "Evidence sufficiency", detail: "answer or safely abstain" },
-            { title: "Generation", detail: "local by default · optional approved REL-03 endpoint" },
+            { title: "Generation", detail: "local by default · approved optional external generation endpoint" },
             { title: "Citation membership", detail: "validate IDs against current EvidenceUnit[] and resolve provenance" },
           ]}
           notes={[
@@ -56,13 +56,13 @@ export function EngineeringArchitecturePage() {
           title="Runtime portability"
           data-testid="runtime-portability-flow"
           layers={[
-            { title: "Installation capability", detail: "CPU-only release image or CUDA-capable local/developer installation" },
+            { title: "Installation capability", detail: "CPU and CUDA container distributions; universal CPU-first workstation package with optional, explicit CUDA enablement" },
             { title: "AUTO resolver", detail: "the unchanged application policy selects a supported runtime for the installation" },
-            { title: "Selected runtime profile", detail: "CPU release → cpu_onnx_fp32_v1 / CPUExecutionProvider OR CUDA-capable install → cuda_fp16_v1 / torch_st_v1" },
+            { title: "Selected runtime profile", detail: "CPU container or workstation → cpu_onnx_fp32_v1 / CPUExecutionProvider OR CUDA container or CUDA-enabled workstation → cuda_fp16_v1 / torch_st_v1" },
             { title: "Provisioned model assets", detail: "external to the application image and common to the supported runtime profiles" },
           ]}
           notes={[
-            "REL-01 qualifies the CPU release artifact. CUDA runtime qualification does not mean a CUDA release image exists.",
+            "An earlier host/profile-scoped CUDA runtime qualification did not itself create a release artifact; later distribution qualification established both CPU and CUDA container paths.",
             "CPU ONNX and CUDA FP16 are alternatives selected by the existing AUTO policy; presentation does not force CPU or add a resolver.",
           ]}
         />
@@ -77,11 +77,11 @@ export function EngineeringArchitecturePage() {
             { title: "Seneca API and workspace data" },
             { title: "Local embeddings · retrieval · reranking" },
             { title: "Local evidence and citation authority" },
-            { title: "Generation endpoint", detail: "strict-offline default · optional operator-selected REL-03" },
+            { title: "Generation endpoint", detail: "strict-offline default · optional operator-selected external endpoint" },
           ]}
           notes={[
             "Default operation is standalone and strict-offline. Initial provisioning may require separately managed downloads.",
-            "REL-03's approved external inference seam covers grounded answer generation, explicit conversation transformations, and Gold authoring. Retrieval, embeddings, reranking, evidence selection, citation membership and provenance authority, and Gold truth remain local.",
+            "The approved optional external generation endpoint can serve grounded answer generation, explicit conversation transformations, and Gold authoring. Retrieval, embeddings, reranking, evidence selection, citation membership and provenance authority, and Gold truth remain local.",
           ]}
         />
       </Card>
@@ -110,7 +110,7 @@ export function EngineeringArchitecturePage() {
           These items are not part of the active Seneca execution path.
         </p>
         <ul>
-          <li>Query/retrieval rewrite and retry recovery (Slice 12C) remains product-disabled after insufficient efficacy evidence.</li>
+          <li>Query rewrite and retry recovery remains product-disabled after insufficient efficacy evidence.</li>
           <li>Operational crash/restart recovery is a separate accepted persistence capability that preserves the published snapshot and permits a subsequent operation.</li>
           <li>LangGraph adapter</li>
           <li>NeMo Guardrails</li>

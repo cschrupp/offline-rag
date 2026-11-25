@@ -102,7 +102,7 @@ export function OverviewPage() {
           Static evidence is not live system telemetry.
         </p>
         <div className="row">
-          <Button to="/engineering/evaluation">Open Evaluation</Button>
+          <Button to="/engineering/summary">Open Engineering</Button>
           <Button to="/engineering/architecture" variant="secondary">
             View Architecture
           </Button>

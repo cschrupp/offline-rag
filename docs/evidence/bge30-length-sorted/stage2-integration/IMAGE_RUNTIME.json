@@ -1,0 +1,24 @@
+{
+  "cuda_build": null,
+  "default_strategy": "consecutive",
+  "fixture_sha256": "07f3e9daaeffc2d46e0cd421fd57487fa8603020ff1d3271d923c94aae7ad3a0",
+  "input_k": 30,
+  "opt_in_strategy": "length_sorted_8",
+  "python": "3.14.10",
+  "query_capacity": 1,
+  "query_deadline_s": 180,
+  "reranker_fingerprint": "rrkcfg_68c77803ed7dc09ef0b5df50b3c09b6ee1c388bdccd0b8c29ca4c2161d57bb3e",
+  "shutdown_grace_s": 30,
+  "source_root": "/diagnostic-src/offline_rag",
+  "versions": {
+    "onnxruntime": "1.31.0",
+    "sentence-transformers": "5.7.0",
+    "tiktoken": "0.14.0",
+    "tokenizers": "0.22.2",
+    "torch": "2.14.0+cpu",
+    "transformers": "4.57.6"
+  },
+  "exact_source_files_verified": 402,
+  "manifest_list_digest": "sha256:669932995e62fa53616fbfe0551c442077caa0496f86fba49d5f4a1ba6f48d04",
+  "base_manifest_list_digest": "sha256:8d45e633fac9b82a833a59117064c074759e317563a0bdb0cca87179986ee9a1"
+}

@@ -24,6 +24,8 @@ RUN --mount=type=secret,id=build_ca,required=false \
     && npm ci
 
 COPY ui/ ./
+# catalog.ts imports the repo-level indicator catalog.
+COPY eval/presentation/indicator_catalog_v1.json /eval/presentation/indicator_catalog_v1.json
 RUN npm run build
 
 FROM ghcr.io/astral-sh/uv:0.11.18 AS uv-bin
@@ -96,8 +98,10 @@ RUN groupadd --gid 10001 offlinerag \
 
 WORKDIR /app
 
+# Native OpenCV dependencies used by Docling TableFormer.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends \
+         ca-certificates libxcb1 libgl1 libglib2.0-0t64 libxext6 libx11-6 libsm6 libice6 \
     && if [ "$SENECA_DEPENDENCY_PROFILE" = cuda-dev ]; then \
          apt-get install -y --no-install-recommends gcc libc6-dev; \
        fi \

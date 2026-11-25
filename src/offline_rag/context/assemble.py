@@ -163,7 +163,9 @@ class HybridRerankContextAssembler:
         }
 
         metadata: dict[str, Any] = {
-            "corpus_id": upstream.metadata.get("corpus_id") if upstream.metadata else None,
+            "corpus_id": upstream.metadata.get("corpus_id")
+            if upstream.metadata
+            else None,
             "chunk_set_id": upstream.metadata.get("chunk_set_id")
             if upstream.metadata
             else store.chunk_set_id,
@@ -176,6 +178,9 @@ class HybridRerankContextAssembler:
             if upstream.metadata
             else None,
         }
+
+        if execution := upstream.metadata.get("reranker_execution"):
+            metadata["reranker_execution"] = execution
 
         return HybridRerankContextResult(
             query=query,

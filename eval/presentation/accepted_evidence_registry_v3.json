@@ -1075,7 +1075,8 @@
           "judge_model_id": "qwen3.6-35b-a3b",
           "same_model_self_judge": true,
           "gold_dataset_id": "gold_d3fc157c7b3206f6983abee766e7ce7b939244a7dea04f0be256f3a533a46172",
-          "governance_state": "DEVELOPMENT / NON-PROMOTIONAL"
+          "governance_state": "DEVELOPMENT / NON-PROMOTIONAL",
+          "same_endpoint_as_generator": true
         }
       },
       "value_source": "curated",
@@ -1180,6 +1181,100 @@
           "Same-model self-judge limitation: generator and judge used the same model.",
           "No prompt promotion and no config/base.yaml promotion.",
           "Development fixture only."
+        ],
+        "facts": [
+          {
+            "fact_id": "development-counts",
+            "title": "Development generation counts",
+            "claim": "The accepted positive full-22 report records 20 answered questions, 2 generation failures, and 17 top-grade citation hits among 18 eligible cases for prompt-grounded-v1.",
+            "scope": "Slice 10E positive full-22 development population; citation-hit denominator is the explicitly reported eligible subset.",
+            "currency": "historical",
+            "source_ref_ids": [
+              "generation-report"
+            ],
+            "metrics": [
+              {
+                "metric_id": "answered",
+                "label": "Answered questions",
+                "metric": {
+                  "availability": "measured",
+                  "value": 20,
+                  "unit": "questions",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "generation-report",
+                  "format": "literal",
+                  "expected_value": 20,
+                  "expected_literal": "answered 20/22"
+                }
+              },
+              {
+                "metric_id": "population",
+                "label": "Positive development population",
+                "metric": {
+                  "availability": "measured",
+                  "value": 22,
+                  "unit": "questions",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "generation-report",
+                  "format": "literal",
+                  "expected_value": 22,
+                  "expected_literal": "22 both arms"
+                }
+              },
+              {
+                "metric_id": "generation-failures",
+                "label": "Generation failures",
+                "metric": {
+                  "availability": "measured",
+                  "value": 2,
+                  "unit": "questions",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "generation-report",
+                  "format": "literal",
+                  "expected_value": 2,
+                  "expected_literal": "generation_failed 2/22"
+                }
+              },
+              {
+                "metric_id": "grade2-hit-count",
+                "label": "Top-grade citation hits",
+                "metric": {
+                  "availability": "measured",
+                  "value": 17,
+                  "unit": "cases",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "generation-report",
+                  "format": "literal",
+                  "expected_value": 17,
+                  "expected_literal": "17/18"
+                }
+              },
+              {
+                "metric_id": "grade2-eligible-count",
+                "label": "Top-grade citation eligible cases",
+                "metric": {
+                  "availability": "measured",
+                  "value": 18,
+                  "unit": "cases",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "generation-report",
+                  "format": "literal",
+                  "expected_value": 18,
+                  "expected_literal": "18)"
+                }
+              }
+            ]
+          }
         ]
       },
       "currency": "historical",
@@ -1342,6 +1437,56 @@
           },
           "population": {
             "label": "positive full-22"
+          },
+          "precision_qualifier": "source_reported_precision"
+        },
+        "/facts/0/metrics/0/metric": {
+          "definition_ref": {
+            "definition_id": "generation.question_count",
+            "definition_revision": 1
+          },
+          "population": {
+            "label": "Positive full-22; prompt-grounded-v1 answered questions."
+          },
+          "precision_qualifier": "source_reported_precision"
+        },
+        "/facts/0/metrics/1/metric": {
+          "definition_ref": {
+            "definition_id": "generation.question_count",
+            "definition_revision": 1
+          },
+          "population": {
+            "label": "Positive full-22; prompt-grounded-v1 population."
+          },
+          "precision_qualifier": "source_reported_precision"
+        },
+        "/facts/0/metrics/2/metric": {
+          "definition_ref": {
+            "definition_id": "generation.question_count",
+            "definition_revision": 1
+          },
+          "population": {
+            "label": "Positive full-22; prompt-grounded-v1 generation failures."
+          },
+          "precision_qualifier": "source_reported_precision"
+        },
+        "/facts/0/metrics/3/metric": {
+          "definition_ref": {
+            "definition_id": "generation.citation_case_count",
+            "definition_revision": 1
+          },
+          "population": {
+            "label": "Positive full-22; prompt-grounded-v1 grade-2 citation-hit eligible subset."
+          },
+          "precision_qualifier": "source_reported_precision"
+        },
+        "/facts/0/metrics/4/metric": {
+          "definition_ref": {
+            "definition_id": "generation.citation_case_count",
+            "definition_revision": 1
+          },
+          "population": {
+            "label": "Positive full-22; prompt-grounded-v1 grade-2 citation-hit eligible subset."
           },
           "precision_qualifier": "source_reported_precision"
         }
@@ -2096,7 +2241,7 @@
       "decision_effect": "Distinguishes the CPU release artifact from runtime portability without implying a CUDA release image.",
       "claim_scope": "REL-01 final CPU release and bounded CPU/CUDA runtime qualifications.",
       "caveats": [
-        "CUDA qualification is host/profile-scoped and does not constitute a CUDA release artifact.",
+        "The earlier L5 CUDA runtime qualification was host/profile-scoped and did not itself create a CUDA release artifact; Slice 18C subsequently qualified CPU and CUDA container distribution.",
         "AUTO resolution remains unchanged; application config does not force CPU.",
         "Historical REL-01 subject; Slice 18C subsequently qualified CPU/CUDA release distribution. Do not read this record as the current distribution matrix."
       ],
@@ -2122,6 +2267,14 @@
           "role": "accepted_machine_artifact",
           "source_kind": "accepted_machine_readable",
           "expected_sha256": "450cd7a4a2d678cc691b08ee5747fa6d7f4d33abc58c0d4772feeb39d2f2bcd3"
+        },
+        {
+          "source_ref_id": "slice18c-qualification",
+          "path": "docs/evidence/slice18c_universal_distribution/QUALIFICATION.md",
+          "role": "accepted_qualification",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "7d320c76c597dfd8e0d5467905eeeca29b6319bffb5d23446415eaa0d7cc7189",
+          "source_locator": "Current disposition; CPU and CUDA resolver qualification; CPU\u2192CUDA\u2192CPU workstation round-trip"
         }
       ],
       "provenance": {
@@ -2148,7 +2301,7 @@
           {
             "fact_id": "runtime-profiles",
             "title": "Runtime profiles",
-            "claim": "CPU ONNX FP32 and CUDA FP16 have separate bounded runtime qualifications; the CUDA result did not change production large-PDF admission or create a CUDA image.",
+            "claim": "The earlier CPU ONNX FP32 and CUDA FP16 runtime trials were bounded host/profile qualifications and did not change production large-PDF admission or create a release image. Slice 18C subsequently qualified the current CPU and CUDA distribution paths.",
             "source_ref_ids": [
               "l5-summary",
               "cuda-summary"
@@ -2181,6 +2334,16 @@
               }
             ],
             "scope": "The accepted REL-01 final image-size measurement."
+          },
+          {
+            "fact_id": "current-18c-profiles",
+            "title": "Current CPU and CUDA execution",
+            "claim": "Slice 18C qualified the CPU ONNX FP32 profile and the CUDA FP16 profile. AUTO selects the supported runtime available to the installation; the profiles are alternatives, not sequential processing stages.",
+            "source_ref_ids": [
+              "slice18c-qualification"
+            ],
+            "currency": "current",
+            "scope": "Accepted Slice 18C CPU and CUDA resolver/runtime qualification."
           }
         ]
       },
@@ -2448,6 +2611,14 @@
           "source_kind": "accepted_markdown_projection",
           "expected_sha256": "5f67af09ba81e7d26221b57403544a0f41bdd92d3f904d5512ecd4b603ba2287",
           "source_locator": "REL-01 image build, size, and runtime qualification"
+        },
+        {
+          "source_ref_id": "slice18c-cpu-qualification",
+          "path": "docs/evidence/slice18c_universal_distribution/QUALIFICATION.md",
+          "role": "accepted_qualification",
+          "source_kind": "accepted_markdown_projection",
+          "expected_sha256": "7d320c76c597dfd8e0d5467905eeeca29b6319bffb5d23446415eaa0d7cc7189",
+          "source_locator": "\u00a718C corrective runtime qualification; current CPU image identity and size"
         }
       ],
       "provenance": {
@@ -2508,7 +2679,7 @@
           },
           {
             "fact_id": "cpu-release",
-            "title": "CPU release image",
+            "title": "Historical REL-01 optimized CPU image",
             "claim": "REL-01 qualified the CPU-only multi-stage release image; its size and runtime evidence are separate from the hosted CI result.",
             "source_ref_ids": [
               "rel01-qualification"
@@ -2531,7 +2702,96 @@
                 }
               }
             ],
-            "scope": "REL-01 final CPU release image qualification, separate from the CI run."
+            "scope": "REL-01 final CPU release image, distinct from the current 18C CPU image.",
+            "currency": "historical"
+          },
+          {
+            "fact_id": "historical-image-optimization",
+            "title": "Historical REL-01 image-size comparison",
+            "claim": "The accepted REL-01 packaging comparison recorded a 77.52% A-to-C image-size reduction. These are historical REL-01 artifacts, not the current 18C image.",
+            "scope": "REL-01 A-to-C packaging comparison; reported result, no recomputation.",
+            "currency": "historical",
+            "source_ref_ids": [
+              "rel01-qualification"
+            ],
+            "metrics": [
+              {
+                "metric_id": "baseline-image-bytes",
+                "label": "Original packaging image",
+                "metric": {
+                  "availability": "measured",
+                  "value": 10436722883,
+                  "unit": "bytes",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "rel01-qualification",
+                  "format": "literal",
+                  "expected_value": 10436722883,
+                  "expected_literal": "10,436,722,883"
+                }
+              },
+              {
+                "metric_id": "optimized-image-bytes",
+                "label": "REL-01 optimized CPU image",
+                "metric": {
+                  "availability": "measured",
+                  "value": 2346582188,
+                  "unit": "bytes",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "rel01-qualification",
+                  "format": "literal",
+                  "expected_value": 2346582188,
+                  "expected_literal": "2,346,582,188"
+                }
+              },
+              {
+                "metric_id": "image-reduction",
+                "label": "Recorded A-to-C reduction",
+                "metric": {
+                  "availability": "measured",
+                  "value": 0.7752,
+                  "unit": "fraction",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "rel01-qualification",
+                  "format": "literal",
+                  "expected_value": 0.7752,
+                  "expected_literal": "77.52%"
+                }
+              }
+            ]
+          },
+          {
+            "fact_id": "current-cpu-image",
+            "title": "Current 18C CPU image",
+            "claim": "The accepted Slice 18C qualification measured the current CPU image separately from the historical REL-01 comparison.",
+            "scope": "Accepted Slice 18C universal workstation and container distribution qualification.",
+            "currency": "current",
+            "source_ref_ids": [
+              "slice18c-cpu-qualification"
+            ],
+            "metrics": [
+              {
+                "metric_id": "image-bytes",
+                "label": "Current CPU image bytes",
+                "metric": {
+                  "availability": "measured",
+                  "value": 2346639310,
+                  "unit": "bytes",
+                  "value_qualifier": "exact"
+                },
+                "source_binding": {
+                  "source_ref_id": "slice18c-cpu-qualification",
+                  "format": "literal",
+                  "expected_value": 2346639310,
+                  "expected_literal": "2,346,639,310"
+                }
+              }
+            ]
           }
         ]
       },
@@ -2563,6 +2823,46 @@
           },
           "population": {
             "label": "REL-01 final CPU release image qualification, separate from the CI run."
+          },
+          "precision_qualifier": "source_reported_precision"
+        },
+        "/facts/2/metrics/0/metric": {
+          "definition_ref": {
+            "definition_id": "release.image-bytes",
+            "definition_revision": 1
+          },
+          "population": {
+            "label": "REL-01 original packaging image; historical A-stage measurement."
+          },
+          "precision_qualifier": "source_reported_precision"
+        },
+        "/facts/2/metrics/1/metric": {
+          "definition_ref": {
+            "definition_id": "release.image-bytes",
+            "definition_revision": 1
+          },
+          "population": {
+            "label": "REL-01 optimized CPU image; historical C-stage measurement."
+          },
+          "precision_qualifier": "source_reported_precision"
+        },
+        "/facts/2/metrics/2/metric": {
+          "definition_ref": {
+            "definition_id": "release.image_reduction",
+            "definition_revision": 1
+          },
+          "population": {
+            "label": "REL-01 A-to-C packaging comparison; historical reported reduction."
+          },
+          "precision_qualifier": "source_reported_precision"
+        },
+        "/facts/3/metrics/0/metric": {
+          "definition_ref": {
+            "definition_id": "release.image-bytes",
+            "definition_revision": 1
+          },
+          "population": {
+            "label": "Accepted current Slice 18C CPU image measurement."
           },
           "precision_qualifier": "source_reported_precision"
         }
@@ -2654,5 +2954,5 @@
       "observation_bindings": {}
     }
   ],
-  "catalog_id": "indicatorcatalog_5dbaa39fb4ef3c7386f218c2c7db71fd5cc13c81ccff89f3ea0f6568b615cd5f"
+  "catalog_id": "indicatorcatalog_24735a5597763f36fb954e9898f206390af6200fecec75daeb8bdc5b29f60586"
 }

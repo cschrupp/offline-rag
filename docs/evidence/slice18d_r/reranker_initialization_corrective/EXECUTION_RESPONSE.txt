@@ -1,0 +1,9 @@
+The reranker fix is ready for independent technical review on [corrective/18d-r-reranker-initialization](https://github.com/cschrupp/offline-rag/tree/corrective/18d-r-reranker-initialization). The implementation is `9c92e706c4b9e9d9ac0816a655bdf131cc63fca1`, based on Docling evidence head `155ccf0cff57010fd926655676da9c318208cfac`.
+
+Concurrent requests could enter `from_pretrained()` on the same shared reranker. The fix serializes first use and publishes the tokenizer and model together after successful device transfer and meta-tensor validation. A failed load leaves the instance available for retry. Initialized requests bypass the lock. Transformers’ process-wide initialization state makes overlap a plausible cause of the incident. The traces do not establish that cause, and separate model loaders remain outside this lock.
+
+- **Tests passed.** 15 focused reranker tests and 41 conversation regression tests using fake providers.
+- **CPU image passed.** The revision label matches the implementation commit. The accepted BGE checkpoint loaded and returned a finite raw logit on a worker thread with networking disabled. Docling linkage and imports also passed.
+- **Production-equivalent HTTP smoke remains pending.** It requires an indexed workspace and its configured generator in an authorized environment. The review VM was not changed.
+
+The rebuild, disk checks, rollback preservation, and HTTP smoke are documented in the [VM qualification runbook](https://github.com/cschrupp/offline-rag/blob/corrective/18d-r-reranker-initialization/docs/evidence/slice18d_r/reranker_initialization_corrective/REVIEW_VM_QUALIFICATION.md). H1/H2 acceptance and promotion remain pending.

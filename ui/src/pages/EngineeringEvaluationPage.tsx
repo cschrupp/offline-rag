@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Badge } from "../components/Badge";
 import { Card } from "../components/Card";
 import {
@@ -49,7 +50,7 @@ function KeyFactsSection({
 }) {
   const facts = record.presentation.facts as KeyFact[];
   return (
-    <Card className="stack engineering-evidence-card" data-evidence-id={record.evidence_id}>
+    <Card id={`evidence-${record.evidence_id}`} className="stack engineering-evidence-card" data-evidence-id={record.evidence_id}>
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>{record.title}</h2>
         <EvidenceDisposition record={record} />
@@ -135,7 +136,7 @@ function RetrievalSection({
       : "Several retrieval variants produce similar top ranking-quality results on this small pilot; ordering changes under the human-16 sensitivity view.";
 
   return (
-    <Card className="stack engineering-evidence-card">
+    <Card id={`evidence-${record.evidence_id}`} className="stack engineering-evidence-card" data-evidence-id={record.evidence_id}>
       <header className="stack" style={{ gap: "0.5rem" }}>
         <div className="row">
           <h2 style={{ margin: 0 }}>Retrieval quality</h2>
@@ -268,7 +269,7 @@ function GenerationSection({
       }>
     | undefined;
   return (
-    <Card className="stack engineering-evidence-card">
+    <Card id={`evidence-${record.evidence_id}`} className="stack engineering-evidence-card" data-evidence-id={record.evidence_id}>
       <header className="stack" style={{ gap: "0.5rem" }}>
         <div className="row">
           <h2 style={{ margin: 0 }}>Generation &amp; citations</h2>
@@ -365,7 +366,7 @@ function Performance14cSection({
       : "Higher observed ranking quality with higher observed retrieval latency.";
 
   return (
-    <Card className="stack engineering-evidence-card">
+    <Card id={`evidence-${record.evidence_id}`} className="stack engineering-evidence-card" data-evidence-id={record.evidence_id}>
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Performance — 14C retrieval quality-vs-cost</h2>
         <EvidenceDisposition record={record} />
@@ -550,7 +551,7 @@ function PerformanceLevelCSection({
     ["Tokens/sec", "tokens_per_sec"],
   ];
   return (
-    <Card className="stack engineering-evidence-card">
+    <Card id={`evidence-${record.evidence_id}`} className="stack engineering-evidence-card" data-evidence-id={record.evidence_id}>
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Performance — Level-C end-to-end</h2>
         <EvidenceDisposition record={record} />
@@ -604,7 +605,7 @@ function RecoverySection({
 }) {
   const p = record.presentation;
   return (
-    <Card className="stack engineering-evidence-card">
+    <Card id={`evidence-${record.evidence_id}`} className="stack engineering-evidence-card" data-evidence-id={record.evidence_id}>
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Recovery</h2>
         <EvidenceDisposition record={record} />
@@ -677,7 +678,7 @@ function SecuritySection({
       }
     | undefined;
   return (
-    <Card className="stack engineering-evidence-card">
+    <Card id={`evidence-${record.evidence_id}`} className="stack engineering-evidence-card" data-evidence-id={record.evidence_id}>
       <header className="stack" style={{ gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Security / robustness</h2>
         <EvidenceDisposition record={record} />
@@ -738,10 +739,20 @@ function SecuritySection({
 }
 
 export function EngineeringEvaluationPage() {
+  const location = useLocation();
   const query = useQuery({
     queryKey: ["engineering-evidence-manifest"],
     queryFn: ({ signal }) => fetchEngineeringEvidenceManifest(signal),
   });
+
+  useEffect(() => {
+    if (!query.isSuccess || !location.hash) return;
+    const targetId = decodeURIComponent(location.hash.slice(1));
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.hash, query.data, query.isSuccess]);
 
   const content = useMemo(() => {
     if (query.isLoading) {
@@ -831,7 +842,7 @@ export function EngineeringEvaluationPage() {
   return (
     <div className="stack engineering-page">
       <header className="stack engineering-page-header" style={{ gap: "0.5rem" }}>
-        <h1>Engineering evidence</h1>
+        <h1>Evidence</h1>
         <p style={{ margin: 0 }}>
           A versioned, source-linked view of current product facts and accepted
           historical evaluations — not live telemetry or an experiment console.

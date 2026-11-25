@@ -314,6 +314,56 @@ def test_literal_source_binding_must_match_the_claimed_number(tmp_path: Path) ->
         exp.build_from_paths(registry_path=path, repo_root=tmp_path)
 
 
+def test_percent_literal_source_binding_uses_fraction_value(tmp_path: Path) -> None:
+    record = _minimal_record(
+        presentation={
+            "kind": "key_facts",
+            "facts": [
+                {
+                    "fact_id": "fact-1",
+                    "title": "Recorded proportion",
+                    "claim": "A source-reported percentage.",
+                    "scope": "Bounded source fixture.",
+                    "source_ref_ids": ["src"],
+                    "metrics": [
+                        {
+                            "metric_id": "proportion",
+                            "label": "Proportion",
+                            "metric": {
+                                "availability": "measured",
+                                "value": 0.7752,
+                                "unit": "fraction",
+                                "value_qualifier": "exact",
+                            },
+                            "source_binding": {
+                                "source_ref_id": "src",
+                                "format": "literal",
+                                "expected_value": 0.7752,
+                                "expected_literal": "value = 77.52%",
+                            },
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    path = _base_registry(tmp_path, [record])
+    source = tmp_path / "source.md"
+    source.write_text("# fixture\nvalue = 77.52%\n", encoding="utf-8")
+    record["source_refs"][0]["expected_sha256"] = exp.sha256_file(source)
+    path.write_text(
+        json.dumps(
+            {"contract": exp.REGISTRY_CONTRACT, "version": 2, "records": [record]}
+        ),
+        encoding="utf-8",
+    )
+
+    manifest, _ = exp.build_from_paths(registry_path=path, repo_root=tmp_path)
+
+    projected = manifest["records"][0]["presentation"]["facts"][0]["metrics"][0]
+    assert projected["metric"]["value"] == 0.7752
+
+
 def test_key_facts_require_explicit_scope(tmp_path: Path) -> None:
     record = _minimal_record(
         presentation={

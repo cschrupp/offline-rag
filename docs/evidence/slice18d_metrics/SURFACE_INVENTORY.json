@@ -801,7 +801,7 @@
       "audit_disposition": "EXEMPT_NON_METRIC",
       "clearance": "cleared",
       "locations": [],
-      "source_sha256": "5835b4d9f91edaef604fee96bf8e3074f539554cc00ed32b18b129d1534ecfd9",
+      "source_sha256": "a8642cc3f748d3ddfdf4396f647ac687f28b9b9167304d52a79e61bd8a6b8396",
       "notes": "Controls, navigation, editorial copy, or provenance identifiers/locators only; no quantitative measurement introduced."
     },
     {
@@ -2852,7 +2852,7 @@
         },
         {
           "line": 61,
-          "source": "{ title: \"Selected runtime profile\", detail: \"CPU release \u2192 cpu_onnx_fp32_v1 / CPUExecutionProvider OR CUDA-capable install \u2192 cuda_fp16_v1 / torch_st_v1\" },"
+          "source": "{ title: \"Selected runtime profile\", detail: \"CPU container or workstation \u2192 cpu_onnx_fp32_v1 / CPUExecutionProvider OR CUDA container or CUDA-enabled workstation \u2192 cuda_fp16_v1 / torch_st_v1\" },"
         },
         {
           "line": 62,
@@ -2860,10 +2860,10 @@
         },
         {
           "line": 65,
-          "source": "\"REL-01 qualifies the CPU release artifact. CUDA runtime qualification does not mean a CUDA release image exists.\","
+          "source": "\"An earlier host/profile-scoped CUDA runtime qualification did not itself create a release artifact; later distribution qualification established both CPU and CUDA container paths.\","
         }
       ],
-      "source_sha256": "661ede6e4f1f91ba0b19b620c975d601a9b4b01ddfd43f0f23adf9976d34a88a",
+      "source_sha256": "19f7034b11462a42e5ea52ad7661686c2c9e740af58490a4962d4b8a7964385d",
       "notes": "Census includes wrappers. Only domain indicators use catalog semantics; navigation indices, identifiers, locators and transient loading/error UI are exempt."
     },
     {
@@ -2899,7 +2899,7 @@
           "source": "\"runtime.compute-portability\","
         }
       ],
-      "source_sha256": "02df88840362b000f50ed3b029a7e64584894f31bcf89bd25d6af2ccc4d44e03",
+      "source_sha256": "9436166294ac043aec4922c57066c9041450cd198841bd979f4c99f141458e51",
       "notes": "Census includes wrappers. Only domain indicators use catalog semantics; navigation indices, identifiers, locators and transient loading/error UI are exempt."
     },
     {
@@ -3484,7 +3484,7 @@
           "source": ": workspace.status"
         }
       ],
-      "source_sha256": "850f8af35d9fa6bc58cdf5404be8148d545cce48b45697385802c796b9c76c07",
+      "source_sha256": "185b1c97f0f13a8c420758e89ff98a61f3218df91e85aad02272879879597275",
       "notes": "Census includes wrappers. Only domain indicators use catalog semantics; navigation indices, identifiers, locators and transient loading/error UI are exempt."
     },
     {
@@ -6531,6 +6531,77 @@
       },
       "audit_disposition": "AUDITED_REFORMAT",
       "clearance": "cleared"
+    },
+    {
+      "surface_id": "web.pages.EngineeringSummaryPage",
+      "channel": "web",
+      "route": "/engineering/summary",
+      "component": "EngineeringSummaryPage",
+      "path": "ui/src/pages/EngineeringSummaryPage.tsx",
+      "definition_refs": [
+        {
+          "definition_id": "capacity.large-pdf-path-threshold",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "capacity.pdf-limit",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "generation.answer_rate",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "generation.citation_case_count",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "generation.citation_invalid_rate",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "generation.generation_failed_rate",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "generation.grade2_citation_hit_rate",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "generation.question_count",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "performance.end_to_end_p50",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "performance.generation_p50",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "performance.retrieval_p50",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "release.image-bytes",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "release.image_reduction",
+          "definition_revision": 1
+        },
+        {
+          "definition_id": "retrieval.ndcg_at_10",
+          "definition_revision": 1
+        }
+      ],
+      "source": "Validated Engineering evidence manifest v3 and source-bound presentation semantics",
+      "audit_disposition": "AUDITED_KEEP",
+      "clearance": "cleared",
+      "locations": [],
+      "source_sha256": "fca793dd4e4da9c1f12200e676954c5fa314a31003ad0269c2f9d39cb33d27cc",
+      "notes": "Portfolio presentation selects facts by evidence, fact, variant, prompt, and metric identities. It displays no independent scientific calculation or live telemetry."
     }
   ]
 }

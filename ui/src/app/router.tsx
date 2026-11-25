@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { EngineeringArchitecturePage } from "../pages/EngineeringArchitecturePage";
 import { EngineeringEvaluationPage } from "../pages/EngineeringEvaluationPage";
+import { EngineeringSummaryPage } from "../pages/EngineeringSummaryPage";
 import { GoldLabCalibrationPage } from "../pages/GoldLabCalibrationPage";
 import { GoldLabCampaignPage } from "../pages/GoldLabCampaignPage";
 import { GoldLabContributionPage } from "../pages/GoldLabContributionPage";
@@ -66,10 +67,18 @@ export function AppRouter() {
         </Route>
         <Route
           path="engineering"
-          element={<Navigate to="/engineering/evaluation" replace />}
+          element={<Navigate to="/engineering/summary" replace />}
         />
         <Route
           path="engineering/evaluation"
+          element={<Navigate to="/engineering/evidence" replace />}
+        />
+        <Route
+          path="engineering/summary"
+          element={<EngineeringSummaryPage />}
+        />
+        <Route
+          path="engineering/evidence"
           element={<EngineeringEvaluationPage />}
         />
         <Route
