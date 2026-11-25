@@ -876,7 +876,18 @@ export function WorkspacePage() {
       setIncompleteTurns((prev) =>
         prev.map((turn) =>
           turn.pairId === submit.pairId
-            ? { ...turn, status: "failed", errorMessage: message }
+            ? {
+                ...turn,
+                status: "failed",
+                errorMessage: message,
+                failure: isApiError(error)
+                  ? {
+                      code: error.code,
+                      traceId: error.traceId,
+                      retryable: error.retryable,
+                    }
+                  : undefined,
+              }
             : turn,
         ),
       );

@@ -68,6 +68,8 @@ class ConversationTurnResponse:
     citations: list[dict[str, Any]]
     answer_origin: Literal["sources", "conversation"] = "sources"
 
+    recovery_diagnostics: dict[str, int | bool] | None = None
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "workspace_id": self.workspace_id,
@@ -85,6 +87,11 @@ class ConversationTurnResponse:
             "answer_blocks": self.answer_blocks,
             "citations": self.citations,
             "answer_origin": self.answer_origin,
+            **(
+                {"recovery_diagnostics": self.recovery_diagnostics}
+                if self.recovery_diagnostics is not None
+                else {}
+            ),
         }
 
 
@@ -241,6 +248,7 @@ def execute_prepared_conversation_turn(
             query_trace_id=None,
             status="clarification_required",
             abstention_reason="ambiguous_request",
+            recovery_diagnostics={"source_count": len(source_scope.source_ids)},
             question=normalized_question,
             retrieval_question=None,
             context_used=resolver.context_used,
@@ -317,6 +325,14 @@ def execute_prepared_conversation_turn(
         query_trace_id=outcome.trace_id,
         status=outcome.status,
         abstention_reason=outcome.abstention_reason,
+        recovery_diagnostics=(
+            {
+                **(outcome.recovery_diagnostics or {}),
+                "source_count": len(source_scope.source_ids),
+            }
+            if outcome.status != "answered"
+            else None
+        ),
         question=normalized_question,
         retrieval_question=retrieval_question,
         context_used=resolver.context_used,

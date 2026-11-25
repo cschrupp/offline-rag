@@ -470,6 +470,12 @@ export type ConversationPriorTurn = {
   text: string;
 };
 
+export type ConversationRecoveryDiagnostics = {
+  source_count?: number;
+  evidence_unit_count?: number;
+  generator_invoked?: boolean;
+};
+
 /** POST /v1/workspaces/{id}/conversation/turn response (A2-D05). */
 export type ConversationTurnResponse = {
   workspace_id: string;
@@ -486,6 +492,7 @@ export type ConversationTurnResponse = {
   answer: string | null;
   citations: WorkspaceCitation[];
   answer_blocks: AnswerBlock[];
+  recovery_diagnostics?: ConversationRecoveryDiagnostics;
   /** Missing in historical session entries; absence means source-origin. */
   answer_origin?: "sources" | "conversation";
 };

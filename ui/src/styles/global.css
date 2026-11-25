@@ -3254,3 +3254,15 @@ button.snapshot-badge {
     min-height: var(--target);
   }
 }
+
+.conversation-recovery p {
+  margin: 0;
+}
+
+.conversation-recovery summary {
+  cursor: pointer;
+}
+
+.conversation-recovery li {
+  overflow-wrap: anywhere;
+}

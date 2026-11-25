@@ -33,6 +33,11 @@ export type IncompleteUserTurn = {
   selectionMode: SourceSelectionMode;
   status: "pending" | "failed";
   errorMessage?: string | null;
+  failure?: {
+    code: string;
+    traceId: string | null;
+    retryable: boolean;
+  };
 };
 
 /** Unified conversation thread item ordered by submission time (Rework 2). */

@@ -105,6 +105,7 @@ class BoundSnapshotQueryOutcome:
     citations: list[dict[str, Any]]
     answer_blocks: list[dict[str, Any]]
     abstention_reason: str | None
+    recovery_diagnostics: dict[str, int | bool] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -314,6 +315,20 @@ def _execute_snapshot_query(
         checkpoint=checkpoint,
         document_ids=document_ids,
     )
+
+
+def _recovery_diagnostics(result: GroundedAnswerResult) -> dict[str, int | bool]:
+    """Expose only observed retrieval and generation facts needed for recovery."""
+    details: dict[str, int | bool] = {"generator_invoked": result.generator_invoked}
+    diagnostics = result.diagnostics
+    count = (
+        diagnostics.get("evidence_unit_count")
+        if isinstance(diagnostics, dict)
+        else None
+    )
+    if type(count) is int and count >= 0:
+        details["evidence_unit_count"] = count
+    return details
 
 
 def _execution_summary(
@@ -558,6 +573,11 @@ def run_bound_snapshot_query(
             citations=citations,
             answer_blocks=answer_blocks,
             abstention_reason=abstention_reason,
+            recovery_diagnostics=(
+                _recovery_diagnostics(result)
+                if result is not None and status != "answered"
+                else None
+            ),
         )
     finally:
         runtime.query_runtimes.release(handle)
