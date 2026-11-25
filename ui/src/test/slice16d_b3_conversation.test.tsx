@@ -355,8 +355,8 @@ describe("Slice 16D-B3 conversation state helpers", () => {
 
 describe("Slice 16D-B3 conversation workspace UI", () => {
   it.each([
-    ["no_evidence", "Try an exact term", "Evidence units in the assembled context: 0"],
-    ["conflicting_evidence", "Name the manual and edition", "Answer generation was attempted."],
+    ["no_evidence", "Try using a term or title", "Evidence units in the assembled context: 0"],
+    ["conflicting_evidence", "Name the source or version", "Answer generation was attempted."],
     ["ambiguous_request", "with the specific term", "The search did not run."],
     ["generation_timeout", "Check the configured generation service", "Error code: generation_timeout"],
     ["insufficient_support", "Ask about one concept", "Detailed retrieval counts are unavailable"],
@@ -417,6 +417,71 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       expect(composer).toHaveValue(question);
       expect(composer).toHaveFocus();
       expect(posts).toBe(1);
+    } finally {
+      mock.restore();
+    }
+  });
+
+  it("guides the original lunch question using the bound firefighting source selection", async () => {
+    const user = userEvent.setup();
+    const question = "Give me a nice recipe for a children's lunch.";
+    const selected = "Incident command guide.pdf";
+    const unselected = "Fireground training notes.pdf";
+    const mock = installFetchMock((call) => {
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1") {
+        return jsonResponse(workspace({
+          workspace_id: "ws_1", title: "Firefighting training", revision: 5, source_count: 2,
+        }));
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1", revision: 5,
+          sources: [
+            source({ source_id: "src_1", display_name: selected }),
+            source({ source_id: "src_2", display_name: unselected }),
+          ],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
+        return jsonResponse(turnResponse({
+          status: "insufficient_evidence",
+          abstention_reason: "insufficient_support",
+          question,
+          retrieval_question: question,
+          answer: null,
+          answer_blocks: [],
+          citations: [],
+          recovery_diagnostics: { source_count: 1, evidence_unit_count: 2, generator_invoked: false },
+        }));
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    try {
+      renderApp("/workspaces/ws_1");
+      await screen.findByRole("heading", { name: "Conversation" });
+      const toggle = screen.getByRole("checkbox", { name: new RegExp(unselected) });
+      await user.click(toggle);
+      const composer = screen.getByLabelText("Ask a follow-up");
+      await user.type(composer, question);
+      await user.click(screen.getByRole("button", { name: "Send" }));
+      const turn = (await screen.findByText(question)).closest("article")!;
+      const view = within(turn);
+      expect(await view.findByText(/available evidence was not strong enough/)).toBeVisible();
+      expect(view.getByText("Not enough evidence · Selected sources · " + selected)).toBeVisible();
+      expect(view.getByText(/review that selection.*add it here/i)).toBeVisible();
+      expect(view.getByRole("link", { name: "switch workspaces" })).toHaveAttribute("href", "/workspaces");
+      expect(view.queryByText(/appears to focus|rejected|no recipes/i)).not.toBeInTheDocument();
+      await user.click(view.getByText("What happened"));
+      expect(view.getByText("Sources in this request: 1")).toBeVisible();
+      expect(view.getByText("Evidence units in the assembled context: 2")).toBeVisible();
+      expect(view.getByText("Answer generation did not run.")).toBeVisible();
+      await user.click(view.getByRole("button", { name: "Edit question" }));
+      expect(composer).toHaveValue(question);
+      const posts = mock.calls.filter((call) => call.method === "POST");
+      expect(posts).toHaveLength(1);
+      expect(JSON.parse(String(posts[0].body))).toMatchObject({ question, source_ids: ["src_1"] });
     } finally {
       mock.restore();
     }

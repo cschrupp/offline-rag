@@ -37,3 +37,18 @@ The clarification regression confirms no grounded query runs.
 - ESLint, TypeScript, Ruff on production Python paths, and Git whitespace
   checks passed. Ruff flags five unused fixture bindings in the backend
   test file on both the accepted base and the candidate.
+
+## SOL UX refinement
+
+In a synthetic workspace titled **Firefighting training**, Rich's original
+question, “Give me a nice recipe for a children's lunch.”, was submitted
+with only the incident command guide selected. The fixture returned
+`insufficient_support`. The UI displayed the recorded selection and offered
+to review it, add a relevant source, or switch workspaces if the relevant
+source is elsewhere. It did not infer a workspace classification or claim
+to know whether every document contains recipes.
+
+The focused workspace conversation, Training Mode, and export regression
+files passed **60 tests** after the refinement. Chromium exercised the five
+cases with one POST apiece and checked that editing sent no additional
+request. [Lunch question screenshot](lunch-question.png)

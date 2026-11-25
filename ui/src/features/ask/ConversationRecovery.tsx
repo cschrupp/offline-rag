@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Button } from "../../components/Button";
 import type {
   ConversationHistoryEntry,
@@ -11,12 +12,10 @@ type RecoveryProps = {
 
 function reformulation(reason: string | null): string {
   switch (reason) {
-    case "no_evidence":
-      return "Try an exact term or section title from the manual. If another source covers the topic, select it before asking again.";
     case "insufficient_support":
-      return "Ask about one concept or step at a time. Name the manual, edition, or section if you know it.";
+      return "Ask about one concept or step at a time. Name the source or section if you know it.";
     case "conflicting_evidence":
-      return "Name the manual and edition that applies, or ask how the selected manuals differ on this point.";
+      return "Name the source or version you want to use, or ask how the selected sources differ on this point.";
     case "ambiguous_request":
       return "Replace words like “it” or “that” with the specific term or procedure you mean.";
     default:
@@ -36,9 +35,29 @@ export function AbstentionRecovery({
   const response = entry.response;
   const diagnostics = response.recovery_diagnostics;
   const isClarification = response.status === "clarification_required";
+  const needsSourceReview =
+    response.abstention_reason === "no_evidence" ||
+    response.abstention_reason === "insufficient_support";
   return (
     <div className="stack conversation-recovery">
-      <p className="muted">{reformulation(response.abstention_reason)}</p>
+      {needsSourceReview ? (
+        <>
+          <p className="muted">
+            {response.abstention_reason === "no_evidence"
+              ? "Try using a term or title from a source you expect to cover the topic."
+              : reformulation(response.abstention_reason)}
+          </p>
+          <p className="muted">
+            {entry.selectionMode === "subset"
+              ? "This turn searched only the sources you selected. Review that selection and include any other relevant sources."
+              : "Review the sources used for this turn and check whether they cover what you asked."}
+            {" "}If you have a source on the topic, add it here or{" "}
+            <Link to="/workspaces">switch workspaces</Link> if you keep it elsewhere.
+          </p>
+        </>
+      ) : (
+        <p className="muted">{reformulation(response.abstention_reason)}</p>
+      )}
       <div>
         <Button
           type="button"
