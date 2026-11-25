@@ -192,8 +192,6 @@ def test_sorted_strategy_preserves_canonical_ranking_and_packed_evidence(
         return SimpleNamespace(logits=(input_ids[:, 3:4] % 3).float())
 
     scorer._loaded = (Tokenizer(), model)
-    scorer.configured_batching_strategy = settings.reranker.batching_strategy
-    scorer.batching_strategy = settings.reranker.batching_strategy
     hybrid = Mock()
     hybrid.retrieve.return_value = fused
     retriever = HybridRerankRetriever(settings, hybrid=hybrid, reranker=scorer)
@@ -202,6 +200,10 @@ def test_sorted_strategy_preserves_canonical_ranking_and_packed_evidence(
     )
     baseline_rank = retriever.retrieve(query="query", check_ready=False)
     baseline = assembler.assemble(query="query", check_ready=False)
+    # The parity reference must exercise the default consecutive strategy.
+    assert scorer.batching_strategy == "consecutive"
+    scorer.configured_batching_strategy = settings.reranker.batching_strategy
+    scorer.batching_strategy = settings.reranker.batching_strategy
     actual_rank = retriever.retrieve(query="query", check_ready=False)
     actual = assembler.assemble(query="query", check_ready=False)
     assert len(actual_rank.candidates) == 10
