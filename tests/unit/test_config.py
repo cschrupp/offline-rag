@@ -22,14 +22,20 @@ def test_default_settings_validate() -> None:
 
 
 def test_load_base_yaml() -> None:
-    settings = load_settings(yaml_paths=[REPO_ROOT / "config" / "base.yaml"], environ={})
+    settings = load_settings(
+        yaml_paths=[REPO_ROOT / "config" / "base.yaml"], environ={}
+    )
     assert settings.paths.raw_data == Path("data/raw")
     assert settings.logging.structured is True
     assert settings.dense.top_k == 10
     assert settings.lexical.top_k == 30
     assert settings.lexical.bm25.k1 == 1.2
     assert settings.indexing.embedding.model_id == "Qwen/Qwen3-Embedding-0.6B"
-    assert settings.indexing.embedding.revision == "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+    assert (
+        settings.indexing.embedding.revision
+        == "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+    )
+    assert settings.reranker.batching_strategy == "consecutive"
 
 
 def test_load_experiment_overlay() -> None:
@@ -59,12 +65,14 @@ def test_environment_overrides_yaml(tmp_path: Path) -> None:
             "OFFLINE_RAG_LLM_MODEL": "local-model",
             "OFFLINE_RAG_DATA_DIR": str(tmp_path / "data"),
             "OFFLINE_RAG_APPROVED_LLM_MODELS": "a,b",
+            "OFFLINE_RAG_RERANKER_BATCHING_STRATEGY": "length_sorted_8",
         },
     )
     assert settings.project.strict_offline is False
     assert settings.generation.model == "local-model"
     assert settings.paths.raw_data == tmp_path / "data" / "raw"
     assert settings.generation.approved_models == ["a", "b"]
+    assert settings.reranker.batching_strategy == "length_sorted_8"
 
 
 def test_explicit_overrides_win() -> None:
@@ -78,7 +86,9 @@ def test_explicit_overrides_win() -> None:
 
 def test_unknown_field_rejected(tmp_path: Path) -> None:
     bad = tmp_path / "bad.yaml"
-    bad.write_text("project:\n  name: offline-rag\n  unexpected: true\n", encoding="utf-8")
+    bad.write_text(
+        "project:\n  name: offline-rag\n  unexpected: true\n", encoding="utf-8"
+    )
     with pytest.raises(ConfigError, match="invalid configuration"):
         load_settings(yaml_paths=[bad], environ={})
 

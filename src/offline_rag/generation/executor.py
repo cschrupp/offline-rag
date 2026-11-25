@@ -94,7 +94,7 @@ class GenerationContextProvenance:
     chunk_set_id: str | None = None
     context_latency_ms: int = 0
     context_breakdown: dict[str, Any] | None = None
-    reranker_execution: dict[str, str] | None = None
+    reranker_execution: dict[str, Any] | None = None
 
 
 class GroundedGenerationExecutor:

@@ -82,7 +82,13 @@ class CrossEncoderReranker:
         self.score_transform = score_transform
         self.device = _resolve_device(device)
         self.batch_size = int(batch_size)
-        self.batching_strategy = batching_strategy
+        self.configured_batching_strategy = batching_strategy
+        # Sorted-eight was qualified on CPU. A shared configuration may be
+        # used by a CUDA-capable installation, so keep that runtime on its
+        # existing consecutive execution path until CUDA is qualified.
+        self.batching_strategy = (
+            batching_strategy if self.device == "cpu" else "consecutive"
+        )
         self.local_files_only = True
         self.trust_remote_code = False
         self._load_lock = Lock()

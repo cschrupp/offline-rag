@@ -150,6 +150,7 @@ reranker:
   tie_break: chunk-id-asc-v1
   device: auto
   batch_size: 16
+  batching_strategy: consecutive
 
 context:
   enabled: true

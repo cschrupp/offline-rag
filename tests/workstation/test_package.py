@@ -104,7 +104,9 @@ def _create_builder_fixture(root: Path) -> tuple[Path, Path]:
     (root / "src/offline_rag").mkdir(parents=True)
     (root / "src/offline_rag/__init__.py").write_text("\n")
     (root / "config").mkdir()
-    (root / "config/base.yaml").write_text("fixture: true\n")
+    (root / "config/base.yaml").write_text(
+        "reranker:\n  batching_strategy: consecutive\n"
+    )
     (root / "ui").mkdir()
     (root / "ui/package-lock.json").write_text("{}\n")
 
@@ -179,6 +181,8 @@ def test_builder_creates_provenance_bound_integrity_checked_archive(
     assert (package_root / "payload/src/offline_rag/__init__.py").is_file()
     assert (package_root / "payload/uv.lock").is_file()
     assert (package_root / "payload/scripts/workstation/runtime.py").is_file()
+    packaged_config = (package_root / "payload/config/base.yaml").read_text()
+    assert "batching_strategy: consecutive" in packaged_config
     assert not any(
         path.name in {".git", "node_modules"} for path in package_root.rglob("*")
     )
