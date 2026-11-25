@@ -9,6 +9,18 @@ from time import monotonic
 STRATEGIES = ("consecutive", "length_sorted_8")
 WORKLOADS = ("Recipes", "Rich")
 LIFECYCLE = ("disconnect_before", "disconnect_during", "deadline", "drain")
+DEFAULT_SUBMISSION_TIMEOUT_S = 195
+DEADLINE_SUBMISSION_TIMEOUT_S = 300
+
+
+def submission_timeout(case):
+    """Allow post-deadline inference to unwind without changing app deadline."""
+    if case.case == "deadline":
+        # The application deadline is still 180 seconds. The extra transport
+        # time lets the synchronous native scorer return before the worker's
+        # terminal state and query-capacity release are observed.
+        return DEADLINE_SUBMISSION_TIMEOUT_S
+    return DEFAULT_SUBMISSION_TIMEOUT_S
 
 
 @dataclass(frozen=True)
@@ -257,7 +269,7 @@ class Driver:
                 raise RuntimeError("submission budget exceeded")
             self.sends.add(case.ordinal)
             self.emit({"event": "send_attempt", **asdict(case)})
-        record = self.adapter.submit(case, timeout=195)
+        record = self.adapter.submit(case, timeout=submission_timeout(case))
         # Persist the actual terminal observation before any acceptance check
         # can raise and hide a server-side failure from the durable ledger.
         self.emit({"event": "settled", **record})

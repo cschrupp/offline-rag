@@ -235,6 +235,34 @@ def wait_for_worker_release(journal: Path, ordinal: int, timeout: float) -> None
     raise TimeoutError(f"worker or slot release did not settle for ordinal {ordinal}")
 
 
+def wait_for_backend_settlement(
+    journal: Path, ordinal: int, timeout: float
+) -> None:
+    """Wait for request rejection or actual worker return and slot release."""
+    deadline = monotonic() + timeout
+    while monotonic() < deadline:
+        events = events_for(journal, ordinal)
+        preflight_rejections = [
+            row for row in events if row.get("event") == "preflight_rejected"
+        ]
+        terminals = [
+            row
+            for row in events
+            if row.get("event") in {"worker_returned", "worker_failed"}
+        ]
+        releases = [row for row in events if row.get("event") == "slot_released"]
+        if len(preflight_rejections) > 1 or len(terminals) > 1 or len(releases) > 1:
+            raise RuntimeError("duplicate backend settlement event")
+        if preflight_rejections:
+            if terminals or releases:
+                raise RuntimeError("preflight rejection also entered execution")
+            return
+        if terminals and releases:
+            return
+        sleep(0.01)
+    raise TimeoutError(f"backend settlement did not complete for ordinal {ordinal}")
+
+
 def project_submission(case, transport, events, expected_path):
     """Create a canonical envelope only from corroborated server evidence."""
     ordinal = case.ordinal
@@ -913,12 +941,11 @@ class DockerHTTPAdapter:
                     195 if self.mode == "native" else 5,
                 )
             else:
-                if not any(
-                    row["event"]
-                    in {"worker_returned", "worker_failed", "preflight_rejected"}
-                    for row in events_for(self.journal, case.ordinal)
-                ):
-                    raise RuntimeError("no backend terminal worker evidence")
+                wait_for_backend_settlement(
+                    self.journal,
+                    case.ordinal,
+                    timeout,
+                )
                 wait_for_event(self.journal, case.ordinal, "http_response", 5)
             if case.case == "drain":
                 wait_for_event(

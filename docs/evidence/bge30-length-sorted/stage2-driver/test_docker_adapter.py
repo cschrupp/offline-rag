@@ -6,6 +6,7 @@ import pytest
 import socket_client as socket_client_module
 from docker_adapter import (
     project_submission,
+    wait_for_backend_settlement,
     wait_for_event,
     wait_for_worker_release,
 )
@@ -142,6 +143,43 @@ def test_wait_for_worker_release_fails_closed_when_capacity_remains_owned(tmp_pa
 
     with pytest.raises(TimeoutError, match="slot release did not settle"):
         wait_for_worker_release(tmp_path, 16, 0.02)
+
+
+def test_backend_settlement_waits_for_worker_and_release_after_response(
+    tmp_path, monkeypatch
+):
+    journal = tmp_path / "events.jsonl"
+    journal.write_text(
+        json.dumps({"event": "http_response", "ordinal": 16, "status": 504})
+        + "\n",
+        encoding="utf-8",
+    )
+    sleeps = 0
+
+    def append_late_settlement(_seconds):
+        nonlocal sleeps
+        sleeps += 1
+        event = (
+            {"event": "worker_failed", "ordinal": 16}
+            if sleeps == 1
+            else {"event": "slot_released", "ordinal": 16}
+        )
+        with journal.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(event) + "\n")
+
+    monkeypatch.setattr(adapter_module, "sleep", append_late_settlement)
+    wait_for_backend_settlement(tmp_path, 16, 0.5)
+
+    assert sleeps == 2
+
+
+def test_backend_settlement_accepts_preflight_rejection_without_worker(tmp_path):
+    (tmp_path / "events.jsonl").write_text(
+        json.dumps({"event": "preflight_rejected", "ordinal": 16}) + "\n",
+        encoding="utf-8",
+    )
+
+    wait_for_backend_settlement(tmp_path, 16, 0.1)
 
 
 def test_missing_worker_terminal_fails_closed():

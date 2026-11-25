@@ -2,7 +2,7 @@ from collections import Counter
 from threading import Event, Lock
 
 import pytest
-from driver import Driver, schedule
+from driver import Driver, schedule, submission_timeout
 
 
 class Fixture:
@@ -20,7 +20,7 @@ class Fixture:
 
     def submit(self, case, *, timeout):
         assert case.strategy == self.strategy
-        assert timeout == 195
+        assert timeout == submission_timeout(case)
         with self.lock:
             self.submitted.append(case)
         self.started.set()
@@ -127,6 +127,20 @@ def test_lifecycle_campaign_contains_all_cases_for_both_strategies():
     assert fixture.closed == 2
 
 
+def test_deadline_transport_wait_allows_worker_to_unwind_after_app_deadline():
+    deadline = next(
+        wave[0] for wave in schedule("lifecycle") if wave[0].case == "deadline"
+    )
+    disconnect = next(
+        wave[0]
+        for wave in schedule("lifecycle")
+        if wave[0].case == "disconnect_during"
+    )
+
+    assert submission_timeout(deadline) == 300
+    assert submission_timeout(disconnect) == 195
+
+
 def test_unknown_campaign_fails_before_opening_adapter():
     fixture = Fixture()
     with pytest.raises(ValueError, match="unknown Stage 2 campaign"):
@@ -150,7 +164,7 @@ def test_failed_load_settlement_is_emitted_before_outcome_validation():
     class FailedFixture(Fixture):
         def submit(self, case, *, timeout):
             assert case.ordinal == 1
-            assert timeout == 195
+            assert timeout == submission_timeout(case)
             return {
                 "ordinal": case.ordinal,
                 "settled": True,
