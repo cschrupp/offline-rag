@@ -64,3 +64,109 @@ All five steps must pass together. Retain selected source IDs, snapshot IDs, rec
 ## First implementation increment
 
 Build the walkthrough as one vertical pilot through the existing workspace UI, conversation path and local storage. Start with inspectable topic links and explicit saves. Evaluate usefulness with Rich, citation support with the two fixture revisions, and bounded recall cost with increasing amounts of unrelated history. Use those observations to decide whether more elaborate extraction or compression earns its cost. The external systems are design references. Their benchmark results do not establish Seneca performance. This revision proposes design only.
+
+## SOL review addendum
+
+SOL accepted `386e84da7009cb31ed2872015ad03437347c5eb9` as the implementation
+direction. This addendum sets the delivery order and adds acceptance cases.
+[Design assets](design-assets/workspace-knowledge-memory/README.md) records
+asset custody and links to the complementary diagram. KM-01 implementation
+begins upon HA authorization.
+
+### KM-01 — Conversational recovery
+
+Deliver recovery in the existing conversation UI before adding durable memory.
+Project the canonical terminal status and reason already returned by the turn.
+Use the request's bound source selection and available retrieval diagnostics
+to qualify what happened. The query trace already records which stages ran,
+attempt count and available timings. Where retrieval diagnostics are already
+available, project only the fields needed for the guidance. Missing values
+remain unknown. Produce recovery text from deterministic rules and leave the
+next action to the learner.
+
+| Observed result | Explanation and suggested next action |
+| --- | --- |
+| `insufficient_evidence` / `no_evidence` | The search returned no usable evidence for this question within the bound selection. Suggest a term, section title, or relevant source to select when available. |
+| `insufficient_support` | The material retrieved did not support an answer. Suggest limiting the question to one concept or naming the version or section the learner means. |
+| `conflicting_evidence` | The answer was withheld because the evidence conflicted. Suggest asking for a comparison or identifying the applicable manual and edition. |
+| `model_declined` | Seneca could not produce a grounded answer from the retrieved material. Offer a narrower reformulation and avoid attributing the outcome to a specific retrieval defect. |
+| `clarification_required` / `ambiguous_request` | Ask the learner to name the missing term or referent using the existing clarification path. |
+| Runtime, provider, timeout or transport error | Preserve the actual error state and applicable retry guidance. A failed request carries no conclusion about source coverage. |
+
+Use source labels from the bound workspace only. Never infer that a manual
+lacks a topic from a single retrieval observation or treat elapsed time as
+evidence quality. Prefer an editable suggestion over automatic resubmission.
+The demo should show distinct guidance for empty evidence, conflicting
+evidence, ambiguity, and a provider failure. Focused tests should verify the
+reason-to-guidance mapping, generic behavior when diagnostics are missing,
+empty citations on abstention, and zero additional retrieval or generation
+calls for guidance. Successful cited answers retain their existing display.
+
+### KM-02 — Persistent workspace knowledge memory
+
+Extend the pilot to automatically organize completed discussions in an
+enabled workspace. Use bounded extraction from each committed exchange.
+Represent episodes and proposed concept notes separately. Match exact
+terms and supported aliases to existing concepts and record related-topic
+links with their source events. Treat uncertain associations as proposals.
+Retrieve topic material through a bounded local index. Preserve inputs and
+origins for later summaries.
+
+Demonstrate at least two completed discussions on the same topic and one
+on a separate topic. With no manual saves, a later session should surface
+the related discussions together and keep the separate topic out. Verify
+that duplicate delivery does not create duplicate notes and that a memory
+read or write failure leaves a successfully committed answer available.
+
+### KM-03 — Mnemonic authoring and cumulative synthesis
+
+Build on KM-02 to show a cumulative topic summary spanning the linked
+discussions. Group related concepts by topic, preserve attribution, show
+changes over time, and link each summary item to the source or discussion
+that supports it. Check that a new relevant discussion extends the summary
+without flattening disagreements or duplicating the same concept.
+
+Use **ALVESCOUP and WASSPOC** as a dedicated combination case. Use the actual
+expansions from approved selected sources when available. Attribute any
+learner-provided expansion as such. Collect a concept list for each original
+acronym before authoring the combined aid. Each row in the coverage view
+identifies the original acronym and term, definition and origin, original
+evidence reference where applicable, and the combined cue or an explicit
+uncovered status. Merge overlapping rows only when the meanings match and
+preserve both lineages. Show unresolved, missing, or conflicting definitions
+explicitly. A partial aid can be reviewed and saved as partial.
+
+Pass the complete case when a reviewer verifies the real definitions,
+all source-supported concepts are mapped without semantic loss, the original
+acronyms remain inspectable, and a fresh session can recall the exact saved
+aid with its generated origin. The incomplete fixture must leave unknown
+expansions unresolved and withhold complete-coverage status. The accepted
+materials supplied for this review do not contain verified expansions.
+The real-definition case requires the underlying sources.
+
+### KM-04 — Learning and Training Mode integration
+
+Surface saved aids and linked topic history in the existing learning and
+Training Mode flows. Distinguish prior exposure, a saved aid, and assessed
+performance. Preserve the existing evaluation and Gold authority. Use the
+five-step walkthrough as the integrated product demonstration, with the
+automatic organization and acronym cases alongside it.
+
+### Proposed narrow A2 extension
+
+Allow an enabled workspace to retain typed learning records beyond the
+caller-supplied prior-turn window. Durable recall may support explicit
+learning-history requests and provide bounded reference hints for resolving
+a question. It cannot widen the selected source set or become answer
+evidence. The existing leased publication, source filtering, retrieval and
+claim-level citation validation govern factual answers. A historical citation
+is provenance for the saved item. A current procedural claim requires
+support from evidence eligible for the new request.
+
+Keep storage, indexing and recall local. A post-commit memory failure
+cannot roll back a valid answer, and a failed recall proceeds through the
+existing conversation path without memory. Keep extraction and summaries
+bounded and outside the required grounded answer path. Reuse committed
+outputs where possible and avoid extra provider calls for the recovery
+increment. Verify each increment through the normal workspace UI and focused
+acceptance tests.

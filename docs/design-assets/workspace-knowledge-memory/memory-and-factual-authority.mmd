@@ -1,0 +1,7 @@
+flowchart LR
+    M[Workspace memories] --> R[Recall a topic or saved study aid]
+    R --> H[Attributed learning history]
+    R --> Q[Resolve what the learner means]
+    Q --> G[Existing grounded query]
+    S[Current selection and bound publication] --> G
+    G --> A[Answer with current evidence or abstain]
