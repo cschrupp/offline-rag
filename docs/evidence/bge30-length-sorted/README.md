@@ -85,9 +85,11 @@ In the Compose `.env` file, set:
 OFFLINE_RAG_RERANKER_BATCHING_STRATEGY=length_sorted_8
 ```
 
-Recreate only the application service so the process loads the setting:
+Build and recreate only the application service so the running process uses
+the integrated code and setting:
 
 ```bash
+docker compose -f deploy/docker-compose.example.yml build offline-rag
 docker compose -f deploy/docker-compose.example.yml up -d --force-recreate offline-rag
 ```
 
@@ -97,8 +99,9 @@ device is CUDA, the effective strategy must be `consecutive`.
 
 ### Workstation package
 
-Add the same setting to
-`~/.config/seneca/workstation.env`, which is read by `seneca.service`, then
+Install a workstation package built from the integrated source (the normal
+builder is `scripts/workstation/build_package.sh`). Then add the setting to
+`~/.config/seneca/workstation.env`, which is read by `seneca.service`, and
 restart the user service:
 
 ```bash
