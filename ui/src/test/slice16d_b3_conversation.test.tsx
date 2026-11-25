@@ -354,6 +354,74 @@ describe("Slice 16D-B3 conversation state helpers", () => {
 });
 
 describe("Slice 16D-B3 conversation workspace UI", () => {
+  it.each([
+    ["no_evidence", "Try an exact term", "Evidence units in the assembled context: 0"],
+    ["conflicting_evidence", "Name the manual and edition", "Answer generation was attempted."],
+    ["ambiguous_request", "with the specific term", "The search did not run."],
+    ["generation_timeout", "Check the configured generation service", "Error code: generation_timeout"],
+    ["insufficient_support", "Ask about one concept", "Detailed retrieval counts are unavailable"],
+  ])("explains %s and lets the learner edit without sending", async (reason, guidance, diagnostic) => {
+    const user = userEvent.setup();
+    const question = "What does the manual say?";
+    let posts = 0;
+    const mock = installFetchMock((call) => {
+      if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+      if (call.url === "/v1/workspaces/ws_1") {
+        return jsonResponse(workspace({ workspace_id: "ws_1", revision: 5 }));
+      }
+      if (call.url === "/v1/workspaces/ws_1/sources") {
+        return jsonResponse({
+          workspace_id: "ws_1", revision: 5,
+          sources: [source({ source_id: "src_1", display_name: "Alpha.pdf" })],
+        });
+      }
+      if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
+        posts += 1;
+        if (reason === "generation_timeout") {
+          return errorResponse(reason, "Generation timed out.", 504, true);
+        }
+        const clarification = reason === "ambiguous_request";
+        return jsonResponse(turnResponse({
+          status: clarification ? "clarification_required" : reason === "no_evidence" ? "insufficient_evidence" : "model_abstain",
+          abstention_reason: reason as ConversationTurnResponse["abstention_reason"],
+          answer: null,
+          answer_blocks: [],
+          citations: [],
+          query_trace_id: clarification ? null : "tr_1",
+          retrieval_question: clarification ? null : question,
+          recovery_diagnostics: reason === "insufficient_support" ? undefined : {
+            source_count: 1,
+            ...(clarification ? {} : {
+              evidence_unit_count: reason === "no_evidence" ? 0 : 2,
+              generator_invoked: reason !== "no_evidence",
+            }),
+          },
+        }));
+      }
+      return errorResponse("not_found", "x", 404);
+    });
+
+    try {
+      renderApp("/workspaces/ws_1");
+      await screen.findByRole("heading", { name: "Conversation" });
+      const composer = screen.getByLabelText("Ask a follow-up");
+      await user.type(composer, question);
+      await user.click(screen.getByRole("button", { name: "Send" }));
+      expect(await screen.findByText(new RegExp(guidance))).toBeVisible();
+      const summary = screen.getByText("What happened");
+      const details = summary.closest("details");
+      expect(details).not.toHaveAttribute("open");
+      await user.click(summary);
+      expect(within(details!).getByText(new RegExp(diagnostic))).toBeVisible();
+      await user.click(screen.getByRole("button", { name: "Edit question" }));
+      expect(composer).toHaveValue(question);
+      expect(composer).toHaveFocus();
+      expect(posts).toBe(1);
+    } finally {
+      mock.restore();
+    }
+  });
+
   it("shows sent turn immediately, clears composer, and blocks duplicate send", async () => {
     const user = userEvent.setup();
     let resolveTurn: ((value: Response) => void) | null = null;

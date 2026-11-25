@@ -21,6 +21,10 @@ import {
 } from "../training/revealState";
 import type { SavedTrainingPrompt } from "../training/trainingPrompts";
 import { ClaimAnswer } from "./ClaimAnswer";
+import {
+  AbstentionRecovery,
+  FailedTurnRecovery,
+} from "./ConversationRecovery";
 import { assistantPresentationText } from "./assistantPresentation";
 import {
   buildConversationTimeline,
@@ -136,6 +140,14 @@ export function AskPanel({
   onDeletePrompt,
   drawersOpen = false,
 }: Props) {
+  const composerRef = useRef<HTMLFormElement>(null);
+  const canEditQuestion = !askPending && !question.trim();
+  function editQuestion(previousQuestion: string) {
+    if (!canEditQuestion) return;
+    onQuestionChange(previousQuestion);
+    composerRef.current?.querySelector("textarea")?.focus();
+  }
+
   const [openAnswerActionsEntryId, setOpenAnswerActionsEntryId] = useState<
     string | null
   >(null);
@@ -353,10 +365,17 @@ export function AskPanel({
                       Searching your selected sources…
                     </p>
                   ) : (
-                    <p className="error-box" role="alert">
-                      {turn.errorMessage ??
-                        "This turn did not complete. Your question is still shown above."}
-                    </p>
+                    <>
+                      <p className="error-box" role="alert">
+                        {turn.errorMessage ??
+                          "This turn did not complete. Your question is still shown above."}
+                      </p>
+                      <FailedTurnRecovery
+                        turn={turn}
+                        canEdit={canEditQuestion}
+                        onEdit={editQuestion}
+                      />
+                    </>
                   )}
                 </div>
               </article>
@@ -654,6 +673,13 @@ export function AskPanel({
                     {assistantText}
                   </p>
                 )}
+                {!isAnswered && !isConversationOrigin ? (
+                  <AbstentionRecovery
+                    entry={entry}
+                    canEdit={canEditQuestion}
+                    onEdit={editQuestion}
+                  />
+                ) : null}
                 {pendingThisAction && pendingActionOperation ? (
                   <p className="muted" role="status" aria-live="polite">
                     {pendingActionOperation === "summarize_answer" ||
@@ -670,7 +696,11 @@ export function AskPanel({
         })}
       </div>
 
-      <form className="stack conversation-composer" onSubmit={onSubmit}>
+      <form
+        ref={composerRef}
+        className="stack conversation-composer"
+        onSubmit={onSubmit}
+      >
         <TextArea
           id="ask-question"
           label={trainingMode ? "Training question" : "Ask a follow-up"}
@@ -749,15 +779,9 @@ export function AskPanel({
         </p>
       ) : null}
 
-      {askError ? (
-        <p className="error-box" role="alert">
-          {askError}
-          {settingsHint ? (
-            <>
-              {" "}
-              <Link to="/settings">Open Settings</Link>
-            </>
-          ) : null}
+      {askError && settingsHint ? (
+        <p className="muted" style={{ margin: 0 }}>
+          <Link to="/settings">Open Settings</Link>
         </p>
       ) : null}
     </section>

@@ -489,6 +489,7 @@ def test_ambiguous_summarize_that_still_clarifies(tmp_path: Path) -> None:
         data = resp.json()
         assert data["status"] == "clarification_required"
         assert data["abstention_reason"] == "ambiguous_request"
+        assert data["recovery_diagnostics"] == {"source_count": 1}
         assert captures["assemble_queries"] == []
 
 
@@ -588,6 +589,38 @@ def test_first_turn_resolver_bypass(tmp_path: Path) -> None:
         ]
         assert resolver_calls == []
         assert generator.generate_calls >= before  # grounded may run
+
+
+def test_conflicting_evidence_projects_observed_recovery_without_another_query(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, _, captures, generator):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+        snapshot_id = client.get(f"/v1/workspaces/{wid}").json()["current_snapshot_id"]
+        generator._response_fn = lambda _: json.dumps(
+            {"abstain": True, "blocks": [], "abstention_reason": "conflicting_evidence"}
+        )
+        before = generator.generate_calls
+        captures["assemble_queries"].clear()
+        question = f"What mentions {ALPHA_SCOPE_MARKER}?"
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={"question": question, "source_ids": [alpha_sid]},
+        )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["status"] == "model_abstain"
+        assert data["abstention_reason"] == "conflicting_evidence"
+        assert data["snapshot_id"] == snapshot_id
+        assert data["answer"] is None
+        assert data["citations"] == []
+        assert data["recovery_diagnostics"] == {
+            "source_count": 1,
+            "generator_invoked": True,
+            "evidence_unit_count": 1,
+        }
+        assert captures["assemble_queries"] == [question]
+        assert generator.generate_calls == before + 1
 
 
 def test_context_dependent_follow_up_resolution(tmp_path: Path) -> None:
