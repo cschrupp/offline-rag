@@ -1,7 +1,9 @@
 import json
+from io import StringIO
 
 import docker_adapter as adapter_module
 import pytest
+import socket_client as socket_client_module
 from docker_adapter import (
     project_submission,
     wait_for_event,
@@ -288,3 +290,75 @@ def test_disconnect_wait_uses_native_forward_deadline_only_for_held_forward():
     assert adapter_module.disconnect_entry_timeout("disconnect_during", "synthetic") == 10
     with pytest.raises(ValueError, match="unsupported disconnect case"):
         adapter_module.disconnect_entry_timeout("deadline", "native")
+
+
+def test_socket_disconnect_barrier_waits_longer_than_default_thirty_seconds(
+    monkeypatch,
+):
+    class Marker:
+        def __init__(self, exists_values):
+            self.exists_values = exists_values
+
+        def exists(self):
+            return next(self.exists_values)
+
+        def touch(self, *, exist_ok=False):
+            assert exist_ok is False
+
+    class Journal:
+        def __init__(self):
+            self.marker_values = iter((False, True))
+
+        def __truediv__(self, _name):
+            return Marker(self.marker_values)
+
+    class Connection:
+        def __init__(self):
+            self.closed = False
+
+        def sendall(self, _payload):
+            pass
+
+        def close(self):
+            self.closed = True
+
+    connection = Connection()
+    observed = {}
+
+    def create_connection(_address, timeout):
+        observed["socket_timeout"] = timeout
+        return connection
+
+    monkeypatch.setattr(
+        socket_client_module.socket,
+        "create_connection",
+        create_connection,
+    )
+    monkeypatch.setattr(socket_client_module, "monotonic", iter((0, 45)).__next__)
+    monkeypatch.setattr(socket_client_module, "sleep", lambda _seconds: None)
+
+    class SentMarker(Marker):
+        def open(self, *_args, **_kwargs):
+            return StringIO()
+
+    class JournalWithSent(Journal):
+        def __truediv__(self, name):
+            if name.endswith(".sent"):
+                return SentMarker(iter((True,)))
+            return Marker(self.marker_values)
+
+    monkeypatch.setattr(socket_client_module, "Path", lambda _path: JournalWithSent())
+    result = socket_client_module.submit(
+        {
+            "ordinal": 2,
+            "path": "/v1/workspaces/ws_fixture/conversation/turn",
+            "body": {"question": "test"},
+            "timeout": 195,
+            "disconnect_at": "forward_entered",
+            "barrier_timeout": 180,
+        }
+    )
+
+    assert result == {"transport": "client_disconnected", "http_status": None}
+    assert observed["socket_timeout"] == 195
+    assert connection.closed is True

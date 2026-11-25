@@ -773,6 +773,10 @@ class DockerHTTPAdapter:
             "disconnect_at": disconnect_at,
             "mode": mode,
         }
+        if case.case in {"disconnect_before", "disconnect_during"}:
+            spec["barrier_timeout"] = disconnect_entry_timeout(
+                case.case, self.mode
+            )
         client = subprocess.Popen(
             [
                 "docker",
