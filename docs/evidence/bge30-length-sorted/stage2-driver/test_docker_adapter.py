@@ -280,3 +280,11 @@ def test_native_readiness_remains_bounded(monkeypatch):
 def test_native_forward_entry_wait_matches_query_deadline():
     assert adapter_module.forward_entry_timeout("native") == 180
     assert adapter_module.forward_entry_timeout("synthetic") == 10
+
+
+def test_disconnect_wait_uses_native_forward_deadline_only_for_held_forward():
+    assert adapter_module.disconnect_entry_timeout("disconnect_before", "native") == 10
+    assert adapter_module.disconnect_entry_timeout("disconnect_during", "native") == 180
+    assert adapter_module.disconnect_entry_timeout("disconnect_during", "synthetic") == 10
+    with pytest.raises(ValueError, match="unsupported disconnect case"):
+        adapter_module.disconnect_entry_timeout("deadline", "native")

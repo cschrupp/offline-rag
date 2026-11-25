@@ -28,6 +28,15 @@ def forward_entry_timeout(mode):
     )
 
 
+def disconnect_entry_timeout(case, mode):
+    """Wait for the stage targeted by a disconnect case in the active mode."""
+    if case == "disconnect_during":
+        return forward_entry_timeout(mode)
+    if case == "disconnect_before":
+        return 10
+    raise ValueError(f"unsupported disconnect case: {case}")
+
+
 def docker(*args, timeout=15, input_text=None):
     return subprocess.run(
         ["docker", *args],
@@ -791,7 +800,12 @@ class DockerHTTPAdapter:
                     if case.case == "disconnect_before"
                     else "forward_entered"
                 )
-                wait_for_event(self.journal, case.ordinal, entered, 10)
+                wait_for_event(
+                    self.journal,
+                    case.ordinal,
+                    entered,
+                    disconnect_entry_timeout(case.case, self.mode),
+                )
                 wait_for_path(self.journal / f"{case.ordinal}.transport_closed", 10)
                 wait_for_event(self.journal, case.ordinal, "cancel_signaled", 10)
                 if case.case == "disconnect_before":
