@@ -28,6 +28,9 @@ class StructuredFormatter(logging.Formatter):
             value = getattr(record, key, None)
             if value is not None:
                 payload[key] = value
+        metrics = getattr(record, "metrics", None)
+        if isinstance(metrics, dict):
+            payload["metrics"] = metrics
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False, default=str)
@@ -37,9 +40,15 @@ class HumanFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         event = getattr(record, "event", None)
         prefix = f"{record.levelname} {record.name}"
+        metrics = getattr(record, "metrics", None)
+        metric_suffix = (
+            f" metrics={json.dumps(metrics, sort_keys=True, default=str)}"
+            if isinstance(metrics, dict)
+            else ""
+        )
         if event:
-            return f"{prefix} event={event} {record.getMessage()}"
-        return f"{prefix} {record.getMessage()}"
+            return f"{prefix} event={event} {record.getMessage()}{metric_suffix}"
+        return f"{prefix} {record.getMessage()}{metric_suffix}"
 
 
 def configure_logging(

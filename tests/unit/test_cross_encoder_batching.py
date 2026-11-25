@@ -1,3 +1,4 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier, Lock
 from types import SimpleNamespace
@@ -21,7 +22,10 @@ from offline_rag.domain.indexing import (
 from offline_rag.rerank import cross_encoder
 from offline_rag.rerank.config_hash import build_reranker_config_hash
 from offline_rag.rerank.protocol import RerankerPair
-from offline_rag.rerank.retrieve import HybridRerankRetriever
+from offline_rag.rerank.retrieve import (
+    HybridRerankRetrievalError,
+    HybridRerankRetriever,
+)
 
 
 class Tokenizer:
@@ -151,7 +155,10 @@ def test_execution_strategy_keeps_scientific_hash():
         RerankerSettings(batching_strategy="other")
 
 
-def test_sorted_strategy_preserves_canonical_ranking_and_packed_evidence(scorer):
+def test_sorted_strategy_preserves_canonical_ranking_and_packed_evidence(
+    scorer, caplog
+):
+    caplog.set_level(logging.INFO)
     settings = load_settings(
         environ={"OFFLINE_RAG_RERANKER_BATCHING_STRATEGY": "length_sorted_8"},
         overrides={"context": {"strategy": "child-only"}},
@@ -185,6 +192,8 @@ def test_sorted_strategy_preserves_canonical_ranking_and_packed_evidence(scorer)
         return SimpleNamespace(logits=(input_ids[:, 3:4] % 3).float())
 
     scorer._loaded = (Tokenizer(), model)
+    scorer.configured_batching_strategy = settings.reranker.batching_strategy
+    scorer.batching_strategy = settings.reranker.batching_strategy
     hybrid = Mock()
     hybrid.retrieve.return_value = fused
     retriever = HybridRerankRetriever(settings, hybrid=hybrid, reranker=scorer)
@@ -193,7 +202,6 @@ def test_sorted_strategy_preserves_canonical_ranking_and_packed_evidence(scorer)
     )
     baseline_rank = retriever.retrieve(query="query", check_ready=False)
     baseline = assembler.assemble(query="query", check_ready=False)
-    scorer.batching_strategy = settings.reranker.batching_strategy
     actual_rank = retriever.retrieve(query="query", check_ready=False)
     actual = assembler.assemble(query="query", check_ready=False)
     assert len(actual_rank.candidates) == 10
@@ -203,10 +211,125 @@ def test_sorted_strategy_preserves_canonical_ranking_and_packed_evidence(scorer)
     assert actual.assembled_text == baseline.assembled_text
     assert actual.reranker_config_hash == baseline.reranker_config_hash
     assert actual.metadata["input_pool_chunk_ids"] == list(children)
-    assert actual.metadata["reranker_execution"] == {
-        "batching_strategy": "length_sorted_8",
-        "device": "cpu",
-    }
+    execution = actual.metadata["reranker_execution"]
+    assert execution["batching_strategy"] == "length_sorted_8"
+    assert execution["configured_batching_strategy"] == "length_sorted_8"
+    assert execution["device"] == "cpu"
+    assert execution["input_candidate_count"] == 10
+    assert execution["output_candidate_count"] == 5
+    assert execution["rss_scope"] == "process_lifetime_high_water"
+    assert execution["process_peak_rss_bytes"] is None or isinstance(
+        execution["process_peak_rss_bytes"], int
+    )
+    completed = [
+        record for record in caplog.records if record.event == "reranker_completed"
+    ]
+    assert completed
+    metrics = completed[-1].metrics
+    assert metrics["batching_strategy"] == "length_sorted_8"
+    assert metrics["configured_batching_strategy"] == "length_sorted_8"
+    assert metrics["device"] == "cpu"
+    assert metrics["candidate_count"] == 10
+    assert metrics["returned_candidate_count"] == 5
+    assert metrics["retrieval_latency_ms"] >= metrics["scorer_latency_ms"] >= 0
+    assert metrics["rss_scope"] == "process_lifetime_high_water"
+
+
+@pytest.mark.parametrize(
+    ("resolved_device", "expected_strategy"),
+    [("cpu", "length_sorted_8"), ("cuda", "consecutive")],
+)
+def test_configured_sorted_strategy_is_effective_only_on_cpu(
+    monkeypatch, tmp_path, resolved_device, expected_strategy
+):
+    monkeypatch.setattr(cross_encoder, "_resolve_device", lambda _: resolved_device)
+    monkeypatch.setattr(
+        cross_encoder, "require_reranker_artifacts", lambda *args, **kwargs: None
+    )
+    settings = RerankerSettings(batching_strategy="length_sorted_8")
+    scorer = cross_encoder.CrossEncoderReranker(
+        model_path=tmp_path,
+        model_id=settings.model.model_id,
+        model_revision=settings.model.revision,
+        adapter_contract=settings.model.adapter_contract,
+        device="auto",
+        batching_strategy=settings.batching_strategy,
+    )
+    assert scorer.configured_batching_strategy == "length_sorted_8"
+    assert scorer.batching_strategy == expected_strategy
+
+
+def test_failed_scorer_emits_failure_telemetry(scorer, caplog):
+    settings = load_settings(yaml_paths=[], environ={})
+    chunk = _chunk("failure", "1 4")
+    fused = HybridRetrievalResult(
+        query="query",
+        top_k=30,
+        candidates=[
+            HybridCandidate(
+                rank=1,
+                score=0.01,
+                chunk_id=chunk.chunk_id,
+                document_id=chunk.document_id,
+                text=chunk.text,
+                fusion=FusionProvenance(rrf_score=0.01, dense_rank=1, dense_score=0.9),
+            )
+        ],
+        dense_index_id="dense",
+        lexical_index_id="lexical",
+        fusion_config_hash="fusion",
+        metadata={"corpus_id": "corpus", "chunk_set_id": "chunks"},
+    )
+    hybrid = Mock()
+    hybrid.retrieve.return_value = fused
+
+    def fail_scoring(**_):
+        raise ValueError("fixture scorer failure")
+
+    scorer._loaded = (Tokenizer(), fail_scoring)
+    retriever = HybridRerankRetriever(settings, hybrid=hybrid, reranker=scorer)
+
+    with pytest.raises(HybridRerankRetrievalError, match="reranker scoring failed"):
+        retriever.retrieve(query="query", check_ready=False)
+
+    failed = next(
+        record for record in caplog.records if record.event == "reranker_failed"
+    )
+    assert failed.error_type == "ValueError"
+    assert failed.metrics["candidate_count"] == 1
+    assert failed.metrics["scorer_latency_ms"] >= 0
+    assert failed.metrics["retrieval_elapsed_ms"] >= failed.metrics["scorer_latency_ms"]
+    assert failed.metrics["device"] == "cpu"
+    assert failed.metrics["rss_scope"] == "process_lifetime_high_water"
+
+
+def test_empty_candidate_pool_reports_retrieval_telemetry(scorer, caplog):
+    caplog.set_level(logging.INFO)
+    settings = load_settings(yaml_paths=[], environ={})
+    fused = HybridRetrievalResult(
+        query="query",
+        top_k=30,
+        candidates=[],
+        dense_index_id="dense",
+        lexical_index_id="lexical",
+        fusion_config_hash="fusion",
+        metadata={"corpus_id": "corpus", "chunk_set_id": "chunks"},
+    )
+    hybrid = Mock()
+    hybrid.retrieve.return_value = fused
+    retriever = HybridRerankRetriever(settings, hybrid=hybrid, reranker=scorer)
+
+    result = retriever.retrieve(query="query", check_ready=False)
+
+    execution = result.metadata["reranker_execution"]
+    assert execution["scorer_invoked"] is False
+    assert execution["input_candidate_count"] == 0
+    event = next(
+        record for record in caplog.records if record.event == "reranker_completed"
+    )
+    assert event.metrics["candidate_count"] == 0
+    assert event.metrics["scorer_latency_ms"] == 0
+    assert event.metrics["retrieval_latency_ms"] >= 0
 
 
 @pytest.mark.parametrize("strategy", ["consecutive", "length_sorted_8"])

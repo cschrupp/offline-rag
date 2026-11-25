@@ -1,0 +1,29 @@
+{
+  "schema": "seneca-stage2-campaign-restoration-v1",
+  "session": "7b95b124c4cd0906",
+  "campaign": "lifecycle",
+  "verification": "PASS",
+  "driver_exit_code": 0,
+  "watchdog_exit_code": 0,
+  "native_host_control_verify_exit_code": 0,
+  "original_container": {
+    "name": "seneca-review",
+    "image_ref": "seneca-review:9c92e706c4b9",
+    "image_id": "sha256:3bc83208a7526a49abed1b9bd9586b5ae4fd041771732e03030c3ac20419e692",
+    "running": true,
+    "restart_policy": "unless-stopped",
+    "mounts": [
+      {"source": "/srv/seneca/data", "destination": "/data", "read_write": true},
+      {"source": "/srv/seneca/models", "destination": "/models", "read_write": false}
+    ]
+  },
+  "health": {
+    "/health/live": 200,
+    "/health/ready": 200
+  },
+  "publication_metadata_unchanged": true,
+  "scratch_qdrant_owners": 0,
+  "diagnostic_containers_remaining": 0,
+  "vm_scratch_retained": true,
+  "verification_basis": "Independent watchdog restoration and native_host_control.py verify completed successfully. Original container identity, image, mounts, restart policy, health, publication metadata, Qdrant ownership, and diagnostic-container absence were checked after restoration."
+}

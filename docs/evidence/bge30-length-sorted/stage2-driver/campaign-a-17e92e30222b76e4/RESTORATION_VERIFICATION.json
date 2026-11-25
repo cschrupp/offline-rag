@@ -1,0 +1,32 @@
+{
+  "schema": "seneca-stage2-campaign-restoration-v1",
+  "session": "17e92e30222b76e4",
+  "campaign": "performance",
+  "verification": "PASS",
+  "verification_command_exit_code": 0,
+  "watchdog_exit_code": 0,
+  "driver_exit_code": 0,
+  "driver_completion_unix": 1795563650.4282954,
+  "maintenance_entry_utc": "2026-11-24T23:27:38Z",
+  "stop_deadline_utc": "2026-11-25T01:15:42Z",
+  "remaining_stop_seconds_at_entry": 6484,
+  "original_container": {
+    "name": "seneca-review",
+    "id": "e006597fd6e4e40939e49c1dd73da7c6d85f33d87d44929c15dc5f0f38bb7cac",
+    "image_ref": "seneca-review:9c92e706c4b9",
+    "image_id": "sha256:3bc83208a7526a49abed1b9bd9586b5ae4fd041771732e03030c3ac20419e692",
+    "running": true,
+    "restart_policy": "unless-stopped",
+    "mounts": [
+      {"source": "/srv/seneca/data", "destination": "/data", "read_write": true},
+      {"source": "/srv/seneca/models", "destination": "/models", "read_write": false}
+    ]
+  },
+  "health": {"/health/live": 200, "/health/ready": 200},
+  "publication_metadata_unchanged": true,
+  "baseline_publication_metadata_sha256": "63c9482260af92975c228044b4fecdf28f11c6e5492cab65b7e2c7fc186aa887",
+  "captured_container_snapshot_sha256": "e64e04ff6ede2d1323247f0ad884b7366ee7cb29f705bc718c9d80178f02ed0a",
+  "scratch_qdrant_owners": 0,
+  "diagnostic_containers_remaining": 0,
+  "vm_scratch_retained": true
+}
