@@ -9,6 +9,7 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -67,15 +68,28 @@ STOP_WORDS = frozenset(
 )
 
 
-def topic_terms(value: str) -> tuple[str, ...]:
-    """Extract bounded literal topic terms without a model or guessed aliases."""
+# Only explicit domain equivalents and unambiguous question templates.
+_TOPIC_ALIASES = re.compile(r"\bself[ -]+contained breathing apparatus\b")
+_TOOL_QUESTION = re.compile(
+    r"^what tools (?:are used|do (?:i|you) use) for (.+?)[?.]*$"
+)
+
+
+def _terms(value: str) -> tuple[str, ...]:
+    normalized = _TOPIC_ALIASES.sub("scba", value.casefold()[:MAX_TEXT])
     return tuple(
         dict.fromkeys(
             term
-            for term in re.findall(r"[^\W_]+", value.casefold()[:MAX_TEXT])
+            for term in re.findall(r"[^\W_]+", normalized)
             if term not in STOP_WORDS
         )
-    )[:12]
+    )
+
+
+def topic_terms(value: str) -> tuple[str, ...]:
+    """Extract a bounded topic, including known question templates."""
+    match = _TOOL_QUESTION.fullmatch(value.strip().casefold())
+    return _terms(match.group(1) if match else value)[:12]
 
 
 class WorkspaceMemory:
@@ -120,6 +134,19 @@ class WorkspaceMemory:
                         PRIMARY KEY (term, created_at DESC, id)
                     )
                 """)
+                connection.execute(
+                    "CREATE INDEX IF NOT EXISTS record_terms_by_id ON record_terms(id)"
+                )
+                if not connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'processed_operations'"
+                ).fetchone():
+                    connection.execute(
+                        "CREATE TABLE processed_operations (kind TEXT NOT NULL, identity TEXT NOT NULL, PRIMARY KEY (kind, identity))"
+                    )
+                    connection.execute("""
+                        INSERT INTO processed_operations SELECT 'capture', id
+                        FROM records WHERE category = 'episode'
+                    """)
                 yield connection
         finally:
             connection.close()
@@ -136,6 +163,18 @@ class WorkspaceMemory:
         with self._connect() as connection:
             connection.execute("DELETE FROM settings")
             connection.execute("INSERT INTO settings VALUES (?)", (enabled,))
+
+    @staticmethod
+    def _claim_operation(
+        connection: sqlite3.Connection, kind: str, identity: str
+    ) -> bool:
+        return (
+            connection.execute(
+                "INSERT OR IGNORE INTO processed_operations VALUES (?, ?)",
+                (kind, identity),
+            ).rowcount
+            == 1
+        )
 
     def capture(
         self,
@@ -156,9 +195,7 @@ class WorkspaceMemory:
             if not self._enabled(connection):
                 return
             self.workspace.get(self.workspace_id)
-            if connection.execute(
-                "SELECT 1 FROM records WHERE id = ?", (event_id,)
-            ).fetchone():
+            if not self._claim_operation(connection, "capture", event_id):
                 return
             topic = " ".join(sorted(terms))
             timestamp = datetime.now(UTC).isoformat()
@@ -224,15 +261,28 @@ class WorkspaceMemory:
                 relation,
             ),
         )
+        WorkspaceMemory._replace_terms(connection, record_id, terms, timestamp)
+
+    @staticmethod
+    def _replace_terms(
+        connection: sqlite3.Connection,
+        record_id: str,
+        terms: tuple[str, ...],
+        timestamp: str,
+    ) -> None:
+        connection.execute("DELETE FROM record_terms WHERE id = ?", (record_id,))
         connection.executemany(
             "INSERT INTO record_terms VALUES (?, ?, ?)",
-            [(term, record_id, timestamp) for term in terms],
+            ((term, record_id, timestamp) for term in terms),
         )
 
-    def add_note(self, parent_id: str, text: str) -> None:
+    def add_note(self, parent_id: str, text: str, operation_id: str) -> None:
         """Keep a learner note linked to an existing discussion or concept."""
         self.workspace.get(self.workspace_id)
         with self._connect() as connection:
+            identity = sha256(operation_id.encode()).hexdigest()
+            if not self._claim_operation(connection, "note", identity):
+                return
             if not self._enabled(connection):
                 raise AppError(ErrorCode.WORKSPACE_CONFLICT)
             parent = self._get(connection, parent_id)
@@ -248,7 +298,7 @@ class WorkspaceMemory:
                 "user_provided",
                 text,
                 parent["topic"],
-                tuple(json.loads(parent["terms"])),
+                _terms(text),
                 datetime.now(UTC).isoformat(),
                 {"parent_revision": parent["revision"]},
                 parent_id,
@@ -293,10 +343,12 @@ class WorkspaceMemory:
                     "corrected_at": datetime.now(UTC).isoformat(),
                 }
             )
+            terms = _terms(text)
             connection.execute(
-                "UPDATE records SET text = ?, origin = 'user_provided', revision = ?, history = ? WHERE id = ?",
-                (text, revision + 1, json.dumps(history), record_id),
+                "UPDATE records SET text = ?, terms = ?, origin = 'user_provided', revision = ?, history = ? WHERE id = ?",
+                (text, json.dumps(terms), revision + 1, json.dumps(history), record_id),
             )
+            self._replace_terms(connection, record_id, terms, row["created_at"])
 
     def recall(self, query: str) -> dict[str, Any]:
         """Recall a bounded set of recent or literal topic-matching records."""
@@ -321,11 +373,9 @@ class WorkspaceMemory:
                     )
                 if matches:
                     placeholders = ", ".join("?" for _ in matches)
-                    rows = list(
-                        connection.execute(
-                            f"SELECT * FROM records WHERE id IN ({placeholders}) ORDER BY created_at DESC, id LIMIT ?",
-                            (*matches, RECALL_LIMIT),
-                        )
+                    rows = connection.execute(
+                        f"SELECT * FROM records WHERE id IN ({placeholders}) ORDER BY created_at DESC, id",
+                        tuple(matches),
                     )
                 else:
                     rows = []
@@ -337,10 +387,14 @@ class WorkspaceMemory:
                     )
                 )
             records = []
-            topics: dict[str, list[dict[str, str]]] = {}
+            required_terms = set(terms)
+            topics: dict[str, list[dict[str, Any]]] = {}
             for row in rows:
                 record = dict(row)
-                for key in ("terms", "history", "provenance"):
+                record["terms"] = json.loads(record["terms"])
+                if not required_terms.issubset(record["terms"]):
+                    continue
+                for key in ("history", "provenance"):
                     record[key] = json.loads(record[key])
                 records.append(record)
                 if record["category"] == "semantic":
@@ -353,6 +407,8 @@ class WorkspaceMemory:
                             "origin": record["origin"],
                         }
                     )
+                if len(records) >= RECALL_LIMIT:
+                    break
         return {
             "enabled": enabled,
             "records": records,

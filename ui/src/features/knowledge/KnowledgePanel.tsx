@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { apiRequest } from "../../api/client";
+import { IntentHandle } from "../../api/idempotency";
 import { queryKeys } from "../../api/queryKeys";
 import { userFacingErrorMessage } from "../../api/errors";
 import { Button } from "../../components/Button";
@@ -39,7 +40,7 @@ type Recall = {
 };
 type Change =
   | { kind: "settings"; enabled: boolean }
-  | { kind: "note"; id: string; text: string }
+  | { kind: "note"; id: string; text: string; operationId: string }
   | { kind: "change"; id: string; revision: number; text: string | null };
 type Editor = { kind: "note" | "correct" | "forget"; record: Record };
 
@@ -69,6 +70,7 @@ export function KnowledgePanel({
   const [topic, setTopic] = useState("");
   const [editor, setEditor] = useState<Editor | null>(null);
   const [draft, setDraft] = useState("");
+  const noteIntent = useRef<IntentHandle | null>(null);
   const recall = useQuery({
     queryKey: [...queryKey, topic],
     queryFn: ({ signal }) => apiRequest<Recall>(`${root}?topic=${encodeURIComponent(topic)}`, { signal }),
@@ -83,7 +85,8 @@ export function KnowledgePanel({
           });
         case "note":
           return apiRequest<void>(`${root}/notes`, {
-            method: "POST", json: { parent_id: input.id, text: input.text },
+            method: "POST", idempotencyKey: input.operationId,
+            json: { parent_id: input.id, text: input.text },
           });
         case "change":
           return apiRequest<void>(`${root}/records/${encodeURIComponent(input.id)}`, {
@@ -99,6 +102,7 @@ export function KnowledgePanel({
   });
   function openEditor(kind: Editor["kind"], record: Record) {
     change.reset();
+    noteIntent.current = kind === "note" ? new IntentHandle() : null;
     setEditor({ kind, record });
     setDraft(kind === "correct" ? record.text : "");
   }
@@ -108,7 +112,10 @@ export function KnowledgePanel({
     const { kind, record } = editor;
     if (kind !== "forget" && !draft.trim()) return;
     if (kind === "note") {
-      change.mutate({ kind, id: record.id, text: draft });
+      const text = draft.trim();
+      const intent = noteIntent.current ?? (noteIntent.current = new IntentHandle());
+      const operationId = intent.prepare(JSON.stringify([record.id, text]));
+      change.mutate({ kind, id: record.id, text, operationId });
     } else {
       change.mutate({
         kind: "change", id: record.id, revision: record.revision,

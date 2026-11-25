@@ -792,9 +792,10 @@ def add_workspace_knowledge_note(
     request: Request,
     workspace_id: str,
     body: MemoryNoteRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> Response:
     WorkspaceMemory(_runtime(request).settings, workspace_id).add_note(
-        body.parent_id, body.text
+        body.parent_id, body.text, _require_idempotency_key(idempotency_key)
     )
     return Response(status_code=204)
 

@@ -1405,7 +1405,7 @@ def test_workspace_memory_organizes_committed_turns_and_isolates_failures(
         concept = next(row for row in recalled["records"] if row["category"] == "semantic")
         assert concept["provenance"]["source_scope"]["source_ids"] == [alpha_sid]
         assert concept["provenance"]["citations"][0]["source_version"] == 1
-        assert client.post(f"{path}/notes", json={"parent_id": concept["id"], "text": "My note"}).status_code == 204
+        assert client.post(f"{path}/notes", headers={"Idempotency-Key": "km-save-note"}, json={"parent_id": concept["id"], "text": "My note"}).status_code == 204
         target = f"{path}/records/{concept['id']}"
         assert client.patch(target, json={"revision": 1, "text": "Personal correction"}).status_code == 204
         corrected = next(row for row in client.get(path).json()["records"] if row["id"] == concept["id"])
@@ -1444,3 +1444,91 @@ def test_workspace_memory_organizes_committed_turns_and_isolates_failures(
         assert result.json()["enabled"] is True
         assert len(result.json()["records"]) == 4
         assert all(row["id"] != concept["id"] for row in result.json()["records"])
+
+
+def test_workspace_memory_corrective_association_index_and_replay(tmp_path: Path) -> None:
+    import sqlite3
+
+    from offline_rag.app.workspace.memory import WorkspaceMemory
+
+    with _conversation_client(tmp_path) as (client, runtime, _, _):
+        wid = client.post(
+            "/v1/workspaces",
+            headers={"Idempotency-Key": "km-corrective-workspace"},
+            json={"title": "Memory corrective"},
+        ).json()["workspace_id"]
+        memory = WorkspaceMemory(runtime.settings, wid)
+        memory.set_enabled(True)
+
+        def capture(event: str, question: str) -> None:
+            memory.capture(
+                event_id=event,
+                question=question,
+                topic_question=question,
+                answer=f"Recorded concept for {event}",
+                provenance={"snapshot_id": "fixture"},
+            )
+
+        capture("entry-a", "What is forcible entry?")
+        capture("entry-b", "What tools are used for forcible entry?")
+        capture("ambiguous", "Compare forcible entry and ventilation.")
+        capture("supervised", "What is supervised learning?")
+        capture("reinforcement", "What is reinforcement learning?")
+        capture("alias", "Describe self-contained breathing apparatus.")
+        entry = memory.recall("forcible entry")
+        assert len(entry["summaries"]) == 1
+        assert {item["record_id"] for item in entry["summaries"][0]["items"]} == {
+            "entry-a-concept",
+            "entry-b-concept",
+        }
+        assert any(row["id"] == "ambiguous" for row in entry["records"])
+        assert {row["topic"] for row in memory.recall("supervised learning")["records"]} == {
+            "learning supervised"
+        }
+        assert memory.recall("SCBA")["records"][0]["topic"] == "scba"
+
+        path = f"/v1/workspaces/{wid}/knowledge/notes"
+        payload = {"parent_id": "entry-a-concept", "text": "Remember ALVESCOUP"}
+
+        def save(operation: str) -> None:
+            response = client.post(path, json=payload, headers={"Idempotency-Key": operation})
+            assert response.status_code == 204, response.text
+
+        save("save-one")
+        save("save-one")
+        notes = memory.recall("ALVESCOUP")["records"]
+        assert len(notes) == 1
+        assert notes[0]["topic"] == "entry forcible"
+        assert notes[0]["relation"] == "note_on"
+        note_id = notes[0]["id"]
+
+        with sqlite3.connect(memory.path) as connection:
+            connection.execute("""
+                CREATE TRIGGER fail_term BEFORE INSERT ON record_terms
+                WHEN NEW.term = 'wasspoc' BEGIN SELECT RAISE(ABORT, 'fixture'); END
+            """)
+        with pytest.raises(sqlite3.IntegrityError):
+            memory.change(note_id, 1, "Remember WASSPOC")
+        assert memory.recall("ALVESCOUP")["records"] == notes
+        assert memory.recall("WASSPOC")["records"] == []
+        with sqlite3.connect(memory.path) as connection:
+            connection.execute("DROP TRIGGER fail_term")
+
+        memory.change(note_id, 1, "Remember WASSPOC")
+        assert memory.recall("ALVESCOUP")["records"] == []
+        revised = memory.recall("WASSPOC")["records"][0]
+        assert revised["revision"] == 2
+        assert revised["history"][0]["text"] == "Remember ALVESCOUP"
+        memory.change(note_id, 2, None)
+        save("save-one")
+        assert memory.recall("ALVESCOUP")["records"] == []
+        assert memory.recall("WASSPOC")["records"] == []
+        save("save-two")
+        save("save-three")
+        assert len(memory.recall("ALVESCOUP")["records"]) == 2
+
+        memory.change("entry-a", 1, None)
+        capture("entry-a", "What is forcible entry?")
+        save("save-two")
+        assert memory.recall("ALVESCOUP")["records"] == []
+        assert not any(row["id"].startswith("entry-a") for row in memory.recall("")["records"])
