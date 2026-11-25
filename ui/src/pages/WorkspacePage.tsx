@@ -49,6 +49,7 @@ import {
   loadDesktopRailState,
   saveDesktopRailState,
 } from "../features/ask/desktopRailState";
+import { KnowledgePanel } from "../features/knowledge/KnowledgePanel";
 import { EvidencePanel } from "../features/ask/EvidencePanel";
 import { SourceRail } from "../features/ask/SourceRail";
 import type { PreviewTarget } from "../features/ask/SourcePreview";
@@ -272,6 +273,7 @@ export function WorkspacePage() {
     useState<SourceSelectionMode>("all");
   const [selectionSyncKey, setSelectionSyncKey] = useState("");
   const [question, setQuestion] = useState("");
+  const [showKnowledge, setShowKnowledge] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
   const [conversationActionError, setConversationActionError] =
     useState<string | null>(null);
@@ -856,6 +858,9 @@ export function WorkspacePage() {
           [pair.pairId]: { ...HIDDEN_REVEAL },
         }));
       }
+      if (response.status === "answered") {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.workspaceKnowledge(workspaceId) });
+      }
       const first = response.citations[0] ?? null;
       setSelectedCitation(first);
       if (first) {
@@ -1366,6 +1371,20 @@ export function WorkspacePage() {
     />
   );
 
+  const workspaceSidePanel = (
+    <>
+      {!trainingMode ? (
+        <div className="row" role="group" aria-label="Workspace side panel">
+          <Button variant="secondary" aria-pressed={!showKnowledge} onClick={() => setShowKnowledge(false)}>Evidence</Button>
+          <Button variant="secondary" aria-pressed={showKnowledge} onClick={() => setShowKnowledge(true)}>Knowledge</Button>
+        </div>
+      ) : null}
+      {showKnowledge && !trainingMode ? (
+        <KnowledgePanel key={workspaceId} workspaceId={workspaceId} snapshotId={workspace.current_snapshot_id} />
+      ) : evidencePanel}
+    </>
+  );
+
   // Pre-admission upload may stay local; durable managed ops use the global tray.
   const showLocalUploadProgress = pendingPhase === "uploading";
 
@@ -1562,6 +1581,7 @@ export function WorkspacePage() {
                 selectedCitation?.evidence_unit_id ?? null
               }
               onSelectCitation={(citation, entry) => {
+                setShowKnowledge(false);
                 setActiveEntryId(entry.entryId);
                 openCitation(citation, entry);
               }}
@@ -1636,7 +1656,7 @@ export function WorkspacePage() {
                   »
                 </button>
               </div>
-              {evidencePanel}
+              {isNarrowLayout ? evidencePanel : workspaceSidePanel}
             </div>
           ) : (
             <div className="rail-shell rail-shell-collapsed">
@@ -1673,7 +1693,7 @@ export function WorkspacePage() {
           side="end"
           onClose={() => setEvidenceDrawerOpen(false)}
         >
-          {evidencePanel}
+          {workspaceSidePanel}
         </ResponsiveDrawer>
       ) : null}
 

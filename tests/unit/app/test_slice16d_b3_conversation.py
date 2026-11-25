@@ -1361,3 +1361,86 @@ def test_conversation_action_discards_length_truncated_output(tmp_path: Path) ->
         assert body["answer"] is None
         assert body["answer_blocks"] == []
         assert body["citations"] == []
+
+
+def test_workspace_memory_organizes_committed_turns_and_isolates_failures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from offline_rag.app.workspace.memory import WorkspaceMemory
+
+    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+        wid, alpha_sid, beta_sid, _ = _seed_workspace(client)
+        other = client.post(
+            "/v1/workspaces",
+            json={"title": "Separate"},
+            headers={"Idempotency-Key": "km-other"},
+        ).json()["workspace_id"]
+        path = f"/v1/workspaces/{wid}/knowledge"
+        assert client.put(f"{path}/settings", json={"enabled": True}).status_code == 204
+        before = generator.generate_calls
+        captures["assemble_queries"].clear()
+        for question in ("What is supervised learning?", "Explain supervised learning.", "Describe clustering."):
+            response = client.post(
+                f"/v1/workspaces/{wid}/conversation/turn",
+                json={"question": question, "source_ids": [alpha_sid], "prior_turns": []},
+            )
+            assert response.status_code == 200, response.text
+            assert response.json()["status"] == "answered"
+        assert len(captures["assemble_queries"]) == 3
+        assert generator.generate_calls - before == 3
+
+        # A fresh store instance uses only disk and the workspace's settings.
+        recalled = WorkspaceMemory(runtime.settings, wid).recall("supervised learning")
+        assert len(recalled["summaries"][0]["items"]) == 2
+        episode = next(row for row in recalled["records"] if row["category"] == "episode")
+        WorkspaceMemory(runtime.settings, wid).capture(
+            event_id=episode["id"], question=episode["text"],
+            topic_question="supervised learning", answer="Unexpected replacement",
+            provenance={},
+        )
+        assert WorkspaceMemory(runtime.settings, wid).recall("supervised learning") == recalled
+        assert {record["category"] for record in recalled["records"]} == {"episode", "semantic", "derived"}
+        assert all(record["topic"] == "learning supervised" for record in recalled["records"])
+        assert client.get(f"/v1/workspaces/{other}/knowledge").json()["records"] == []
+        concept = next(row for row in recalled["records"] if row["category"] == "semantic")
+        assert concept["provenance"]["source_scope"]["source_ids"] == [alpha_sid]
+        assert concept["provenance"]["citations"][0]["source_version"] == 1
+        assert client.post(f"{path}/notes", json={"parent_id": concept["id"], "text": "My note"}).status_code == 204
+        target = f"{path}/records/{concept['id']}"
+        assert client.patch(target, json={"revision": 1, "text": "Personal correction"}).status_code == 204
+        corrected = next(row for row in client.get(path).json()["records"] if row["id"] == concept["id"])
+        assert corrected["revision"] == 2
+        assert corrected["origin"] == "user_provided"
+        assert corrected["history"][0]["origin"] == "source_grounded"
+        alternate = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={"question": "What is reinforcement learning?", "source_ids": [beta_sid]},
+        ).json()
+        assert alternate["status"] == "answered"
+        assert {citation["source_id"] for citation in alternate["citations"]} == {beta_sid}
+        assert "Personal correction" not in str(captures["generator_requests"][-1].messages)
+
+        assert client.patch(target, json={"revision": 1, "text": None}).status_code == 409
+        assert client.patch(target, json={"revision": 2, "text": None}).status_code == 204
+        remaining = client.get(path).json()["records"]
+        assert all(row["id"] != concept["id"] and row["parent_id"] != concept["id"] for row in remaining)
+
+        def fail_capture(*args, **kwargs):
+            raise OSError("simulated store failure")
+
+        monkeypatch.setattr(WorkspaceMemory, "capture", fail_capture)
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={"question": "What is supervised learning?", "source_ids": [alpha_sid]},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "answered"
+        assert response.json()["citations"][0]["source_id"] == alpha_sid
+
+    restarted = ApplicationRuntime(settings=runtime.settings, factories=runtime.factories)
+    with TestClient(create_app(runtime=restarted)) as fresh_client:
+        result = fresh_client.get(path, params={"topic": "supervised"})
+        assert result.status_code == 200
+        assert result.json()["enabled"] is True
+        assert len(result.json()["records"]) == 4
+        assert all(row["id"] != concept["id"] for row in result.json()["records"])

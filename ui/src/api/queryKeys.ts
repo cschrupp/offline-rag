@@ -8,6 +8,7 @@ export const queryKeys = {
   workspace: (workspaceId: string) => ["workspace", workspaceId] as const,
   workspaceSources: (workspaceId: string) =>
     ["workspace", workspaceId, "sources"] as const,
+  workspaceKnowledge: (workspaceId: string) => ["workspace-knowledge", workspaceId] as const,
   operation: (operationId: string) => ["operation", operationId] as const,
   sourceVersionContent: (params: {
     workspaceId: string;
