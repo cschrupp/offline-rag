@@ -26,7 +26,8 @@ RUN --mount=type=secret,id=build_ca,required=false \
 COPY ui/ ./
 # catalog.ts imports the repo-level indicator catalog.
 COPY eval/presentation/indicator_catalog_v1.json /eval/presentation/indicator_catalog_v1.json
-RUN npm run build
+ARG SENECA_SOURCE_SHA=unknown
+RUN VITE_SENECA_SOURCE_SHA="$SENECA_SOURCE_SHA" npm run build
 
 FROM ghcr.io/astral-sh/uv:0.11.18 AS uv-bin
 
@@ -75,7 +76,8 @@ ARG SENECA_SOURCE_SHA=unknown
 LABEL org.opencontainers.image.revision="$SENECA_SOURCE_SHA" \
       io.seneca.dependency-profile="$SENECA_DEPENDENCY_PROFILE"
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
+ENV SENECA_SOURCE_SHA="$SENECA_SOURCE_SHA" \
+    PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:${PATH}" \
     OFFLINE_RAG_CONFIG=/app/config/base.yaml \

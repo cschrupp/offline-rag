@@ -28,7 +28,7 @@ mkdir -p "$BUILD/source"
 
 git archive "$SOURCE_SHA" | tar -x -C "$BUILD/source"
 SOURCE="$BUILD/source"
-(cd "$SOURCE/ui" && npm ci && npm run build)
+(cd "$SOURCE/ui" && npm ci && VITE_SENECA_SOURCE_SHA="$SOURCE_SHA" npm run build)
 cp "$SOURCE/pyproject.toml" "$SOURCE/uv.lock" "$SOURCE/README.md" "$ROOT/payload/"
 cp -a "$SOURCE/src" "$SOURCE/config" "$ROOT/payload/"
 mkdir -p "$ROOT/payload/ui" "$ROOT/payload/scripts/workstation"
