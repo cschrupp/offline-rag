@@ -3266,3 +3266,11 @@ button.snapshot-badge {
 .conversation-recovery li {
   overflow-wrap: anywhere;
 }
+
+.workspace-knowledge {
+  overflow-wrap: anywhere;
+}
+
+.workspace-knowledge-text {
+  white-space: pre-wrap;
+}

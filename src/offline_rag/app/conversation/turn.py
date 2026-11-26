@@ -29,6 +29,7 @@ from offline_rag.app.query import (
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.snapshot import PRODUCT_MODE_GROUNDED_V1, CorpusReadSnapshot
 from offline_rag.app.traces import ProductTraceSourceScope
+from offline_rag.app.workspace.memory import WorkspaceMemory
 from offline_rag.app.workspace.models import (
     WorkspaceRecord,
     WorkspaceRevision,
@@ -315,6 +316,38 @@ def execute_prepared_conversation_turn(
             query_trace_id=outcome.trace_id,
         ),
     )
+
+    if outcome.status == "answered" and outcome.answer and citations:
+        try:
+            WorkspaceMemory(runtime.settings, workspace_id).capture(
+                event_id=conversation_trace_id,
+                question=normalized_question,
+                topic_question=retrieval_question,
+                answer=outcome.answer,
+                provenance={
+                    "workspace_revision": int(admitted_revision),
+                    "snapshot_id": outcome.binding.snapshot_id,
+                    "source_scope": source_scope.model_dump(mode="json"),
+                    "query_trace_id": outcome.trace_id,
+                    "citations": [
+                        {
+                            key: citation.get(key)
+                            for key in (
+                                "source_id",
+                                "source_version",
+                                "document_id",
+                                "source_chunk_id",
+                                "evidence_unit_id",
+                            )
+                        }
+                        for citation in citations
+                    ],
+                },
+            )
+        except Exception:  # noqa: BLE001 - optional post-commit side effect
+            logger.warning(
+                "workspace memory capture failed trace=%s", conversation_trace_id
+            )
 
     return ConversationTurnResponse(
         workspace_id=workspace_id,

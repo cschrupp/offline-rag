@@ -49,6 +49,7 @@ from offline_rag.app.query import MAX_QUESTION_CHARS, run_workspace_query
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.workspace.etag import format_etag, parse_if_match
 from offline_rag.app.workspace.lifecycle import SourceUpload, WorkspaceLifecycleService
+from offline_rag.app.workspace.memory import MAX_TEXT, WorkspaceMemory
 from offline_rag.app.workspace.models import ManagedOperationKind
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 from offline_rag.app.workspace.source_content import (
@@ -745,3 +746,70 @@ def workspace_conversation_action(
         target_language=body.target_language,
     )
     return result.as_dict()
+
+
+class MemorySettingsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    enabled: bool
+
+
+class MemoryNoteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    parent_id: str = Field(min_length=1, max_length=128)
+    text: str = Field(min_length=1, max_length=MAX_TEXT)
+
+
+class MemoryChangeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    revision: StrictInt = Field(ge=1)
+    text: str | None = Field(min_length=1, max_length=MAX_TEXT)
+
+
+@router.get("/v1/workspaces/{workspace_id}/knowledge")
+def get_workspace_knowledge(
+    request: Request,
+    workspace_id: str,
+    topic: str = "",
+) -> JSONResponse:
+    if len(topic) > 256:
+        raise AppError(ErrorCode.REQUEST_INVALID)
+    memory = WorkspaceMemory(_runtime(request).settings, workspace_id)
+    return JSONResponse(memory.recall(topic), headers={"Cache-Control": "no-store"})
+
+
+@router.put("/v1/workspaces/{workspace_id}/knowledge/settings", status_code=204)
+def set_workspace_knowledge(
+    request: Request,
+    workspace_id: str,
+    body: MemorySettingsRequest,
+) -> Response:
+    WorkspaceMemory(_runtime(request).settings, workspace_id).set_enabled(body.enabled)
+    return Response(status_code=204)
+
+
+@router.post("/v1/workspaces/{workspace_id}/knowledge/notes", status_code=204)
+def add_workspace_knowledge_note(
+    request: Request,
+    workspace_id: str,
+    body: MemoryNoteRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Response:
+    WorkspaceMemory(_runtime(request).settings, workspace_id).add_note(
+        body.parent_id, body.text, _require_idempotency_key(idempotency_key)
+    )
+    return Response(status_code=204)
+
+
+@router.patch(
+    "/v1/workspaces/{workspace_id}/knowledge/records/{record_id}", status_code=204
+)
+def change_workspace_knowledge(
+    request: Request,
+    workspace_id: str,
+    record_id: str,
+    body: MemoryChangeRequest,
+) -> Response:
+    WorkspaceMemory(_runtime(request).settings, workspace_id).change(
+        record_id, body.revision, body.text
+    )
+    return Response(status_code=204)
