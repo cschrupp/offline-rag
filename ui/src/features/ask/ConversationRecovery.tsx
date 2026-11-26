@@ -103,20 +103,31 @@ export function FailedTurnRecovery({
   turn,
   canEdit,
   onEdit,
-}: RecoveryProps & { turn: IncompleteUserTurn }) {
+  onRetry,
+}: RecoveryProps & { turn: IncompleteUserTurn; onRetry?: () => void }) {
   const failure = turn.failure;
   const code = failure?.code;
   const guidance = code === "network_error"
     ? "Check your connection before submitting again. Seneca could not confirm the outcome."
     : code?.startsWith("generation_")
-      ? "Check the configured generation service before asking again."
+      ? "Check the generation service in Settings, or try the question again."
       : failure?.retryable
         ? "Try again when the service is available."
-        : "Review the error above before submitting again.";
+        : "Edit the question before submitting it again.";
 
   return (
     <div className="stack conversation-recovery">
       <p className="muted">{guidance}</p>
+      {onRetry && (
+        <div>
+          <p className="muted">
+            Retry uses the original question and sources: {turn.selectedSourceNames.join(", ") || "no selected sources"}.
+          </p>
+          <Button type="button" variant="secondary" onClick={onRetry}>
+            Retry question
+          </Button>
+        </div>
+      )}
       <div>
         <Button
           type="button"

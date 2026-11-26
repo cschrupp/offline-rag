@@ -1,3 +1,4 @@
+import { AnswerMarkdown } from "../../components/AnswerMarkdown";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
 import { apiRequest } from "../../api/client";
@@ -90,13 +91,13 @@ function PracticeCard({
   return (
     <details className="stack">
       <summary>{card.topic}</summary>
-      <p>{card.flashcard_question}</p>
+      <AnswerMarkdown text={card.flashcard_question} />
       {card.requires_revalidation ? (
         <p><strong>Needs revalidation.</strong> Generate a new card from the current publication.</p>
       ) : !selectedSourceIds.includes(card.citation.source_id) ? (
         <p>Select the linked source to practice.</p>
       ) : null}
-      <p>{card.exercise}</p>
+      <AnswerMarkdown text={card.exercise} />
       <form className="stack" onSubmit={(event) => {
         event.preventDefault();
         if (canPractice && answer.trim() && !attempt.isPending) attempt.mutate("check");
@@ -114,7 +115,7 @@ function PracticeCard({
       {canPractice && attempt.data ? (
         <div role="status">
           <p>{outcomeCopy[attempt.data.outcome]}</p>
-          {attempt.data.statement ? <p>{attempt.data.statement}</p> : null}
+          {attempt.data.statement ? <AnswerMarkdown text={attempt.data.statement} /> : null}
         </div>
       ) : null}
       <details>

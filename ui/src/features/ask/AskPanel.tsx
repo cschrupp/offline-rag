@@ -11,6 +11,7 @@ import type {
   ConversationActionOperation,
   WorkspaceCitation,
 } from "../../api/types";
+import { AnswerMarkdown } from "../../components/AnswerMarkdown";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/Field";
 import { QuestionBankPanel } from "../training/QuestionBankPanel";
@@ -25,7 +26,7 @@ import {
   AbstentionRecovery,
   FailedTurnRecovery,
 } from "./ConversationRecovery";
-import { assistantPresentationText } from "./assistantPresentation";
+import { assistantPresentationText, technicalFailureMessage } from "./assistantPresentation";
 import {
   buildConversationTimeline,
   snapshotBadge,
@@ -41,6 +42,8 @@ type Props = {
   question: string;
   onQuestionChange: (value: string) => void;
   onAsk: () => void;
+  onRetryQuestion?: (turn: IncompleteUserTurn) => void;
+  canRetryQuestion?: (turn: IncompleteUserTurn) => boolean;
   onConversationAction: (
     entryId: string,
     operation: ConversationActionOperation,
@@ -104,6 +107,8 @@ export function AskPanel({
   question,
   onQuestionChange,
   onAsk,
+  onRetryQuestion,
+  canRetryQuestion,
   onConversationAction,
   onSummarizeRecentConversation,
   canSummarizeRecentConversation,
@@ -367,13 +372,14 @@ export function AskPanel({
                   ) : (
                     <>
                       <p className="error-box" role="alert">
-                        {turn.errorMessage ??
+                        {technicalFailureMessage(turn.failure?.code) ?? turn.errorMessage ??
                           "This turn did not complete. Your question is still shown above."}
                       </p>
                       <FailedTurnRecovery
                         turn={turn}
                         canEdit={canEditQuestion}
                         onEdit={editQuestion}
+                        onRetry={canRetryQuestion?.(turn) ? () => onRetryQuestion?.(turn) : undefined}
                       />
                     </>
                   )}
@@ -652,9 +658,9 @@ export function AskPanel({
                       className="answer-body"
                     >
                       {isConversationOrigin ? (
-                        <p className="conversation-transform-answer">
-                          {entry.response.answer}
-                        </p>
+                        <div className="conversation-transform-answer">
+                          <AnswerMarkdown text={entry.response.answer ?? ""} />
+                        </div>
                       ) : (
                         <ClaimAnswer
                           blocks={entry.response.answer_blocks}

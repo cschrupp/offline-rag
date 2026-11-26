@@ -52,7 +52,7 @@ from offline_rag.app.query import MAX_QUESTION_CHARS, run_workspace_query
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.workspace.etag import format_etag, parse_if_match
 from offline_rag.app.workspace.lifecycle import SourceUpload, WorkspaceLifecycleService
-from offline_rag.app.workspace.memory import MAX_TEXT, WorkspaceMemory
+from offline_rag.app.workspace.memory import MAX_TEXT, SemanticEmbed, WorkspaceMemory
 from offline_rag.app.workspace.models import ManagedOperationKind
 from offline_rag.app.workspace.mutation_ops import ManagedOperationStore
 from offline_rag.app.workspace.source_content import (
@@ -711,7 +711,9 @@ async def workspace_conversation_turn(
 
         def synthesis_worker() -> JSONResponse:
             record = WorkspaceStore(runtime.settings).get(workspace_id)
-            records = WorkspaceMemory(runtime.settings, workspace_id).recall(topic)[
+            records = WorkspaceMemory(runtime.settings, workspace_id).recall(
+                topic, embed=_memory_embedder(runtime)
+            )[
                 "records"
             ]
             runtime.operations.promote_query_preflight(operation)
@@ -757,7 +759,8 @@ async def workspace_conversation_turn(
             runtime.operations.release(operation)
     if is_learning_history_request(validated[0]):
         recall = await run_in_threadpool(
-            learning_history_response, runtime.settings, workspace_id, validated[0]
+            learning_history_response, runtime.settings, workspace_id, validated[0],
+            embed=_memory_embedder(runtime),
         )
         return JSONResponse(recall, headers={"Cache-Control": "no-store"})
     runtime.require_ready()
@@ -850,6 +853,11 @@ class MemoryChangeRequest(BaseModel):
     text: str | None = Field(min_length=1, max_length=MAX_TEXT)
 
 
+def _memory_embedder(runtime: ApplicationRuntime) -> SemanticEmbed | None:
+    resources = runtime.resources
+    return resources.embedder.embed_documents if resources is not None else None
+
+
 @router.get("/v1/workspaces/{workspace_id}/knowledge")
 def get_workspace_knowledge(
     request: Request,
@@ -858,8 +866,11 @@ def get_workspace_knowledge(
 ) -> JSONResponse:
     if len(topic) > 256:
         raise AppError(ErrorCode.REQUEST_INVALID)
-    memory = WorkspaceMemory(_runtime(request).settings, workspace_id)
-    return JSONResponse(memory.recall(topic), headers={"Cache-Control": "no-store"})
+    runtime = _runtime(request)
+    memory = WorkspaceMemory(runtime.settings, workspace_id)
+    return JSONResponse(
+        memory.recall(topic, embed=_memory_embedder(runtime)), headers={"Cache-Control": "no-store"}
+    )
 
 
 @router.put("/v1/workspaces/{workspace_id}/knowledge/settings", status_code=204)

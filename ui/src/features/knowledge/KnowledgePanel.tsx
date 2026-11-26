@@ -1,3 +1,4 @@
+import { AnswerMarkdown } from "../../components/AnswerMarkdown";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
 import { apiRequest } from "../../api/client";
@@ -217,7 +218,7 @@ export function KnowledgePanel({
                 : record.provenance.training_outcome ? "Practice outcome"
                 : record.provenance.study_aid ? "Study aid" : categoryLabel[record.category]} · {record.provenance.topic_label ?? record.topic}</summary>
               <p className="muted">{originLabel[record.origin] ?? record.origin} · Revision {record.revision}</p>
-              <p className="workspace-knowledge-text">{record.text}</p>
+              <div className="workspace-knowledge-text"><AnswerMarkdown text={record.text} /></div>
               {record.provenance.study_aid ? (
                 <details>
                   <summary>Original concept coverage and references</summary>

@@ -1921,3 +1921,52 @@ def test_synthesis_provider_format_and_saved_history_fallback(
             assert "Check for loose parts." in fallback["answer"]
             assert "Use the blue form." in fallback["answer"]
             assert "Unverified summary." not in fallback["answer"]
+
+
+def test_semantic_recall_links_existing_discussions_without_editing_them(tmp_path: Path) -> None:
+    from offline_rag.app.workspace.memory import WorkspaceMemory
+
+    with _conversation_client(tmp_path) as (client, runtime, _, _):
+        wid = client.post(
+            "/v1/workspaces",
+            headers={"Idempotency-Key": "semantic-topic-workspace"},
+            json={"title": "Topic association"},
+        ).json()["workspace_id"]
+        memory = WorkspaceMemory(runtime.settings, wid)
+        memory.set_enabled(True)
+        discussions = [
+            ("intro", "Describe naturalistic decision method", "Recognize familiar patterns."),
+            ("cues", "Which incident cues matter?", "Naturalistic decision-making uses sensory cues."),
+            ("topic", "What is reinforcement learning?", "An agent receives signals from rewards."),
+            ("code", "Explain SCBA", "This exact acronym stays searchable."),
+        ]
+        for event, question, answer in discussions:
+            memory.capture(
+                event_id=event, question=question, topic_question=question, answer=answer,
+                provenance={"snapshot_id": "fixture"},
+            )
+        before = memory.recall("")
+
+        def embed(texts):
+            return [
+                [1.0, 0.0] if any(word in text.lower() for word in ("naturalistic", "incident"))
+                else [0.0, 1.0]
+                for text in texts
+            ]
+
+        recalled = WorkspaceMemory(runtime.settings, wid).recall(
+            "naturalistic decision-making", embed=embed
+        )
+        assert {row["id"] for row in recalled["records"] if row["category"] == "semantic"} == {
+            "intro-concept", "cues-concept",
+        }
+        assert {item["record_id"] for item in recalled["summaries"][0]["items"]} == {
+            "intro-concept", "cues-concept",
+        }
+        assert memory.recall("") == before
+        assert memory.recall("SCBA", embed=lambda _: pytest.fail("exact lookup embedded"))["records"]
+        memory.change("cues", 1, None)
+        assert all(
+            row["id"] != "cues-concept"
+            for row in memory.recall("naturalistic decision-making", embed=embed)["records"]
+        )

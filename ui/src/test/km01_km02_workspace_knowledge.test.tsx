@@ -93,7 +93,7 @@ it("shows learning-history recall in chat without persisting it or using it for 
     expect(Object.values(sessionStorage).join(" ")).not.toContain(remembered);
     await user.type(composer, "What does the current source say?");
     await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Generation timed out.")).toBeVisible();
+    expect(await screen.findByText("The model did not finish in time.")).toBeVisible();
     expect(submitted[1].prior_turns).toEqual([]);
   } finally {
     mock.restore();
