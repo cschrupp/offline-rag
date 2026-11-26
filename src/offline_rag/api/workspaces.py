@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 from typing import Any
@@ -72,6 +73,12 @@ from offline_rag.app.workspace.synthesis import (
     synthesis_topic,
     synthesize_discussions,
     verified_definitions,
+)
+from offline_rag.app.workspace.training import (
+    TrainingAttemptRequest,
+    TrainingCardRequest,
+    card_from_answer,
+    training_view,
 )
 from offline_rag.app.workspace.upload_spool import (
     WorkspaceUploadSpool,
@@ -1029,3 +1036,101 @@ async def propose_source_mnemonics(
         )
     finally:
         runtime.operations.release(operation)
+
+
+@router.get("/v1/workspaces/{workspace_id}/knowledge/training")
+def workspace_training_view(
+    request: Request, workspace_id: str, topic: str = ""
+) -> JSONResponse:
+    if len(topic) > 256:
+        raise AppError(ErrorCode.REQUEST_INVALID)
+    settings = _runtime(request).settings
+    workspace = WorkspaceStore(settings).get(workspace_id)
+    memory = WorkspaceMemory(settings, workspace_id)
+    return JSONResponse(
+        training_view(memory, workspace, topic), headers={"Cache-Control": "no-store"}
+    )
+
+
+@router.post("/v1/workspaces/{workspace_id}/knowledge/training/cards", status_code=204)
+async def generate_training_card(
+    request: Request,
+    workspace_id: str,
+    body: TrainingCardRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Response:
+    runtime = _runtime(request)
+    runtime.require_ready()
+    key = _require_idempotency_key(idempotency_key)
+    operation = runtime.operations.start_query_preflight()
+
+    def worker() -> Response:
+        memory = WorkspaceMemory(runtime.settings, workspace_id)
+        if not memory.is_enabled():
+            raise AppError(
+                ErrorCode.WORKSPACE_CONFLICT,
+                message="Enable workspace memory to save training materials.",
+            )
+        if memory.training_card_saved(key):
+            return Response(status_code=204)
+        question = (
+            "Return one complete sentence quoted verbatim from the selected evidence for this training topic: "
+            + json.dumps(body.topic, ensure_ascii=False)
+            + ". Cite that sentence. Abstain if no explicit sentence is available."
+        )
+        prepared = prepare_conversation_turn(
+            runtime,
+            workspace_id=workspace_id,
+            validated=validate_conversation_request(question, []),
+            source_ids=body.source_ids,
+            control=operation,
+        )
+        runtime.operations.promote_query_preflight(operation)
+        result = execute_prepared_conversation_turn(
+            runtime,
+            prepared,
+            control=operation,
+            owned=True,
+            capture_memory=False,
+        )
+        card = card_from_answer(body.topic, result.answer_blocks, result.citations)
+        memory.save_training_card(
+            card,
+            snapshot_id=result.snapshot_id,
+            workspace_revision=int(result.workspace_revision),
+            query_trace_id=result.query_trace_id,
+            operation_id=key,
+        )
+        return Response(status_code=204)
+
+    try:
+        return await run_owned_worker(
+            request=request,
+            operation=operation,
+            worker=worker,
+            watch_disconnect=True,
+            retain_on_repeated_cancel=True,
+        )
+    finally:
+        runtime.operations.release(operation)
+
+
+@router.post(
+    "/v1/workspaces/{workspace_id}/knowledge/training/cards/{record_id}/attempts"
+)
+def save_training_attempt(
+    request: Request,
+    workspace_id: str,
+    record_id: str,
+    body: TrainingAttemptRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> JSONResponse:
+    memory = WorkspaceMemory(_runtime(request).settings, workspace_id)
+    result = memory.record_training_attempt(
+        record_id,
+        mode=body.mode,
+        answer=body.answer,
+        source_ids=body.source_ids,
+        operation_id=_require_idempotency_key(idempotency_key),
+    )
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})

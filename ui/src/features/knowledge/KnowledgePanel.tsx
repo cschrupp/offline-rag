@@ -34,6 +34,8 @@ type Record = {
     parent_revision?: number;
     topic_label?: string;
     study_aid?: StudyAid;
+    training_card?: object;
+    training_outcome?: string;
     references?: { record_id: string; revision: number; provenance: SourceReference }[];
   };
 };
@@ -211,7 +213,9 @@ export function KnowledgePanel({
           ))}
           {recall.data.records.map((record) => (
             <details id={`memory-${record.id}`} key={record.id}>
-              <summary>{record.provenance.study_aid ? "Study aid" : categoryLabel[record.category]} · {record.provenance.topic_label ?? record.topic}</summary>
+              <summary>{record.provenance.training_card ? "Flashcard"
+                : record.provenance.training_outcome ? "Practice outcome"
+                : record.provenance.study_aid ? "Study aid" : categoryLabel[record.category]} · {record.provenance.topic_label ?? record.topic}</summary>
               <p className="muted">{originLabel[record.origin] ?? record.origin} · Revision {record.revision}</p>
               <p className="workspace-knowledge-text">{record.text}</p>
               {record.provenance.study_aid ? (
@@ -271,7 +275,9 @@ export function KnowledgePanel({
                     }}>
                     Revise study aid
                   </Button>
-                ) : <Button variant="secondary" disabled={change.isPending} onClick={() => openEditor("correct", record)}>Correct</Button>}
+                ) : !record.provenance.training_card && !record.provenance.training_outcome ? (
+                  <Button variant="secondary" disabled={change.isPending} onClick={() => openEditor("correct", record)}>Correct</Button>
+                ) : null}
                 <Button variant="secondary" disabled={change.isPending} onClick={() => openEditor("forget", record)}>Forget</Button>
               </div>
               {editor?.record.id === record.id ? (

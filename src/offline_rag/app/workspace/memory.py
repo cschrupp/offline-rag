@@ -183,6 +183,9 @@ class WorkspaceMemory:
                         );
                     END
                 """)
+                connection.execute(
+                    "CREATE INDEX IF NOT EXISTS records_parent ON records(parent_id)"
+                )
                 yield connection
         finally:
             connection.close()
@@ -520,6 +523,189 @@ class WorkspaceMemory:
                 ((parent, record_id) for parent in sources),
             )
 
+    def training_review_records(self, query: str) -> tuple[bool, list[dict[str, Any]]]:
+        """Read separate bounded pools so activity never displaces materials."""
+        self.workspace.get(self.workspace_id)
+        if not self.path.is_file():
+            return False, []
+        terms = topic_terms(query)
+        with self._connect() as connection:
+            enabled = self._enabled(connection)
+            if query.strip() and not terms:
+                return enabled, []
+            pools = (
+                "category = 'episode'",
+                "category = 'semantic'",
+                "category = 'learning' AND json_type(provenance, '$.training_outcome') IS NOT NULL",
+                "category = 'derived' AND json_type(provenance, '$.training_card') IS NOT NULL",
+                "category = 'derived' AND json_type(provenance, '$.study_aid') IS NOT NULL",
+            )
+            # Predicates come only from the fixed pool definitions. Terms remain
+            # parameters, and membership is checked against the current index.
+            filters = " ".join(
+                "AND EXISTS (SELECT 1 FROM record_terms t WHERE t.id = records.id AND t.term = ?)"
+                for _ in terms
+            )
+            records = []
+            for pool in pools:
+                rows = connection.execute(
+                    f"SELECT id, category, origin, topic, text, revision, provenance, parent_id FROM records "
+                    f"WHERE {pool} {filters} ORDER BY created_at DESC, id LIMIT ?",
+                    (*terms, RECALL_LIMIT),
+                )
+                for row in rows:
+                    record = dict(row)
+                    record["provenance"] = json.loads(record["provenance"])
+                    records.append(record)
+            return enabled, records
+
+    def training_card_saved(self, operation_id: str) -> bool:
+        if not self.path.is_file():
+            return False
+        with self._connect() as connection:
+            return (
+                connection.execute(
+                    "SELECT 1 FROM processed_operations WHERE kind = 'training_card' AND identity = ?",
+                    (sha256(operation_id.encode()).hexdigest(),),
+                ).fetchone()
+                is not None
+            )
+
+    def save_training_card(
+        self,
+        card: dict[str, Any],
+        *,
+        snapshot_id: str,
+        workspace_revision: int,
+        query_trace_id: str | None,
+        operation_id: str,
+    ) -> None:
+        self.workspace.get(self.workspace_id)
+        with self._connect() as connection:
+            identity = sha256(operation_id.encode()).hexdigest()
+            if not self._claim_operation(connection, "training_card", identity):
+                return
+            if not self._enabled(connection):
+                raise AppError(
+                    ErrorCode.WORKSPACE_CONFLICT,
+                    message="Enable workspace memory to save training materials.",
+                )
+            terms = topic_terms(card["topic"])
+            topic = " ".join(sorted(terms))
+            self._insert(
+                connection,
+                uuid4().hex,
+                "derived",
+                "generated",
+                card["statement"],
+                topic,
+                terms,
+                datetime.now(UTC).isoformat(),
+                {
+                    "training_card": card,
+                    "topic_label": topic_label(card["topic"]),
+                    "snapshot_id": snapshot_id,
+                    "workspace_revision": workspace_revision,
+                    "query_trace_id": query_trace_id,
+                    "citations": [card["citation"]],
+                },
+                None,
+                None,
+            )
+
+    def record_training_attempt(
+        self,
+        record_id: str,
+        *,
+        mode: str,
+        answer: str,
+        source_ids: list[str],
+        operation_id: str,
+    ) -> dict[str, Any]:
+        with self._connect() as connection:
+            workspace = self.workspace.get(self.workspace_id)
+            if not self._enabled(connection):
+                raise AppError(
+                    ErrorCode.WORKSPACE_CONFLICT,
+                    message="Enable memory to record practice.",
+                )
+            parent = self._get(connection, record_id)
+            provenance = json.loads(parent["provenance"])
+            card = provenance.get("training_card")
+            if not card:
+                raise AppError(ErrorCode.REQUEST_INVALID)
+            if provenance["snapshot_id"] != workspace.current_snapshot_id:
+                raise AppError(
+                    ErrorCode.WORKSPACE_CONFLICT,
+                    message="Regenerate this card from the current publication.",
+                )
+            active = {
+                (item.source_id, item.version)
+                for item in workspace.sources
+                if item.active
+            }
+            citation = card["citation"]
+            if (
+                citation["source_id"] not in source_ids
+                or (citation["source_id"], citation["source_version"]) not in active
+            ):
+                raise AppError(
+                    ErrorCode.REQUEST_INVALID,
+                    message="Select the source linked to this card before practicing.",
+                )
+            attempt_id = "attempt_" + sha256(operation_id.encode()).hexdigest()
+            if not self._claim_operation(connection, "training_attempt", attempt_id):
+                previous = self._get(connection, attempt_id)
+                if previous["parent_id"] != record_id:
+                    raise AppError(ErrorCode.IDEMPOTENCY_CONFLICT)
+                outcome = json.loads(previous["provenance"])["training_outcome"]
+            else:
+                if mode == "reveal":
+                    outcome = "revealed"
+                elif not answer.strip():
+                    raise AppError(
+                        ErrorCode.REQUEST_INVALID,
+                        message="Enter an answer before checking.",
+                    )
+                elif answer.strip().casefold() != card["expected"].casefold():
+                    outcome = "missed"
+                else:
+                    revealed = connection.execute(
+                        """
+                        SELECT 1 FROM records WHERE parent_id = ?
+                        AND json_extract(provenance, '$.training_outcome') = 'revealed' LIMIT 1
+                    """,
+                        (record_id,),
+                    ).fetchone()
+                    outcome = "assisted" if revealed else "matched"
+                self._insert(
+                    connection,
+                    attempt_id,
+                    "learning",
+                    "user_provided",
+                    {
+                        "revealed": "Reviewed the source answer",
+                        "missed": "Practiced recall",
+                        "assisted": "Matched after reviewing",
+                        "matched": "Matched without revealing",
+                    }[outcome],
+                    parent["topic"],
+                    tuple(json.loads(parent["terms"])),
+                    datetime.now(UTC).isoformat(),
+                    {
+                        "training_outcome": outcome,
+                        "snapshot_id": provenance["snapshot_id"],
+                        "topic_label": provenance["topic_label"],
+                        "parent_revision": parent["revision"],
+                    },
+                    record_id,
+                    "practiced_with",
+                )
+            result = {"outcome": outcome}
+            if outcome == "revealed":
+                result["statement"] = card["statement"]
+            return result
+
     def find_study_aids(self, title: str) -> list[dict[str, str]]:
         """Resolve a bounded exact title in this workspace."""
         self.workspace.get(self.workspace_id)
@@ -553,7 +739,18 @@ class WorkspaceMemory:
             if text is None:
                 connection.execute("DELETE FROM records WHERE id = ?", (record_id,))
                 return
-            if "study_aid" in json.loads(row["provenance"]):
+            provenance = json.loads(row["provenance"])
+            if provenance.get("training_outcome"):
+                raise AppError(
+                    ErrorCode.REQUEST_INVALID,
+                    message="Assessment outcomes can be forgotten, but cannot be edited.",
+                )
+            if provenance.get("training_card"):
+                raise AppError(
+                    ErrorCode.REQUEST_INVALID,
+                    message="Regenerate the card from its source to correct it.",
+                )
+            if "study_aid" in provenance:
                 raise AppError(
                     ErrorCode.REQUEST_INVALID,
                     message="Use the structured study aid editor to revise this item.",

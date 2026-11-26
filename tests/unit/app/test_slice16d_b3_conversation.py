@@ -205,12 +205,12 @@ def _conversation_client(
 
 
 def _seed_workspace(
-    client: TestClient, *, alpha_text: str | None = None,
+    client: TestClient, *, alpha_text: str | None = None, key: str = "b3",
 ) -> tuple[str, str, str, str]:
     created = client.post(
         "/v1/workspaces",
         json={"title": "Conversation Desk", "description": "b3"},
-        headers={"Idempotency-Key": "b3-create"},
+        headers={"Idempotency-Key": f"{key}-create"},
     )
     assert created.status_code == 201, created.text
     wid = created.json()["workspace_id"]
@@ -222,7 +222,7 @@ def _seed_workspace(
     ).encode()
     add = client.post(
         f"/v1/workspaces/{wid}/sources",
-        headers={"Idempotency-Key": "b3-add", "If-Match": '"1"'},
+        headers={"Idempotency-Key": f"{key}-add", "If-Match": '"1"'},
         files=[
             ("files", ("alpha.txt", alpha_bytes, "text/plain")),
             ("files", ("beta.txt", beta_bytes, "text/plain")),
@@ -1536,12 +1536,15 @@ def test_workspace_memory_corrective_association_index_and_replay(tmp_path: Path
         assert not any(row["id"].startswith("entry-a") for row in memory.recall("")["records"])
 
 
-def test_km03_learning_history_and_study_aid_across_publication_changes(tmp_path: Path) -> None:
+def test_km04_integrated_memory_and_training_walkthrough(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from offline_rag.app.operations import CancelReason
     from offline_rag.app.workspace.memory import WorkspaceMemory
 
     with _conversation_client(tmp_path) as (client, runtime, captures, generator):
-        old_rule = "For this synthetic exercise, record a blue tag before review."
-        new_rule = "For this synthetic exercise, record an orange tag before review."
+        old_rule = "For this synthetic exercise, record a blue tag."
+        new_rule = "For this synthetic exercise, record an orange tag."
         wid, alpha, beta, _ = _seed_workspace(client, alpha_text=f"{ALPHA_SCOPE_MARKER} {old_rule}")
 
         def respond(request):
@@ -1550,7 +1553,7 @@ def test_km03_learning_history_and_study_aid_across_publication_changes(tmp_path
                 instructions = json.loads(request.messages[-1].content)
                 assert all(item["prior_publication"] for item in instructions["discussions"].values())
                 return json.dumps([{
-                    "text": "Both saved discussions connected the practice tag to the review step in the prior exercise.",
+                    "text": "Both saved discussions connected the practice tag to the recording step in the prior exercise.",
                     "refs": ["1", "2"],
                 }])
             prompt = "\n".join(message.content for message in request.messages)
@@ -1566,6 +1569,20 @@ def test_km03_learning_history_and_study_aid_across_publication_changes(tmp_path
         base = f"/v1/workspaces/{wid}"
         memory = WorkspaceMemory(runtime.settings, wid)
         memory.set_enabled(True)
+
+        claim = runtime.operations.claim_query_terminal
+
+        def interrupt(handle):
+            handle.signal_cancel(CancelReason.CLIENT_DISCONNECT)
+            claim(handle)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(runtime.operations, "claim_query_terminal", interrupt)
+            cancelled = client.post(
+                f"{base}/conversation/turn", json={"question": "Describe interrupted practice", "source_ids": [alpha]},
+            )
+            assert cancelled.status_code >= 400
+        assert memory.recall("")["records"] == []
 
         def ask(question: str, source: str | None = None) -> dict:
             body = {"question": question, "prior_turns": []}
@@ -1625,6 +1642,43 @@ def test_km03_learning_history_and_study_aid_across_publication_changes(tmp_path
         assert ask("Recall my saved study aid Entry study aid")["answer"] == saved[0]["text"]
         assert generator.generate_calls == before
 
+        training = f"{base}/knowledge/training"
+        scoped_card = {"topic": "forcible entry", "source_ids": [alpha]}
+        card_headers = {"Idempotency-Key": "card-v1"}
+        for _ in range(2):
+            created = client.post(f"{training}/cards", json=scoped_card, headers=card_headers)
+            assert created.status_code == 204, created.text
+        assert generator.generate_calls == before + 1
+        review = client.get(training).json()
+        assert review["aids"][0]["text"] == saved[0]["text"]
+        assert len(review["history"][0]["items"]) == 2
+        assert len(review["cards"]) == 1
+        card = review["cards"][0]
+        assert card["citation"]["source_version"] == 1
+        assert "blue" not in json.dumps(card)
+        assert "____ tag" in card["exercise"]
+        card_id = card["id"]
+        attempts = f"{training}/cards/{card_id}/attempts"
+
+        def attempt(mode: str, answer: str, key: str, selected: str = alpha):
+            return client.post(attempts, json={
+                "mode": mode, "answer": answer, "source_ids": [selected],
+            }, headers={"Idempotency-Key": key})
+
+        assert attempt("check", "blue", "wrong-source", beta).status_code == 422
+        assert attempt("check", "orange", "miss").json()["outcome"] == "missed"
+        for _ in range(2):
+            assert attempt("check", "blue", "match").json()["outcome"] == "matched"
+        assert attempt("reveal", "", "reveal").json()["statement"] == old_rule
+        assert attempt("check", "blue", "assisted").json()["outcome"] == "assisted"
+        progress = next(item for item in client.get(training).json()["topics"] if item["topic"] == "forcible entry")
+        assert (progress["exposure"], progress["practice"], progress["current_matches"]) == (2, 4, 1)
+        assert generator.generate_calls == before + 1
+        memory.set_enabled(False)
+        assert attempt("check", "blue", "paused").status_code == 409
+        assert client.get(training).json()["cards"]
+        memory.set_enabled(True)
+
         replacement = client.put(
             f"{base}/sources/{alpha}",
             headers={"Idempotency-Key": "km03-revision", "If-Match": '"2"'},
@@ -1632,6 +1686,12 @@ def test_km03_learning_history_and_study_aid_across_publication_changes(tmp_path
         )
         assert replacement.status_code == 202, replacement.text
         assert _wait_op(client, replacement.json()["operation_id"])["status"] == "succeeded"
+        snapshot_review = client.get(training).json()
+        assert snapshot_review["cards"][0]["requires_revalidation"]
+        assert snapshot_review["aids"][0]["requires_revalidation"]
+        progress = next(item for item in snapshot_review["topics"] if item["topic"] == "forcible entry")
+        assert (progress["historical_matches"], progress["current_matches"]) == (1, 0)
+        assert attempt("reveal", "", "stale").status_code == 409
         historical = ask("What did I learn about forcible entry?")
         assert "prior publication" in historical["answer"]
         assert historical["citations"] == []
@@ -1658,11 +1718,32 @@ def test_km03_learning_history_and_study_aid_across_publication_changes(tmp_path
         assert excluded["citations"] == []
         assert excluded["answer"] is None
         assert "Entry study aid" not in str(captures["generator_requests"][-1].messages)
+        other, other_alpha, _, _ = _seed_workspace(client, alpha_text=new_rule, key="km04-other")
+        other_base = f"/v1/workspaces/{other}"
+        WorkspaceMemory(runtime.settings, other).set_enabled(True)
+        other_turn = client.post(f"{other_base}/conversation/turn", json={
+            "question": "What is forcible entry?", "source_ids": [other_alpha],
+        })
+        assert other_turn.json()["status"] == "answered"
+        other_review = client.get(f"{other_base}/knowledge/training").json()
+        assert other_review["history"] and not other_review["cards"] and not other_review["aids"]
+        foreign = client.post(
+            f"{other_base}/knowledge/training/cards/{card_id}/attempts",
+            json={"mode": "reveal", "source_ids": [other_alpha]}, headers={"Idempotency-Key": "foreign-card"},
+        )
+        assert foreign.status_code == 404
 
     restarted = ApplicationRuntime(settings=runtime.settings, factories=runtime.factories)
     with TestClient(create_app(runtime=restarted)) as client:
         exact = client.post(f"{base}/conversation/turn", json={"question": "Recall my saved study aid Entry study aid"})
         assert exact.json()["answer"] == saved[0]["text"]
+        after_restart = client.get(training).json()
+        assert after_restart["cards"][0]["requires_revalidation"]
+        assert after_restart["aids"][0]["text"] == saved[0]["text"]
+        assert after_restart["history"]
+        memory.change(card_id, 1, None)
+        assert client.get(training).json()["cards"] == []
+        assert all(item["practice"] == 0 for item in client.get(training).json()["topics"])
         memory.change(concept["id"], 1, None)
         assert memory.find_study_aids("Entry study aid") == []
 

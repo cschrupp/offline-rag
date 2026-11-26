@@ -83,6 +83,7 @@ import {
   type SourceSelectionMode,
 } from "../features/ask/sourceSelection";
 import { useNarrowLayout } from "../features/ask/useNarrowLayout";
+import { MemoryReviewPanel } from "../features/training/MemoryReviewPanel";
 import { TrainingToolbar } from "../features/training/TrainingToolbar";
 import {
   HIDDEN_REVEAL,
@@ -304,6 +305,7 @@ export function WorkspacePage() {
     () => loadDesktopRailState().evidenceExpanded,
   );
   const [trainingMode, setTrainingMode] = useState(false);
+  const [memoryReviewOpen, setMemoryReviewOpen] = useState(false);
   const [presentationMode, setPresentationMode] = useState(false);
   const [revealMap, setRevealMap] = useState<RevealMap>({});
   const [savedPrompts, setSavedPrompts] = useState<SavedTrainingPrompt[]>(() =>
@@ -404,6 +406,7 @@ export function WorkspacePage() {
       exitPresentationMode();
     }
     setTrainingMode(false);
+    setMemoryReviewOpen(false);
   }
 
   function patchReveal(entryId: string, patch: Partial<TurnRevealState>) {
@@ -443,6 +446,7 @@ export function WorkspacePage() {
     setHistoryWorkspaceId(workspaceId);
     setPairs(loaded);
     setRecallPairs([]);
+    setMemoryReviewOpen(false);
     setActiveEntryId(loaded[0]?.pairId ?? null);
     setSelectedCitation(loaded[0]?.response.citations[0] ?? null);
     setPreviewTarget(null);
@@ -1477,7 +1481,14 @@ export function WorkspacePage() {
         <TrainingToolbar
           presentationMode={presentationMode}
           onTogglePresentation={togglePresentationMode}
+          memoryReviewOpen={memoryReviewOpen}
+          onToggleMemoryReview={() => setMemoryReviewOpen((previous) => !previous)}
         />
+      ) : null}
+
+      {trainingMode && !presentationMode && memoryReviewOpen ? (
+        <MemoryReviewPanel key={workspaceId} workspaceId={workspaceId}
+          snapshotId={workspace.current_snapshot_id} sourceIds={askSourcesReady ? selectedSourceIds : []} />
       ) : null}
 
       {showLocalUploadProgress ? (
