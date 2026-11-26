@@ -3274,3 +3274,11 @@ button.snapshot-badge {
 .workspace-knowledge-text {
   white-space: pre-wrap;
 }
+
+.training-memory-review {
+  max-height: 52vh;
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
