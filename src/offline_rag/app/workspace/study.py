@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from offline_rag.app.workspace.memory import MAX_TEXT, WorkspaceMemory
+from offline_rag.app.workspace.memory import MAX_TEXT, SemanticEmbed, WorkspaceMemory
 from offline_rag.app.workspace.models import WorkspaceRecord
 from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.config.models import AppSettings
@@ -86,7 +86,7 @@ def compose_study_aid(request: StudyAidRequest) -> dict[str, Any]:
 
 
 def learning_history_response(
-    settings: AppSettings, workspace_id: str, question: str
+    settings: AppSettings, workspace_id: str, question: str, *, embed: SemanticEmbed | None = None
 ) -> dict[str, Any] | None:
     """Route explicit learning-history requests outside the grounded query."""
     history = _HISTORY.fullmatch(question)
@@ -104,7 +104,7 @@ def learning_history_response(
         else:
             answer = "I couldn't find a saved study aid with that title in this workspace. Check its title in Knowledge."
     else:
-        topics = memory.recall(history["topic"] or "")["records"]
+        topics = memory.recall(history["topic"] or "", embed=embed)["records"]
         concepts = [item for item in topics if item["category"] == "semantic"]
         grouped: dict[str, list[str]] = {}
         for item in concepts[:12]:

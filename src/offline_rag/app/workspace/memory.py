@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import json
+import logging
+import math
 import os
 import re
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from hashlib import sha256
+from time import perf_counter
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -17,10 +20,24 @@ from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.config.models import AppSettings
 
+SemanticEmbed = Callable[[Sequence[str]], list[list[float]]]
+logger = logging.getLogger(__name__)
+
+
+def _cosine(left: list[float], right: list[float]) -> float:
+    if len(left) != len(right):
+        return 0.0
+    denominator = math.sqrt(sum(value * value for value in left)) * math.sqrt(
+        sum(value * value for value in right)
+    )
+    return sum(a * b for a, b in zip(left, right, strict=True)) / denominator if denominator else 0.0
+
+
 Category = Literal["episode", "semantic", "learning", "derived"]
 MAX_TEXT = 6000
 MAX_REVISIONS = 20
 RECALL_LIMIT = 24
+SEMANTIC_RECALL_MIN_COSINE = 0.75
 STOP_WORDS = frozenset(
     [
         "a",
@@ -781,14 +798,83 @@ class WorkspaceMemory:
             )
             self._replace_terms(connection, record_id, terms, row["created_at"])
 
-    def recall(self, query: str) -> dict[str, Any]:
+    @staticmethod
+    def _extend_semantic_recall(
+        query: str,
+        embed: SemanticEmbed,
+        candidates: list[dict[str, Any]],
+        records: list[dict[str, Any]],
+        topics: dict[str, list[dict[str, Any]]],
+    ) -> None:
+        """Associate retrieved discussions without merging stored topic identities."""
+        started = perf_counter()
+        try:
+            for record in candidates:
+                for key in ("terms", "history", "provenance"):
+                    record[key] = json.loads(record[key])
+            descriptions = []
+            for record in candidates:
+                label = record["provenance"].get("topic_label", record["topic"])
+                if record["origin"] == "user_provided" or len(topic_terms(label)) < 2:
+                    label = record["text"][:700]
+                descriptions.append(label)
+            vectors = embed([query, *descriptions])
+            if len(vectors) != len(candidates) + 1:
+                return
+            scored = sorted(
+                (
+                    (_cosine(vectors[0], vector), index)
+                    for index, vector in enumerate(vectors[1:])
+                ),
+                key=lambda item: (-item[0], item[1]),
+            )
+            known_ids = {item["id"] for item in records}
+            for score, index in scored:
+                if not math.isfinite(score) or score < SEMANTIC_RECALL_MIN_COSINE or len(records) >= RECALL_LIMIT:
+                    break
+                record = candidates[index]
+                if record["id"] in known_ids:
+                    continue
+                records.append(record)
+            related = [record for record in records if record["category"] == "semantic"]
+            if len({record["topic"] for record in related}) > 1:
+                # A query-time related group is a view, not a stored merge or edit.
+                topics.clear()
+                topics[query] = [
+                    {
+                        "record_id": record["id"],
+                        "text": record["text"][:300],
+                        "revision": record["revision"],
+                        "origin": record["origin"],
+                    }
+                    for record in related
+                ]
+        except Exception:
+            logger.debug("Semantic memory recall unavailable; retaining lexical recall", exc_info=True)
+        finally:
+            logger.info("Memory association candidates=%s elapsed_ms=%.1f", len(candidates), (perf_counter() - started) * 1000)
+
+    def recall(self, query: str, *, embed: SemanticEmbed | None = None) -> dict[str, Any]:
         """Recall a bounded set of recent or literal topic-matching records."""
         self.workspace.get(self.workspace_id)
         if not self.path.is_file():
             return {"enabled": False, "records": [], "summaries": []}
         terms = topic_terms(query)
+        semantic_candidates = []
         with self._connect() as connection:
             enabled = self._enabled(connection)
+            # Acronyms, single terms and identifiers keep exact recall semantics.
+            if enabled and embed is not None and len(terms) >= 2 and not re.search(
+                r"\b[A-Z]{2,}\b|[0-9]", query
+            ):
+                semantic_candidates = [
+                    dict(row)
+                    for row in connection.execute(
+                        "SELECT * FROM records WHERE category = 'semantic' "
+                        "ORDER BY created_at DESC, id LIMIT ?",
+                        (RECALL_LIMIT,),
+                    )
+                ]
             if query.strip() and not terms:
                 rows = []
             elif terms:
@@ -840,6 +926,29 @@ class WorkspaceMemory:
                     )
                 if len(records) >= RECALL_LIMIT:
                     break
+        if semantic_candidates and embed is not None:
+            self._extend_semantic_recall(query, embed, semantic_candidates, records, topics)
+            # Discard stale selections if a learner corrected or forgot a record
+            # while encoding, without holding a write lock around inference.
+            with self._connect() as connection:
+                current = {
+                    row["id"]: row["revision"]
+                    for row in connection.execute(
+                        "SELECT id, revision FROM records WHERE id IN ("
+                        + ", ".join("?" for _ in records) + ")",
+                        [record["id"] for record in records],
+                    )
+                }
+                enabled = self._enabled(connection)
+            records = [
+                record for record in records
+                if current.get(record["id"]) == record["revision"] and enabled
+            ]
+            kept = {record["id"] for record in records}
+            topics = {
+                topic: [item for item in items if item["record_id"] in kept]
+                for topic, items in topics.items()
+            }
         return {
             "enabled": enabled,
             "records": records,
@@ -849,7 +958,7 @@ class WorkspaceMemory:
                     "category": "derived",
                     "origin": "generated",
                     "items": items,
-                    "label": next(
+                    "label": query if topic == query else next(
                         record["provenance"].get("topic_label", topic)
                         for record in records
                         if record["id"] == items[0]["record_id"]
