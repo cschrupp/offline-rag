@@ -11,6 +11,7 @@ import type {
   ConversationActionOperation,
   WorkspaceCitation,
 } from "../../api/types";
+import { AnswerMarkdown } from "../../components/AnswerMarkdown";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/Field";
 import { QuestionBankPanel } from "../training/QuestionBankPanel";
@@ -657,9 +658,9 @@ export function AskPanel({
                       className="answer-body"
                     >
                       {isConversationOrigin ? (
-                        <p className="conversation-transform-answer">
-                          {entry.response.answer}
-                        </p>
+                        <div className="conversation-transform-answer">
+                          <AnswerMarkdown text={entry.response.answer ?? ""} />
+                        </div>
                       ) : (
                         <ClaimAnswer
                           blocks={entry.response.answer_blocks}

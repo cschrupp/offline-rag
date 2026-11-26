@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
+import { AnswerMarkdown } from "../../components/AnswerMarkdown";
 import type { AnswerBlock, WorkspaceCitation } from "../../api/types";
 
 type Props = {
@@ -103,9 +104,8 @@ export function ClaimAnswer({
       onMouseLeave={onRootMouseLeave}
     >
       {blocks.map((block, blockIndex) => (
-        <p key={blockIndex} className="claim-block">
-          <span className="claim-block-text">{block.text}</span>
-          {citationsVisible
+        <div key={blockIndex} className="claim-block">
+          <AnswerMarkdown text={block.text} suffix={citationsVisible
             ? block.citation_refs.map((ref) => {
                 const citation = citationByRef(citations, ref);
                 const n = displayIndex(citations, ref);
@@ -138,8 +138,8 @@ export function ClaimAnswer({
                   </button>
                 );
               })
-            : null}
-        </p>
+            : null} />
+        </div>
       ))}
 
       {activeCitation ? (
