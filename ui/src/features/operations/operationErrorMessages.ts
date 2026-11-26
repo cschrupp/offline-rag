@@ -1,6 +1,7 @@
 import type { Operation } from "../../api/types";
 import {
   messageForDocumentInvalidReason,
+  messageForIngestionResourceReason,
   messageForUploadSizeReason,
 } from "../../api/errors";
 import { messageForGoldSafeReason } from "../goldLab/errors/goldLabErrors";
@@ -48,6 +49,10 @@ export function managedOperationFailureMessage(operation: Operation): string {
     .toLowerCase();
   const uploadSizeMessage = messageForUploadSizeReason(error.details?.reason);
   if (uploadSizeMessage) return uploadSizeMessage;
+  if (code === "service_overloaded") {
+    const mapped = messageForIngestionResourceReason(error.details?.reason);
+    if (mapped) return mapped;
+  }
   if (code === "document_invalid") {
     const mapped = messageForDocumentInvalidReason(error.details?.reason);
     if (mapped) {
