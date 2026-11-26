@@ -40,6 +40,11 @@ def source_view(record: SourceVersionRecord) -> dict[str, Any]:
         "created_at": record.created_at.isoformat().replace("+00:00", "Z"),
         "active_from_revision": record.active_from_revision,
         "active_from_snapshot_id": record.active_from_snapshot_id,
+        **(
+            {"non_searchable_reason": record.non_searchable_reason}
+            if record.non_searchable_reason
+            else {}
+        ),
     }
 
 

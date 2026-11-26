@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -48,7 +48,11 @@ from offline_rag.domain.indexing import (
 from offline_rag.domain.ingestion import IngestionReport, IngestionStatus
 from offline_rag.hybrid.config_hash import build_fusion_config_hash
 from offline_rag.ingestion.persistence import corpus_state_path, load_corpus_state
-from offline_rag.ingestion.pipeline import SourceIdentity, run_ingestion
+from offline_rag.ingestion.pipeline import (
+    PublishedEmptyParse,
+    SourceIdentity,
+    run_ingestion,
+)
 from offline_rag.lexical.config_hash import build_lexical_config_hash
 from offline_rag.lexical.persistence import (
     lexical_index_state_path,
@@ -230,6 +234,7 @@ def run_product_replace_ingest(
     corpus_lease: CorpusMutationLease | None = None,
     authorize_workspace_id: str | None = None,
     mutation_kind: object | None = None,
+    published_empty_parses: Mapping[str, PublishedEmptyParse] | None = None,
 ) -> ProductIngestResult:
     """Execute the post-spool full-replace ingest transaction.
 
@@ -246,6 +251,8 @@ def run_product_replace_ingest(
     when the target is a workspace-owned backing corpus (S16-D08). The workspace
     lifecycle path passes its own workspace id as explicit authorization.
     """
+    if published_empty_parses and authorize_workspace_id is None:
+        raise ValueError("published empty parses require workspace authorization")
     runtime.require_ready()
     if runtime.resources is None:
         raise AppError(ErrorCode.RUNTIME_NOT_READY)
@@ -267,6 +274,13 @@ def run_product_replace_ingest(
         )
 
     trusted_identities = _validate_document_identities(upload)
+    if published_empty_parses and not published_empty_parses.keys() <= {
+        item.document_id for item in trusted_identities.values()
+    }:
+        raise AppError(
+            ErrorCode.WORKSPACE_STATE_UNAVAILABLE,
+            details=SafeErrorDetails(reason="published_empty_source_identity_mismatch"),
+        )
 
     owned_lease: CorpusMutationLease | None = None
     if corpus_lease is not None:
@@ -336,6 +350,7 @@ def run_product_replace_ingest(
                 root=candidate.sources_root,
                 source_name_by_path=source_names,
                 trusted_identities=trusted_identities,
+                published_empty_parses=published_empty_parses,
                 on_progress=progress,
                 on_document_phase=document_phase,
             ),

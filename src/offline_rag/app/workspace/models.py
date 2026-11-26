@@ -436,6 +436,9 @@ class SourceVersionRecord(BaseModel):
     created_at: datetime
     active_from_revision: WorkspaceRevision = Field(ge=1)
     active_from_snapshot_id: str | None = None
+    non_searchable_reason: Literal["ocr_required"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     active_through_revision: WorkspaceRevision | None = Field(default=None, ge=1)
     active_through_snapshot_id: str | None = None
 

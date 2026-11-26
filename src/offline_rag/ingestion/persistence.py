@@ -58,7 +58,8 @@ def try_load_reusable_artifact(
     if not path.exists():
         return None
     try:
-        parsed = load_parsed_document(path)
+        data = path.read_bytes()
+        parsed = ParsedDocument.model_validate_json(data)
     except (OSError, ValueError, TypeError, ValidationError):
         return None
     if parsed.document.document_id != expected_document_id:
@@ -67,7 +68,7 @@ def try_load_reusable_artifact(
         return None
     if parsed.parsed_artifact_id != parsed_artifact_id:
         return None
-    digest = artifact_bytes_hash(path.read_bytes())
+    digest = artifact_bytes_hash(data)
     return parsed, digest
 
 

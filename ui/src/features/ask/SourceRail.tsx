@@ -206,6 +206,9 @@ export function SourceRail({
                     <span className="muted source-meta">
                       {formatBytes(source.byte_size)} · Version {source.version}
                     </span>
+                    {source.non_searchable_reason === "ocr_required" && (
+                      <span className="muted source-meta">Not searchable · No extractable text (OCR required)</span>
+                    )}
                   </div>
                 </div>
                 <SourceActionsMenu
