@@ -9,6 +9,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 from offline_rag.app.workspace.memory import MAX_TEXT, WorkspaceMemory
+from offline_rag.app.workspace.models import WorkspaceRecord
 from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.config.models import AppSettings
 
@@ -76,6 +77,7 @@ def compose_study_aid(request: StudyAidRequest) -> dict[str, Any]:
     cue = " · ".join(letter for _, letter in cues.values())
     return {
         "title": request.title,
+        "inputs": [group.model_dump() for group in request.inputs],
         "cue": cue,
         "coverage": rows,
         "missing": missing,
@@ -129,8 +131,15 @@ def learning_history_response(
         answer = "\n\n".join("\n".join(group) for group in grouped.values())[:MAX_TEXT]
         if not answer:
             answer = "I couldn't find matching discussions in this workspace's Knowledge panel."
+    return memory_response(record, question, answer)
+
+
+def memory_response(
+    record: WorkspaceRecord, question: str, answer: str
+) -> dict[str, Any]:
+    """Produce an ephemeral learning-history response without factual citations."""
     return {
-        "workspace_id": workspace_id,
+        "workspace_id": record.workspace_id,
         "workspace_revision": int(record.revision),
         "snapshot_id": record.current_snapshot_id or "",
         "product_mode_id": "knowledge_recall_v1",

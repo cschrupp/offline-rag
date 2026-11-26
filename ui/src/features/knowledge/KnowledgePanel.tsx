@@ -69,17 +69,20 @@ const originLabel: { [origin: string]: string } = {
 export function KnowledgePanel({
   workspaceId,
   snapshotId,
+  sourceIds,
   onMemoryChanged,
 }: {
   workspaceId: string;
   snapshotId: string | null;
   onMemoryChanged: () => void;
+  sourceIds: string[];
 }) {
   const root = `/v1/workspaces/${encodeURIComponent(workspaceId)}/knowledge`;
   const client = useQueryClient();
   const queryKey = queryKeys.workspaceKnowledge(workspaceId);
   const [searchDraft, setSearchDraft] = useState("");
   const [topic, setTopic] = useState("");
+  const [aidRevision, setAidRevision] = useState<{ id: string; version: number; aid: StudyAid }>();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [draft, setDraft] = useState("");
   const noteIntent = useRef<IntentHandle | null>(null);
@@ -162,12 +165,26 @@ export function KnowledgePanel({
             {recall.data.enabled ? "Pause memory" : "Enable memory"}
           </Button>
           {recall.data.enabled ? (
+            <p className="muted">
+              In chat, ask “Synthesize what I learned about” followed by a topic
+              to use the configured generator on matching saved discussions.
+            </p>
+          ) : null}
+          {recall.data.enabled ? (
             <StudyAidEditor
+              key={aidRevision?.id ?? "new-aid"}
               root={root}
+              revision={aidRevision}
+              sourceIds={sourceIds}
+              onCancel={() => setAidRevision(undefined)}
               references={recall.data.records
                 .filter((record) => record.category === "episode" || record.category === "semantic")
                 .map((record) => ({ id: record.id, label: `${categoryLabel[record.category]} · ${record.provenance.topic_label ?? record.topic}` }))}
-              onSaved={async () => { await client.invalidateQueries({ queryKey }); }}
+              onSaved={async () => {
+                onMemoryChanged();
+                setAidRevision(undefined);
+                await client.invalidateQueries({ queryKey });
+              }}
             />
           ) : null}
           <form className="stack" onSubmit={(event) => {
@@ -245,7 +262,16 @@ export function KnowledgePanel({
               ) : null}
               <div className="row">
                 {recall.data.enabled && record.category !== "learning" ? <Button variant="secondary" disabled={change.isPending} onClick={() => openEditor("note", record)}>Add note</Button> : null}
-                <Button variant="secondary" disabled={change.isPending} onClick={() => openEditor("correct", record)}>Correct</Button>
+                {record.provenance.study_aid ? (
+                  <Button variant="secondary" disabled={change.isPending || !recall.data.enabled}
+                    onClick={() => {
+                      if (record.provenance.study_aid) {
+                        setAidRevision({ id: record.id, version: record.revision, aid: record.provenance.study_aid });
+                      }
+                    }}>
+                    Revise study aid
+                  </Button>
+                ) : <Button variant="secondary" disabled={change.isPending} onClick={() => openEditor("correct", record)}>Correct</Button>}
                 <Button variant="secondary" disabled={change.isPending} onClick={() => openEditor("forget", record)}>Forget</Button>
               </div>
               {editor?.record.id === record.id ? (

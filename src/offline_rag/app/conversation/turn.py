@@ -184,6 +184,7 @@ def execute_prepared_conversation_turn(
     *,
     control: OperationHandle | None = None,
     owned: bool = False,
+    capture_memory: bool = True,
 ) -> ConversationTurnResponse:
     normalized_question, validated_prior = prepared.question, prepared.prior_turns
     record, snapshot = prepared.record, prepared.snapshot
@@ -317,7 +318,7 @@ def execute_prepared_conversation_turn(
         ),
     )
 
-    if outcome.status == "answered" and outcome.answer and citations:
+    if capture_memory and outcome.status == "answered" and outcome.answer and citations:
         try:
             WorkspaceMemory(runtime.settings, workspace_id).capture(
                 event_id=conversation_trace_id,

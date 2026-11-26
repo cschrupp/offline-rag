@@ -682,6 +682,18 @@ export function AskPanel({
                     onEdit={editQuestion}
                   />
                 ) : null}
+                {entry.response.memory_contributors?.length ? (
+                  <details>
+                    <summary>Contributing discussions</summary>
+                    <p>Learning history reflects prior discussions. Ask a separate source question for current guidance.</p>
+                    <ul>{entry.response.memory_contributors.map((item) => (
+                      <li key={item.record_id}>
+                        {item.origin === "user_provided" ? "Learner correction" : item.prior_publication ? "Prior publication" : "Saved discussion"}
+                        {" · "}Revision {item.revision} · <code>{item.record_id}</code>
+                      </li>
+                    ))}</ul>
+                  </details>
+                ) : null}
                 {pendingThisAction && pendingActionOperation ? (
                   <p className="muted" role="status" aria-live="polite">
                     {pendingActionOperation === "summarize_answer" ||

@@ -1003,7 +1003,7 @@ export function WorkspacePage() {
   }
 
   function canAskWithoutSources(value: string) {
-    return !trainingMode && /^(?:please )?(?:(?:what (?:did|have) (?:i|we) (?:learn|learned|discuss|discussed|study|studied))|(?:(?:summarize|recall|review|tell me) what (?:i|we)(?: have|'ve)? (?:learned|discussed|studied))|(?:(?:recall|show me) (?:my |the )?(?:saved )?(?:study aid|mnemonic) ))/i.test(value.trim());
+    return !trainingMode && /^(?:synthesize what (?:i|we) learned (?:about|on) |(?:please )?(?:(?:what (?:did|have) (?:i|we) (?:learn|learned|discuss|discussed|study|studied))|(?:(?:summarize|recall|review|tell me) what (?:i|we)(?: have|'ve)? (?:learned|discussed|studied))|(?:(?:recall|show me) (?:my |the )?(?:saved )?(?:study aid|mnemonic) )))/i.test(value.trim());
   }
 
   function submitAsk() {
@@ -1400,6 +1400,7 @@ export function WorkspacePage() {
           key={workspaceId}
           workspaceId={workspaceId}
           snapshotId={workspace.current_snapshot_id}
+          sourceIds={askSourcesReady ? selectedSourceIds : []}
           onMemoryChanged={() => setRecallPairs([])}
         />
       ) : evidencePanel}

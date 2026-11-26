@@ -10,11 +10,13 @@ export type StudyAid = {
   title: string;
   cue: string;
   complete: boolean;
+  suggested_phrase?: string | null;
+  inputs?: Input["inputs"];
   missing: string[];
-  coverage: { original: string; term: string; definition: string; cue: string }[];
+  coverage: { original: string; term: string; definition: string; cue: string; source_record_id?: string | null; origin?: string; citation?: { source_display_name?: string; source_version?: number } }[];
 };
 type Group = { name: string; lines: string; reference: string; incomplete: boolean };
-type Input = {
+export type Input = {
   title: string;
   inputs: {
     name: string;
@@ -28,17 +30,32 @@ function emptyGroup(): Group {
   return { name: "", lines: "", reference: "", incomplete: false };
 }
 
+function toGroup(input: Input["inputs"][number]): Group {
+  return {
+    name: input.name,
+    lines: input.concepts.map((concept) => `${concept.term} — ${concept.definition}`).join("\n"),
+    reference: input.source_record_id ?? "",
+    incomplete: input.incomplete,
+  };
+}
+
 export function StudyAidCoverage({ aid }: { aid: StudyAid }) {
   return (
     <div className="stack">
       {aid.cue ? <p><strong>Cue</strong> {aid.cue}</p> : null}
+      {aid.suggested_phrase ? <p><strong>Suggested phrase</strong> {aid.suggested_phrase}</p> : null}
       <p>{aid.complete ? "All supplied concepts are mapped." : "Partial study aid."}</p>
       {aid.missing.length ? <p>Missing definitions for {aid.missing.join(", ")}.</p> : null}
       {aid.coverage.length ? (
         <dl>{aid.coverage.map((row, index) => (
           <div key={index}>
             <dt>{row.cue} · {row.original} · {row.term}</dt>
-            <dd>{row.definition}</dd>
+            <dd>
+              {row.definition}{" "}
+              <small>{row.origin === "source_grounded"
+                ? `${row.citation?.source_display_name ?? "Selected source"} · Version ${row.citation?.source_version ?? "unknown"}`
+                : "Learner-provided"}</small>
+            </dd>
           </div>
         ))}</dl>
       ) : null}
@@ -47,18 +64,51 @@ export function StudyAidCoverage({ aid }: { aid: StudyAid }) {
 }
 
 export function StudyAidEditor({
-  root, references, onSaved,
+  root, references, sourceIds, revision, onCancel, onSaved,
 }: {
   root: string;
   references: { id: string; label: string }[];
+  sourceIds: string[];
+  revision?: { id: string; version: number; aid: StudyAid };
+  onCancel: () => void;
   onSaved: () => Promise<void>;
 }) {
-  const [title, setTitle] = useState("");
-  const [groups, setGroups] = useState<Group[]>([emptyGroup()]);
+  const [title, setTitle] = useState(revision?.aid.title ?? "");
+  const [groups, setGroups] = useState<Group[]>(() => {
+    const inputs = revision?.aid.inputs;
+    if (inputs?.length) return inputs.map(toGroup);
+    if (revision) {
+      const originals = new Map<string, string[]>();
+      for (const row of revision.aid.coverage) {
+        const lines = originals.get(row.original) ?? [];
+        lines.push(`${row.term} — ${row.definition}`);
+        originals.set(row.original, lines);
+      }
+      for (const missing of revision.aid.missing) {
+        if (!originals.has(missing)) originals.set(missing, []);
+      }
+      return [...originals].map(([name, lines]) => ({
+        name, lines: lines.join("\n"),
+        reference: revision.aid.coverage.find((row) => row.original === name)?.source_record_id ?? "",
+        incomplete: revision.aid.missing.includes(name),
+      }));
+    }
+    return [emptyGroup()];
+  });
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<{ input: Input; aid: StudyAid } | null>(null);
   const [saved, setSaved] = useState(false);
   const intent = useRef<IntentHandle | null>(null);
+  const propose = useMutation({
+    mutationFn: (names: string[]) => apiRequest<{ inputs: Input["inputs"] }>(
+      `${root}/study-aids/from-sources`,
+      { method: "POST", json: { names, source_ids: sourceIds } },
+    ),
+    onSuccess: (proposal) => {
+      setGroups(proposal.inputs.map(toGroup));
+      setPreview(null);
+    },
+  });
   const prepare = useMutation({
     mutationFn: (input: Input) => apiRequest<StudyAid>(`${root}/study-aids/preview`, {
       method: "POST", json: input,
@@ -67,8 +117,9 @@ export function StudyAidEditor({
   });
   const save = useMutation({
     mutationFn: ({ input, operationId }: { input: Input; operationId: string }) =>
-      apiRequest<void>(`${root}/study-aids`, {
-        method: "POST", idempotencyKey: operationId, json: input,
+      apiRequest<void>(revision ? `${root}/study-aids/${encodeURIComponent(revision.id)}` : `${root}/study-aids`, {
+        method: revision ? "PUT" : "POST", idempotencyKey: operationId,
+        json: revision ? { ...input, revision: revision.version } : input,
       }),
     onSuccess: async () => {
       setPreview(null);
@@ -79,7 +130,7 @@ export function StudyAidEditor({
       await onSaved();
     },
   });
-  const pending = prepare.isPending || save.isPending;
+  const pending = prepare.isPending || save.isPending || propose.isPending;
 
   function updateGroup(index: number, update: Partial<Group>) {
     setGroups((previous) => previous.map((group, i) => i === index ? { ...group, ...update } : group));
@@ -115,8 +166,8 @@ export function StudyAidEditor({
   }
 
   return (
-    <details className="stack">
-      <summary>Create a mnemonic study aid</summary>
+    <details className="stack" open={revision ? true : undefined}>
+      <summary>{revision ? "Revise study aid" : "Create a mnemonic study aid"}</summary>
       <p className="muted">Supply the concepts you know. Add another original to combine mnemonics. Seneca maps each supplied concept to a cue.</p>
       <form className="stack" onSubmit={previewAid} onChange={() => {
         setPreview(null);
@@ -143,6 +194,9 @@ export function StudyAidEditor({
             <select id={`mnemonic-reference-${index}`} value={group.reference}
               onChange={(event) => updateGroup(index, { reference: event.target.value })}>
               <option value="">No reference selected</option>
+              {group.reference && !references.some((item) => item.id === group.reference) ? (
+                <option value={group.reference}>Linked study reference</option>
+              ) : null}
               {references.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
           </fieldset>
@@ -158,11 +212,19 @@ export function StudyAidEditor({
               Remove last mnemonic
             </Button>
           ) : null}
+          <Button type="button" variant="secondary"
+            disabled={pending || !sourceIds.length || groups.some((group) => !group.name.trim() || group.lines.trim() !== "")}
+            onClick={() => { setError(""); propose.mutate(groups.map((group) => group.name.trim())); }}>
+            {propose.isPending ? "Searching selected sources…" : "Find definitions in selected sources"}
+          </Button>
+          {revision ? <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>Cancel revision</Button> : null}
           <Button type="submit" disabled={pending}>Preview study aid</Button>
         </div>
       </form>
-      {error || prepare.isError || save.isError ? (
-        <p role="alert" className="error-box">{error || userFacingErrorMessage(prepare.error ?? save.error)}</p>
+      <p className="muted">Source lookup uses the configured generator and the selected sources. Enter original names with empty concept fields to look them up.</p>
+      {propose.isSuccess ? <p role="status">Review the definitions found. Leave unsupported concepts marked incomplete.</p> : null}
+      {error || prepare.isError || save.isError || propose.isError ? (
+        <p role="alert" className="error-box">{error || userFacingErrorMessage(prepare.error ?? save.error ?? propose.error)}</p>
       ) : null}
       {preview ? (
         <>

@@ -57,3 +57,36 @@ The focused conversation backend suite passed 45 tests. The frontend
 workspace, conversation, claim-citation and Training Mode regressions passed
 58 tests. Production Python Ruff checks, ESLint, TypeScript and Git
 whitespace checks passed.
+
+## SOL synthesis corrective
+
+- **Selected-source authoring.** Enter the original names with empty concept
+  fields and choose **Find definitions in selected sources**. Seneca performs
+  one canonical grounded lookup. A proposed definition must match a
+  term/definition pair and the original name in its cited excerpt. For a
+  short supported cue, one bounded generation call can suggest an
+  initial-matched phrase. Unknown or unverified definitions remain incomplete.
+  The verified rows retain their original source lineage. Learner edits to
+  those rows are attributed to the learner. Manual preview and save remain
+  deterministic.
+- **Cumulative synthesis.** Ask “Synthesize what I learned about forcible
+  entry” to use the configured generator on up to eight related saved
+  concepts. The response lists contributing record identities, revisions,
+  and prior-publication status. This path uses no retrieval. Ordinary
+  learning-history recall and exact study-aid recall remain deterministic.
+- **Structured revision.** Use **Revise study aid** to update the original
+  concepts. The preview and save recompute cues and coverage. The save uses
+  revision compare-and-set and updates the searchable text and title lookup
+  in the same SQLite transaction as the revision and history. Generic text
+  correction is rejected for a study aid.
+- **Publication revision.** The fixture switched from a blue to an orange
+  practice tag. The version-2 answer and cited excerpt contain the orange
+  instruction. Learning-history synthesis labels the two older discussions
+  as prior publication. After deselection, the remaining source does not
+  support an answer and the grounded request abstains.
+
+The corrective uses synthetic definitions and deterministic generator
+fixtures. ALVESCOUP, WASSPOC, and WALLACE WAS HOT remain unresolved without
+verified source definitions. Association against the bound citation excerpt
+is deliberately conservative, so a clipped excerpt may leave a concept
+unresolved.

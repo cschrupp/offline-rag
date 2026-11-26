@@ -200,6 +200,13 @@ class WorkspaceMemory:
             connection.execute("DELETE FROM settings")
             connection.execute("INSERT INTO settings VALUES (?)", (enabled,))
 
+    def is_enabled(self) -> bool:
+        self.workspace.get(self.workspace_id)
+        if not self.path.is_file():
+            return False
+        with self._connect() as connection:
+            return self._enabled(connection)
+
     @staticmethod
     def _claim_operation(
         connection: sqlite3.Connection, kind: str, identity: str
@@ -220,6 +227,7 @@ class WorkspaceMemory:
         topic_question: str,
         answer: str,
         provenance: dict[str, Any],
+        require_enabled: bool = False,
     ) -> None:
         """Organize an already committed cited discussion once."""
         if not self.path.is_file():
@@ -229,6 +237,11 @@ class WorkspaceMemory:
             return
         with self._connect() as connection:
             if not self._enabled(connection):
+                if require_enabled:
+                    raise AppError(
+                        ErrorCode.WORKSPACE_CONFLICT,
+                        message="Workspace memory was paused before the source lookup completed.",
+                    )
                 return
             self.workspace.get(self.workspace_id)
             if not self._claim_operation(connection, "capture", event_id):
@@ -342,12 +355,73 @@ class WorkspaceMemory:
                 "note_on",
             )
 
-    def save_study_aid(self, aid: dict[str, Any], operation_id: str) -> None:
-        """Persist the exact generated aid with original concepts and input revisions."""
+    def _resolve_aid(
+        self,
+        connection: sqlite3.Connection,
+        aid: dict[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        sources = {}
+        rows = []
+        for row in aid["coverage"]:
+            row = dict(row)
+            record_id = row["source_record_id"]
+            if record_id and record_id not in sources:
+                record = self._get(connection, record_id)
+                if record["category"] not in {"episode", "semantic"}:
+                    raise AppError(
+                        ErrorCode.REQUEST_INVALID,
+                        message="Select a discussion or concept as a reference.",
+                    )
+                sources[record_id] = {
+                    "record_id": record_id,
+                    "revision": record["revision"],
+                    "provenance": json.loads(record["provenance"]),
+                }
+            if record_id:
+                proof = sources[record_id]["provenance"].get("verified_definitions", [])
+                for entry in proof:
+                    if all(
+                        row[key] == entry[key]
+                        for key in ("original", "term", "definition")
+                    ):
+                        row["origin"] = "source_grounded"
+                        row["citation"] = entry["citation"]
+                        break
+            rows.append(row)
+        resolved = {**aid, "coverage": rows}
+        if (
+            len(sources) == 1
+            and rows
+            and all(row["origin"] == "source_grounded" for row in rows)
+        ):
+            provenance = next(iter(sources.values()))["provenance"]
+            if aid["cue"] == provenance.get("verified_initials"):
+                resolved["suggested_phrase"] = provenance.get("suggested_phrase")
+        return resolved, sources
+
+    def preview_study_aid(self, aid: dict[str, Any]) -> dict[str, Any]:
+        self.workspace.get(self.workspace_id)
+        if not any(row["source_record_id"] for row in aid["coverage"]):
+            return aid
+        with self._connect() as connection:
+            return self._resolve_aid(connection, aid)[0]
+
+    def save_study_aid(
+        self,
+        aid: dict[str, Any],
+        operation_id: str,
+        *,
+        record_id: str | None = None,
+        expected_revision: int | None = None,
+    ) -> None:
+        """Save or revise the cue, coverage, lineage and searchable text together."""
         self.workspace.get(self.workspace_id)
         with self._connect() as connection:
-            identity = sha256(operation_id.encode()).hexdigest()
-            if not self._claim_operation(connection, "study_aid", identity):
+            identity = sha256(
+                (f"{record_id}:{operation_id}" if record_id else operation_id).encode()
+            ).hexdigest()
+            kind = "study_aid_revision" if record_id else "study_aid"
+            if not self._claim_operation(connection, kind, identity):
                 return
             if not self._enabled(connection):
                 raise AppError(
@@ -359,22 +433,10 @@ class WorkspaceMemory:
                     ErrorCode.REQUEST_INVALID,
                     message="Supply at least one known concept.",
                 )
-            sources = {}
-            for row in aid["coverage"]:
-                record_id = row["source_record_id"]
-                if record_id and record_id not in sources:
-                    record = self._get(connection, record_id)
-                    if record["category"] not in {"episode", "semantic"}:
-                        raise AppError(
-                            ErrorCode.REQUEST_INVALID,
-                            message="Select a discussion or concept as a reference.",
-                        )
-                    sources[record_id] = {
-                        "record_id": record_id,
-                        "revision": record["revision"],
-                        "provenance": json.loads(record["provenance"]),
-                    }
+            aid, sources = self._resolve_aid(connection, aid)
             lines = [aid["title"], f"Cue: {aid['cue']}"]
+            if aid.get("suggested_phrase"):
+                lines.append(f"Suggested phrase: {aid['suggested_phrase']}")
             if aid["missing"]:
                 lines.append("Missing definitions: " + ", ".join(aid["missing"]))
             for row in aid["coverage"]:
@@ -387,30 +449,74 @@ class WorkspaceMemory:
                     ErrorCode.REQUEST_INVALID,
                     message="Shorten the definitions before saving.",
                 )
-            record_id = uuid4().hex
-            self._insert(
-                connection,
-                record_id,
-                "derived",
-                "generated",
-                text,
-                aid["title"].casefold(),
-                _terms(text),
-                datetime.now(UTC).isoformat(),
-                {
-                    "study_aid": aid,
-                    "references": list(sources.values()),
-                    "topic_label": aid["title"],
-                },
-                None,
-                None,
-            )
+            provenance = {
+                "study_aid": aid,
+                "references": list(sources.values()),
+                "topic_label": aid["title"],
+            }
+            topic = aid["title"].casefold()
+            terms = _terms(text)
+            timestamp = datetime.now(UTC).isoformat()
+            if record_id is None:
+                record_id = uuid4().hex
+                self._insert(
+                    connection,
+                    record_id,
+                    "derived",
+                    "generated",
+                    text,
+                    topic,
+                    terms,
+                    timestamp,
+                    provenance,
+                    None,
+                    None,
+                )
+            else:
+                old = self._get(connection, record_id)
+                old_provenance = json.loads(old["provenance"])
+                if (
+                    old["revision"] != expected_revision
+                    or "study_aid" not in old_provenance
+                ):
+                    raise AppError(ErrorCode.WORKSPACE_CONFLICT)
+                history = json.loads(old["history"])
+                if len(history) >= MAX_REVISIONS - 1:
+                    raise AppError(
+                        ErrorCode.WORKSPACE_CONFLICT,
+                        message="This item has reached its correction limit.",
+                    )
+                history.append(
+                    {
+                        "revision": old["revision"],
+                        "text": old["text"],
+                        "origin": old["origin"],
+                        "corrected_at": timestamp,
+                        "provenance": old_provenance,
+                    }
+                )
+                connection.execute(
+                    """
+                    UPDATE records SET text = ?, topic = ?, terms = ?, provenance = ?,
+                    revision = revision + 1, history = ?, origin = 'generated' WHERE id = ?
+                """,
+                    (
+                        text,
+                        topic,
+                        json.dumps(terms),
+                        json.dumps(provenance),
+                        json.dumps(history),
+                        record_id,
+                    ),
+                )
+                self._replace_terms(connection, record_id, terms, old["created_at"])
+                connection.execute("DELETE FROM study_aids WHERE id = ?", (record_id,))
             connection.execute(
-                "INSERT INTO study_aids VALUES (?, ?)",
-                (aid["title"].casefold(), record_id),
+                "INSERT INTO study_aids VALUES (?, ?)", (topic, record_id)
             )
+            # Older revisions preserve dependencies as long as their text survives.
             connection.executemany(
-                "INSERT INTO study_inputs VALUES (?, ?)",
+                "INSERT OR IGNORE INTO study_inputs VALUES (?, ?)",
                 ((parent, record_id) for parent in sources),
             )
 
@@ -447,6 +553,11 @@ class WorkspaceMemory:
             if text is None:
                 connection.execute("DELETE FROM records WHERE id = ?", (record_id,))
                 return
+            if "study_aid" in json.loads(row["provenance"]):
+                raise AppError(
+                    ErrorCode.REQUEST_INVALID,
+                    message="Use the structured study aid editor to revise this item.",
+                )
             # An excerpt reflects exactly one revision of its concept.
             connection.execute(
                 "DELETE FROM records WHERE parent_id = ? AND relation = 'excerpt_of'",
