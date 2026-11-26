@@ -6,6 +6,7 @@ import hashlib
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import Any, Literal
 
 from offline_rag.app.conversation.prior_turns import PriorTurn, validate_prior_turns
@@ -266,6 +267,7 @@ def execute_prepared_conversation_turn(
     # 12. Shared grounded query core against admitted snapshot/scope.
     if control is not None:
         control.checkpoint("pre_grounded")
+    grounded_started = perf_counter()
     outcome = run_bound_snapshot_query(
         runtime,
         snapshot=snapshot,
@@ -276,6 +278,7 @@ def execute_prepared_conversation_turn(
         source_scope=source_scope,
         claim_terminal=owned,
     )
+    grounded_ended = perf_counter()
     try:
         citations = _enrich_workspace_citations(
             outcome.citations,
@@ -359,6 +362,12 @@ def execute_prepared_conversation_turn(
                 "workspace memory capture failed trace=%s", conversation_trace_id
             )
 
+    logger.info(
+        "workspace turn phases query_trace=%s grounded_ms=%.0f postprocess_ms=%.0f",
+        outcome.trace_id,
+        (grounded_ended - grounded_started) * 1000,
+        (perf_counter() - grounded_ended) * 1000,
+    )
     return ConversationTurnResponse(
         workspace_id=workspace_id,
         workspace_revision=admitted_revision,
