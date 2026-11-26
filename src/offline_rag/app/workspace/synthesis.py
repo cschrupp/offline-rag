@@ -120,6 +120,7 @@ def generate_study_text(
     instruction: str,
     data: object,
     output_tokens: int,
+    response_format: dict[str, Any] | None = None,
 ) -> str:
     """Use the configured generator once and reject truncated output."""
     resources = runtime.resources
@@ -142,6 +143,7 @@ def generate_study_text(
         max_output_tokens=min(
             output_tokens, int(runtime.settings.generation.max_output_tokens)
         ),
+        response_format=response_format,
         metadata={
             "prompt_contract": "workspace_study_synthesis_v1",
             "operation": operation,
@@ -214,13 +216,42 @@ def synthesize_discussions(
         }
         for index, item in enumerate(concepts, start=1)
     }
+    response_format = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "workspace_discussion_summary",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "required": ["paragraphs"],
+                "additionalProperties": False,
+                "properties": {
+                    "paragraphs": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["text", "refs"],
+                            "additionalProperties": False,
+                            "properties": {
+                                "text": {"type": "string"},
+                                "refs": {
+                                    "type": "array",
+                                    "items": {"type": "string", "enum": list(indexed)},
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
     content = generate_study_text(
         runtime,
         operation="discussion_summary",
         instruction=(
             "Write a short synthesis explaining what the learner discussed, how the ideas relate, and any differences. "
             "Attribute learner corrections and prior-publication statements. Do not present historical learning as current procedure. "
-            'Return a JSON array with at most six objects of the form {"text":"...", "refs":["1","2"]}. '
+            'Return a JSON object with a paragraphs array of at most six {"text":"...", "refs":["1","2"]} objects. '
             "Each refs array must cite supplied input keys only."
         ),
         data={
@@ -230,12 +261,20 @@ def synthesize_discussions(
                 for ref, item in indexed.items()
             },
         },
-        output_tokens=512,
+        # Reasoning providers can charge hidden tokens to the same output
+        # budget. Leave headroom within the configured generation ceiling.
+        output_tokens=1200,
+        response_format=response_format,
     )
     used: set[str] = set()
     paragraphs = []
     try:
-        parsed = json.loads(content)
+        fence = re.fullmatch(
+            r"```(?:json)?\s*\n(.*?)\n```", content, re.DOTALL | re.IGNORECASE
+        )
+        parsed = json.loads(fence[1] if fence else content)
+        if isinstance(parsed, dict) and parsed.keys() == {"paragraphs"}:
+            parsed = parsed["paragraphs"]
         if not isinstance(parsed, list) or not 1 <= len(parsed) <= 6:
             raise ValueError("summary form")
         for paragraph in parsed:
@@ -244,13 +283,15 @@ def synthesize_discussions(
             text, refs = paragraph.get("text"), paragraph.get("refs")
             if not isinstance(text, str) or not 1 <= len(text.strip()) <= 700:
                 raise ValueError("paragraph text")
-            if (
-                not isinstance(refs, list)
-                or not refs
-                or any(not isinstance(ref, str) or ref not in indexed for ref in refs)
+            if not isinstance(refs, list) or not refs:
+                raise ValueError("summary references")
+            normalized_refs = [str(ref) if type(ref) is int else ref for ref in refs]
+            if any(
+                not isinstance(ref, str) or ref not in indexed
+                for ref in normalized_refs
             ):
                 raise ValueError("summary references")
-            used.update(refs)
+            used.update(normalized_refs)
             paragraphs.append(text.strip())
         if len(used) < 2:
             raise ValueError("insufficient attribution")

@@ -713,12 +713,27 @@ async def workspace_conversation_turn(
                 "records"
             ]
             runtime.operations.promote_query_preflight(operation)
-            answer, contributors = synthesize_discussions(
-                runtime,
-                topic=topic,
-                records=records,
-                current_snapshot=record.current_snapshot_id,
-            )
+            try:
+                answer, contributors = synthesize_discussions(
+                    runtime,
+                    topic=topic,
+                    records=records,
+                    current_snapshot=record.current_snapshot_id,
+                )
+            except AppError as exc:
+                if exc.code not in {
+                    ErrorCode.GENERATION_FAILED,
+                    ErrorCode.GENERATION_UNAVAILABLE,
+                }:
+                    raise
+                operation.checkpoint("post_learning_synthesis")
+                recalled = learning_history_response(
+                    runtime.settings, workspace_id, f"What did I learn about {topic}?"
+                )
+                answer = "I couldn't produce a synthesis I could verify against your saved discussions. Here is your saved learning history instead."
+                if recalled:
+                    answer += "\n\n" + recalled["answer"]
+                contributors = []
             operation.checkpoint("post_learning_synthesis")
             return JSONResponse(
                 {

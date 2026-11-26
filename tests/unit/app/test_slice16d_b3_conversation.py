@@ -1822,3 +1822,102 @@ def test_km03_selected_source_proposal_and_structured_aid_revision(tmp_path: Pat
         assert memory.find_study_aids("Alpha aid") == []
         assert memory.find_study_aids("Revised aid")[0]["text"] == revised_record["text"]
         assert generator.generate_calls == before + 2
+
+
+def test_synthesis_provider_format_and_saved_history_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import httpx
+
+    from offline_rag.app.workspace.memory import WorkspaceMemory
+    from offline_rag.generation.openai_compatible import OpenAICompatibleGenerator
+
+    with _conversation_client(tmp_path) as (client, runtime, _, generator):
+        wid, _, _, _ = _seed_workspace(client)
+        snapshot = WorkspaceStore(runtime.settings).get(wid).current_snapshot_id
+        memory = WorkspaceMemory(runtime.settings, wid)
+        memory.set_enabled(True)
+        for index, text in enumerate(("Check for loose parts.", "Use the blue form.")):
+            memory.capture(
+                event_id=f"synthesis-{index}",
+                question="What is bench inspection?",
+                topic_question="bench inspection",
+                answer=text,
+                provenance={"snapshot_id": snapshot},
+            )
+
+        completions = iter(
+            [
+                {
+                    "choices": [
+                        {"finish_reason": "length", "message": {"content": None}}
+                    ],
+                    "usage": {
+                        "prompt_tokens": 288,
+                        "completion_tokens": 512,
+                        "completion_tokens_details": {"reasoning_tokens": 512},
+                    },
+                },
+                {
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {
+                                "content": '```json\n{"paragraphs":[{"text":"The discussions connect checking and recording.","refs":[1,"2"]}]}\n```',
+                            },
+                        }
+                    ]
+                },
+                {
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {
+                                "content": '{"paragraphs":[{"text":"Unverified summary.","refs":["1","9"]}]}',
+                            },
+                        }
+                    ]
+                },
+            ]
+        )
+        calls = []
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            calls.append(json.loads(request.content))
+            return httpx.Response(200, json=next(completions))
+
+        with httpx.Client(transport=httpx.MockTransport(respond)) as provider:
+            adapter = OpenAICompatibleGenerator(runtime.settings, client=provider)
+            monkeypatch.setattr(generator, "generate", adapter.generate)
+
+            def synthesize():
+                response = client.post(
+                    f"/v1/workspaces/{wid}/conversation/turn",
+                    json={
+                        "question": "Synthesize what I learned about bench inspection."
+                    },
+                )
+                assert response.status_code == 200
+                return response.json()
+
+            truncated, valid, unbound = (synthesize() for _ in range(3))
+
+        assert len(calls) == 3
+        assert calls[0]["max_tokens"] == min(
+            1200, runtime.settings.generation.max_output_tokens
+        )
+        schema = calls[0]["response_format"]["json_schema"]["schema"]
+        assert schema["properties"]["paragraphs"]["items"]["properties"]["refs"][
+            "items"
+        ]["enum"] == ["1", "2"]
+        assert valid["answer"] == "The discussions connect checking and recording."
+        assert len({item["record_id"] for item in valid["memory_contributors"]}) == 2
+        for fallback in (truncated, unbound):
+            assert fallback["memory_recall"]
+            assert fallback["memory_contributors"] == []
+            assert fallback["citations"] == []
+            assert "saved learning history instead" in fallback["answer"]
+            assert "Check for loose parts." in fallback["answer"]
+            assert "Use the blue form." in fallback["answer"]
+            assert "Unverified summary." not in fallback["answer"]
