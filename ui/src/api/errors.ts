@@ -91,6 +91,21 @@ export function messageForUploadSizeReason(reason: unknown): string | null {
   return null;
 }
 
+export function messageForIngestionResourceReason(reason: unknown): string | null {
+  switch (reason) {
+    case "large_pdf_host_memory_insufficient":
+      return "Seneca does not have enough available RAM to rebuild this workspace with its large PDFs. Free memory on the machine running Seneca, then retry.";
+    case "ingest_capacity_exhausted":
+      return "Seneca is already processing the maximum number of ingestion jobs. Wait for a job to finish, then retry.";
+    case "storage_insufficient":
+      return "Seneca does not have enough free disk space to build the workspace indexes. Free space on the Seneca data drive, then retry.";
+    case "memory_telemetry_unavailable":
+      return "Seneca could not verify available memory for large PDF processing. Check that the Seneca runtime can read memory information, then retry.";
+    default:
+      return null;
+  }
+}
+
 export function userFacingErrorMessage(error: unknown): string {
   if (isApiError(error)) {
     const uploadSizeMessage = messageForUploadSizeReason(
@@ -107,7 +122,8 @@ export function userFacingErrorMessage(error: unknown): string {
       case "workspace_conflict":
         return "This workspace changed since you last loaded it. Review the updated state, then submit again.";
       case "service_overloaded":
-        return "System is busy. No work was queued.";
+        return messageForIngestionResourceReason(error.details?.reason) ??
+          "System is busy. No work was queued.";
       case "idempotency_conflict":
         return "This request conflicts with a different earlier action using the same idempotency key.";
       case "workspace_state_unavailable":
