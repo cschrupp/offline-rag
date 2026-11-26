@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import re
+from time import perf_counter
 from typing import Any
 from urllib.parse import quote
 
@@ -698,6 +699,7 @@ def workspace_query(
 async def workspace_conversation_turn(
     request: Request, workspace_id: str, body: ConversationTurnRequest
 ) -> dict[str, Any] | Response:
+    request_started = perf_counter()
     runtime = _runtime(request)
     validated = validate_conversation_request(
         body.question, [turn.model_dump() for turn in body.prior_turns]
@@ -762,6 +764,7 @@ async def workspace_conversation_turn(
     operation = runtime.operations.start_query_preflight()
 
     def worker() -> dict[str, Any]:
+        worker_started = perf_counter()
         prepared = prepare_conversation_turn(
             runtime,
             workspace_id=workspace_id,
@@ -770,6 +773,7 @@ async def workspace_conversation_turn(
             control=operation,
         )
         runtime.operations.promote_query_preflight(operation)
+        prepared_at = perf_counter()
         result = execute_prepared_conversation_turn(
             runtime,
             prepared,
@@ -777,10 +781,13 @@ async def workspace_conversation_turn(
             owned=True,
         )
         logger.info(
-            "workspace turn completed operation=%s conversation_trace=%s query_trace=%s",
+            "workspace turn completed operation=%s conversation_trace=%s query_trace=%s queue_ms=%.0f prepare_ms=%.0f execute_ms=%.0f",
             operation.op_id,
             result.conversation_trace_id,
             result.query_trace_id,
+            (worker_started - request_started) * 1000,
+            (prepared_at - worker_started) * 1000,
+            (perf_counter() - prepared_at) * 1000,
         )
         return result.as_dict()
 

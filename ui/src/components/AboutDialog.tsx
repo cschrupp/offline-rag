@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { apiRequest } from "../api/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "./Button";
 import { ModalDialog } from "./ModalDialog";
@@ -18,6 +20,18 @@ type Props = {
 
 export function AboutDialog({ open, onClose }: Props) {
   const navigate = useNavigate();
+  const [runtimeRevision, setRuntimeRevision] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const controller = new AbortController();
+    void apiRequest<{ source_sha: string | null }>("/v1/runtime/revision", {
+      signal: controller.signal,
+    }).then(
+      (result) => { if (!controller.signal.aborted) setRuntimeRevision(result?.source_sha ?? null); },
+      () => { if (!controller.signal.aborted) setRuntimeRevision(null); },
+    );
+    return () => controller.abort();
+  }, [open]);
 
   return (
     <ModalDialog
@@ -29,6 +43,8 @@ export function AboutDialog({ open, onClose }: Props) {
         <p className="about-product-name">{PRODUCT_NAME}</p>
         <p className="about-product-descriptor">{PRODUCT_DESCRIPTOR}</p>
         <p className="muted">Version {PRODUCT_VERSION}</p>
+        <p className="muted">Backend revision <code>{runtimeRevision ?? "Unavailable"}</code></p>
+        <p className="muted">Frontend revision <code>{import.meta.env.VITE_SENECA_SOURCE_SHA || "Unavailable"}</code></p>
         <p>
           Local-first, evidence-grounded workspace for private technical
           knowledge.

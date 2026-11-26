@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+import json
+import os
+import re
+from pathlib import Path
+
+from fastapi import APIRouter, Request, Response
 
 from offline_rag.app.runtime import ApplicationRuntime
 
@@ -30,3 +35,25 @@ def health_ready(request: Request) -> dict[str, str]:
     runtime = _runtime(request)
     runtime.require_ready()
     return {"status": "ready"}
+
+
+@router.get("/v1/runtime/revision")
+def runtime_revision(response: Response) -> dict[str, str | None]:
+    """Report the release revision without exposing local file paths."""
+    revision = os.environ.get("SENECA_SOURCE_SHA")
+    if revision is None:
+        try:
+            manifest = json.loads(
+                Path(".seneca-release.json").read_text(encoding="utf-8")
+            )
+            revision = (
+                manifest.get("source_sha") if isinstance(manifest, dict) else None
+            )
+        except OSError, ValueError:
+            revision = None
+    response.headers["Cache-Control"] = "no-store"
+    return {
+        "source_sha": revision
+        if isinstance(revision, str) and re.fullmatch(r"[0-9a-f]{40}", revision)
+        else None
+    }
