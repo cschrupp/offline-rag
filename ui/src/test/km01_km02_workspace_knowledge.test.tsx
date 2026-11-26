@@ -37,7 +37,7 @@ it("inspects recalled knowledge, corrects it and forgets it through the workspac
     const view = within(panel);
     await user.type(view.getByLabelText("Find a topic"), "inspection");
     await user.click(view.getByRole("button", { name: "Find" }));
-    await user.click(await view.findByText("Concept · inspection"));
+    await user.click(await view.findByText("Concept · inspection", { selector: "summary" }));
     await user.click(view.getByText("Source provenance"));
     expect(view.getByText("Historical publication")).toBeVisible();
     await user.click(view.getByRole("button", { name: "Correct" }));
@@ -52,5 +52,51 @@ it("inspects recalled knowledge, corrects it and forgets it through the workspac
     expect(mock.calls.some((call) => call.url.endsWith("/conversation/turn"))).toBe(false);
   } finally {
     mock.restore();
+  }
+});
+
+it("shows learning-history recall in chat without persisting it or using it for factual follow-ups", async () => {
+  const user = userEvent.setup();
+  const memoryQuestion = "What did I learn about forcible entry?";
+  const remembered = "Saved discussion about inspection.";
+  const submitted: { question: string; prior_turns: unknown[] }[] = [];
+  const mock = installFetchMock((call) => {
+    if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+    if (call.url === "/v1/workspaces/ws_1") return jsonResponse(workspace({ workspace_id: "ws_1" }));
+    if (call.url === "/v1/workspaces/ws_1/sources") {
+      return jsonResponse({ workspace_id: "ws_1", revision: 1, sources: [source({ source_id: "src_1" })] });
+    }
+    if (call.url.endsWith("/conversation/turn")) {
+      const input = JSON.parse(String(call.body));
+      submitted.push(input);
+      if (input.question === memoryQuestion) {
+        return jsonResponse({
+          workspace_id: "ws_1", workspace_revision: 1, snapshot_id: "snap_1",
+          product_mode_id: "knowledge_recall_v1", conversation_trace_id: "memory_fixture",
+          status: "answered", answer: remembered, answer_origin: "conversation",
+          memory_recall: true, query_trace_id: null, retrieval_question: null,
+          context_used: false, question: memoryQuestion, abstention_reason: null,
+          answer_blocks: [], citations: [],
+        });
+      }
+      return errorResponse("generation_timeout", "Generation timed out.", 504, true);
+    }
+    return errorResponse("not_found", "x", 404);
+  });
+  try {
+    renderApp("/workspaces/ws_1");
+    const composer = await screen.findByLabelText("Ask a follow-up");
+    await user.type(composer, memoryQuestion);
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText(remembered)).toBeVisible();
+    expect(screen.getByText(/From workspace learning history/)).toBeVisible();
+    expect(Object.values(sessionStorage).join(" ")).not.toContain(remembered);
+    await user.type(composer, "What does the current source say?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Generation timed out.")).toBeVisible();
+    expect(submitted[1].prior_turns).toEqual([]);
+  } finally {
+    mock.restore();
+    sessionStorage.clear();
   }
 });

@@ -7,14 +7,18 @@ import { userFacingErrorMessage } from "../../api/errors";
 import { Button } from "../../components/Button";
 import { TextArea } from "../../components/Field";
 
+import { StudyAidCoverage, StudyAidEditor, type StudyAid } from "./StudyAidEditor";
+
 type Revision = { revision: number; text: string; origin: string; corrected_at: string };
 type Citation = {
   source_id: string;
+  source_display_name?: string;
   source_version: number;
   document_id: string;
   source_chunk_id: string;
   evidence_unit_id: string;
 };
+type SourceReference = { snapshot_id?: string; workspace_revision?: number; citations?: Citation[] };
 type Record = {
   id: string;
   category: "episode" | "semantic" | "learning" | "derived";
@@ -26,13 +30,19 @@ type Record = {
   parent_id: string | null;
   relation: string | null;
   history: Revision[];
-  provenance: { parent_revision?: number; snapshot_id?: string; workspace_revision?: number; citations?: Citation[] };
+  provenance: SourceReference & {
+    parent_revision?: number;
+    topic_label?: string;
+    study_aid?: StudyAid;
+    references?: { record_id: string; revision: number; provenance: SourceReference }[];
+  };
 };
 type Recall = {
   enabled: boolean;
   records: Record[];
   summaries: {
     topic: string;
+    label?: string;
     category: "derived";
     origin: "generated";
     items: { record_id: string; text: string; origin: string }[];
@@ -59,9 +69,11 @@ const originLabel: { [origin: string]: string } = {
 export function KnowledgePanel({
   workspaceId,
   snapshotId,
+  onMemoryChanged,
 }: {
   workspaceId: string;
   snapshotId: string | null;
+  onMemoryChanged: () => void;
 }) {
   const root = `/v1/workspaces/${encodeURIComponent(workspaceId)}/knowledge`;
   const client = useQueryClient();
@@ -95,6 +107,7 @@ export function KnowledgePanel({
       }
     },
     onSuccess: async () => {
+      onMemoryChanged();
       setEditor(null);
       setDraft("");
       await client.invalidateQueries({ queryKey });
@@ -148,6 +161,15 @@ export function KnowledgePanel({
             onClick={() => change.mutate({ kind: "settings", enabled: !recall.data.enabled })}>
             {recall.data.enabled ? "Pause memory" : "Enable memory"}
           </Button>
+          {recall.data.enabled ? (
+            <StudyAidEditor
+              root={root}
+              references={recall.data.records
+                .filter((record) => record.category === "episode" || record.category === "semantic")
+                .map((record) => ({ id: record.id, label: `${categoryLabel[record.category]} · ${record.provenance.topic_label ?? record.topic}` }))}
+              onSaved={async () => { await client.invalidateQueries({ queryKey }); }}
+            />
+          ) : null}
           <form className="stack" onSubmit={(event) => {
             event.preventDefault();
             setTopic(searchDraft.trim());
@@ -160,7 +182,7 @@ export function KnowledgePanel({
           {recall.data.records.length === 0 ? <p>No matching knowledge yet.</p> : null}
           {recall.data.summaries.map((summary) => (
             <details key={summary.topic}>
-              <summary>Topic summary · {summary.topic}</summary>
+              <summary>Topic summary · {summary.label ?? summary.topic}</summary>
               <p className="muted">Excerpts from related discussions</p>
               <ul>{summary.items.map((item) => (
                 <li key={item.record_id}>
@@ -172,9 +194,26 @@ export function KnowledgePanel({
           ))}
           {recall.data.records.map((record) => (
             <details id={`memory-${record.id}`} key={record.id}>
-              <summary>{categoryLabel[record.category]} · {record.topic}</summary>
+              <summary>{record.provenance.study_aid ? "Study aid" : categoryLabel[record.category]} · {record.provenance.topic_label ?? record.topic}</summary>
               <p className="muted">{originLabel[record.origin] ?? record.origin} · Revision {record.revision}</p>
               <p className="workspace-knowledge-text">{record.text}</p>
+              {record.provenance.study_aid ? (
+                <details>
+                  <summary>Original concept coverage and references</summary>
+                  <StudyAidCoverage aid={record.provenance.study_aid} />
+                  {record.provenance.references?.map((reference) => (
+                    <div key={reference.record_id}>
+                      <p>Related item revision {reference.revision}</p>
+                      {reference.provenance.snapshot_id ? (
+                        <p>{reference.provenance.snapshot_id === snapshotId ? "Current publication" : "Historical publication"}</p>
+                      ) : null}
+                      <ul>{reference.provenance.citations?.map((citation, index) => (
+                        <li key={index}>{citation.source_display_name || citation.source_id} · Version {citation.source_version}</li>
+                      ))}</ul>
+                    </div>
+                  ))}
+                </details>
+              ) : null}
               {record.parent_id ? (
                 <p>{record.relation === "note_on" ? "Note on" : record.relation === "excerpt_of" ? "Excerpt from" : "Discussed in"}{" "}
                   {recall.data.records.some((candidate) => candidate.id === record.parent_id) ? (
@@ -190,7 +229,7 @@ export function KnowledgePanel({
                   <p>{record.provenance.snapshot_id === snapshotId ? "Current publication" : "Historical publication"}</p>
                   <p><code>{record.provenance.snapshot_id}</code></p>
                   <ul>{record.provenance.citations?.map((citation, index) => (
-                    <li key={index}>{citation.source_id} · Version {citation.source_version} · {citation.evidence_unit_id}</li>
+                    <li key={index}>{citation.source_display_name || citation.source_id} · Version {citation.source_version} · {citation.evidence_unit_id}</li>
                   ))}</ul>
                 </details>
               ) : null}

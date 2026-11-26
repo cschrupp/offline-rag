@@ -86,10 +86,25 @@ def _terms(value: str) -> tuple[str, ...]:
     )
 
 
+_TOPIC_OPENING = re.compile(
+    r"^(?:what is|explain|describe|define|tell me about|give me an overview of)\s+"
+)
+
+
+def topic_label(value: str) -> str:
+    """Keep topic word order while removing recognized request framing."""
+    question = value.strip().casefold()
+    tools = _TOOL_QUESTION.fullmatch(question)
+    if tools:
+        return tools.group(1).strip(" ?.!")[:120]
+    return _TOPIC_OPENING.sub("", question).strip(" ?.!")[:120]
+
+
 def topic_terms(value: str) -> tuple[str, ...]:
     """Extract a bounded topic, including known question templates."""
-    match = _TOOL_QUESTION.fullmatch(value.strip().casefold())
-    return _terms(match.group(1) if match else value)[:12]
+    question = value.strip().casefold()
+    tools = _TOOL_QUESTION.fullmatch(question)
+    return _terms(tools.group(1) if tools else _TOPIC_OPENING.sub("", question))[:12]
 
 
 class WorkspaceMemory:
@@ -147,6 +162,27 @@ class WorkspaceMemory:
                         INSERT INTO processed_operations SELECT 'capture', id
                         FROM records WHERE category = 'episode'
                     """)
+                connection.execute("""
+                    CREATE TABLE IF NOT EXISTS study_aids (
+                        title_key TEXT NOT NULL, id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE,
+                        PRIMARY KEY (title_key, id)
+                    )
+                """)
+                connection.execute("""
+                    CREATE TABLE IF NOT EXISTS study_inputs (
+                        parent_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE,
+                        aid_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE,
+                        PRIMARY KEY (parent_id, aid_id)
+                    )
+                """)
+                connection.execute("""
+                    CREATE TRIGGER IF NOT EXISTS forget_study_dependents BEFORE DELETE ON records
+                    BEGIN
+                        DELETE FROM records WHERE id IN (
+                            SELECT aid_id FROM study_inputs WHERE parent_id = OLD.id
+                        );
+                    END
+                """)
                 yield connection
         finally:
             connection.close()
@@ -199,6 +235,7 @@ class WorkspaceMemory:
                 return
             topic = " ".join(sorted(terms))
             timestamp = datetime.now(UTC).isoformat()
+            provenance = {**provenance, "topic_label": topic_label(topic_question)}
             for record_id, category, origin, content, parent, relation in (
                 (event_id, "episode", "user_provided", question, None, None),
                 (
@@ -304,6 +341,92 @@ class WorkspaceMemory:
                 parent_id,
                 "note_on",
             )
+
+    def save_study_aid(self, aid: dict[str, Any], operation_id: str) -> None:
+        """Persist the exact generated aid with original concepts and input revisions."""
+        self.workspace.get(self.workspace_id)
+        with self._connect() as connection:
+            identity = sha256(operation_id.encode()).hexdigest()
+            if not self._claim_operation(connection, "study_aid", identity):
+                return
+            if not self._enabled(connection):
+                raise AppError(
+                    ErrorCode.WORKSPACE_CONFLICT,
+                    message="Enable workspace memory to save a study aid.",
+                )
+            if not aid["coverage"]:
+                raise AppError(
+                    ErrorCode.REQUEST_INVALID,
+                    message="Supply at least one known concept.",
+                )
+            sources = {}
+            for row in aid["coverage"]:
+                record_id = row["source_record_id"]
+                if record_id and record_id not in sources:
+                    record = self._get(connection, record_id)
+                    if record["category"] not in {"episode", "semantic"}:
+                        raise AppError(
+                            ErrorCode.REQUEST_INVALID,
+                            message="Select a discussion or concept as a reference.",
+                        )
+                    sources[record_id] = {
+                        "record_id": record_id,
+                        "revision": record["revision"],
+                        "provenance": json.loads(record["provenance"]),
+                    }
+            lines = [aid["title"], f"Cue: {aid['cue']}"]
+            if aid["missing"]:
+                lines.append("Missing definitions: " + ", ".join(aid["missing"]))
+            for row in aid["coverage"]:
+                lines.append(
+                    f"{row['cue']} · {row['original']} · {row['term']} — {row['definition']}"
+                )
+            text = "\n".join(lines)
+            if len(text) > MAX_TEXT:
+                raise AppError(
+                    ErrorCode.REQUEST_INVALID,
+                    message="Shorten the definitions before saving.",
+                )
+            record_id = uuid4().hex
+            self._insert(
+                connection,
+                record_id,
+                "derived",
+                "generated",
+                text,
+                aid["title"].casefold(),
+                _terms(text),
+                datetime.now(UTC).isoformat(),
+                {
+                    "study_aid": aid,
+                    "references": list(sources.values()),
+                    "topic_label": aid["title"],
+                },
+                None,
+                None,
+            )
+            connection.execute(
+                "INSERT INTO study_aids VALUES (?, ?)",
+                (aid["title"].casefold(), record_id),
+            )
+            connection.executemany(
+                "INSERT INTO study_inputs VALUES (?, ?)",
+                ((parent, record_id) for parent in sources),
+            )
+
+    def find_study_aids(self, title: str) -> list[dict[str, str]]:
+        """Resolve a bounded exact title in this workspace."""
+        self.workspace.get(self.workspace_id)
+        if not self.path.is_file():
+            return []
+        with self._connect() as connection:
+            return [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT records.text FROM study_aids JOIN records USING (id) WHERE title_key = ? LIMIT 2",
+                    (title.strip().casefold(),),
+                )
+            ]
 
     @staticmethod
     def _get(connection: sqlite3.Connection, record_id: str) -> sqlite3.Row:
@@ -418,6 +541,11 @@ class WorkspaceMemory:
                     "category": "derived",
                     "origin": "generated",
                     "items": items,
+                    "label": next(
+                        record["provenance"].get("topic_label", topic)
+                        for record in records
+                        if record["id"] == items[0]["record_id"]
+                    ),
                 }
                 for topic, items in topics.items()
                 if len(items) > 1

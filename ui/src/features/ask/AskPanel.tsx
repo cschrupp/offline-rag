@@ -315,7 +315,7 @@ export function AskPanel({
               revision: workspaceRevision,
               current_snapshot_id: currentSnapshotId,
             }}
-            history={history}
+            history={history.filter((entry) => !entry.response.memory_recall)}
             incompleteTurns={incompleteTurns}
             exportedFromView={trainingMode ? "training" : "normal"}
             askPending={askPending}
@@ -564,9 +564,11 @@ export function AskPanel({
                 </div>
                 <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
                   {statusLabel(String(entry.response.status))} ·{" "}
-                  {isConversationOrigin
-                    ? "From this conversation — not re-checked against your sources"
-                    : sourceScopeLabel(entry)}
+                  {entry.response.memory_recall
+                    ? "From workspace learning history"
+                    : isConversationOrigin
+                      ? "From this conversation — not re-checked against your sources"
+                      : sourceScopeLabel(entry)}
                 </p>
 
                 {trainingMode && isAnswered ? (

@@ -329,12 +329,21 @@ def execute_prepared_conversation_turn(
                     "snapshot_id": outcome.binding.snapshot_id,
                     "source_scope": source_scope.model_dump(mode="json"),
                     "query_trace_id": outcome.trace_id,
+                    "concept_highlights": list(
+                        dict.fromkeys(
+                            block["text"][:240]
+                            for block in outcome.answer_blocks[:4]
+                            if block.get("citation_refs")
+                            and isinstance(block.get("text"), str)
+                        )
+                    )[:4],
                     "citations": [
                         {
                             key: citation.get(key)
                             for key in (
                                 "source_id",
                                 "source_version",
+                                "source_display_name",
                                 "document_id",
                                 "source_chunk_id",
                                 "evidence_unit_id",

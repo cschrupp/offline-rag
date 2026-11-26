@@ -18,6 +18,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from starlette.concurrency import run_in_threadpool
 
 from offline_rag.api.workers import run_owned_worker
 from offline_rag.api.workspace_views import (
@@ -58,6 +59,12 @@ from offline_rag.app.workspace.source_content import (
     load_versioned_source_content,
 )
 from offline_rag.app.workspace.store import WorkspaceStore
+from offline_rag.app.workspace.study import (
+    StudyAidRequest,
+    compose_study_aid,
+    is_learning_history_request,
+    learning_history_response,
+)
 from offline_rag.app.workspace.upload_spool import (
     WorkspaceUploadSpool,
     spool_workspace_multipart,
@@ -680,6 +687,11 @@ async def workspace_conversation_turn(
     validated = validate_conversation_request(
         body.question, [turn.model_dump() for turn in body.prior_turns]
     )
+    if is_learning_history_request(validated[0]):
+        recall = await run_in_threadpool(
+            learning_history_response, runtime.settings, workspace_id, validated[0]
+        )
+        return JSONResponse(recall, headers={"Cache-Control": "no-store"})
     runtime.require_ready()
     operation = runtime.operations.start_query_preflight()
 
@@ -811,5 +823,28 @@ def change_workspace_knowledge(
 ) -> Response:
     WorkspaceMemory(_runtime(request).settings, workspace_id).change(
         record_id, body.revision, body.text
+    )
+    return Response(status_code=204)
+
+
+@router.post("/v1/workspaces/{workspace_id}/knowledge/study-aids/preview")
+def preview_study_aid(
+    request: Request,
+    workspace_id: str,
+    body: StudyAidRequest,
+) -> JSONResponse:
+    WorkspaceStore(_runtime(request).settings).get(workspace_id)
+    return JSONResponse(compose_study_aid(body), headers={"Cache-Control": "no-store"})
+
+
+@router.post("/v1/workspaces/{workspace_id}/knowledge/study-aids", status_code=204)
+def save_study_aid(
+    request: Request,
+    workspace_id: str,
+    body: StudyAidRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Response:
+    WorkspaceMemory(_runtime(request).settings, workspace_id).save_study_aid(
+        compose_study_aid(body), _require_idempotency_key(idempotency_key)
     )
     return Response(status_code=204)
