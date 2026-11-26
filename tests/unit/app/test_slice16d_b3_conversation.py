@@ -204,7 +204,9 @@ def _conversation_client(
         DenseRetriever.retrieve = original_dense  # type: ignore[method-assign]
 
 
-def _seed_workspace(client: TestClient) -> tuple[str, str, str, str]:
+def _seed_workspace(
+    client: TestClient, *, alpha_text: str | None = None,
+) -> tuple[str, str, str, str]:
     created = client.post(
         "/v1/workspaces",
         json={"title": "Conversation Desk", "description": "b3"},
@@ -213,7 +215,7 @@ def _seed_workspace(client: TestClient) -> tuple[str, str, str, str]:
     assert created.status_code == 201, created.text
     wid = created.json()["workspace_id"]
     alpha_bytes = (
-        f"{ALPHA_SCOPE_MARKER} supervised learning and unsupervised clustering.\n"
+        alpha_text or f"{ALPHA_SCOPE_MARKER} supervised learning and unsupervised clustering.\n"
     ).encode()
     beta_bytes = (
         f"{BETA_SCOPE_MARKER} reinforcement learning overview.\n"
@@ -1532,3 +1534,210 @@ def test_workspace_memory_corrective_association_index_and_replay(tmp_path: Path
         save("save-two")
         assert memory.recall("ALVESCOUP")["records"] == []
         assert not any(row["id"].startswith("entry-a") for row in memory.recall("")["records"])
+
+
+def test_km03_learning_history_and_study_aid_across_publication_changes(tmp_path: Path) -> None:
+    from offline_rag.app.workspace.memory import WorkspaceMemory
+
+    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+        old_rule = "For this synthetic exercise, record a blue tag before review."
+        new_rule = "For this synthetic exercise, record an orange tag before review."
+        wid, alpha, beta, _ = _seed_workspace(client, alpha_text=f"{ALPHA_SCOPE_MARKER} {old_rule}")
+
+        def respond(request):
+            captures["generator_requests"].append(request)
+            if (request.metadata or {}).get("operation") == "discussion_summary":
+                instructions = json.loads(request.messages[-1].content)
+                assert all(item["prior_publication"] for item in instructions["discussions"].values())
+                return json.dumps([{
+                    "text": "Both saved discussions connected the practice tag to the review step in the prior exercise.",
+                    "refs": ["1", "2"],
+                }])
+            prompt = "\n".join(message.content for message in request.messages)
+            handles = re.findall(r"\[EVIDENCE (E[1-9][0-9]*)\]", prompt)
+            rule = next((rule for rule in (old_rule, new_rule) if rule in prompt), None)
+            return json.dumps({
+                "abstain": rule is None,
+                "blocks": [{"text": rule, "evidence_handles": [handles[0]]}] if rule else [],
+                "abstention_reason": None if rule else "insufficient_support",
+            })
+
+        generator._response_fn = respond
+        base = f"/v1/workspaces/{wid}"
+        memory = WorkspaceMemory(runtime.settings, wid)
+        memory.set_enabled(True)
+
+        def ask(question: str, source: str | None = None) -> dict:
+            body = {"question": question, "prior_turns": []}
+            if source is not None:
+                body["source_ids"] = [source]
+            response = client.post(f"{base}/conversation/turn", json=body)
+            assert response.status_code == 200, response.text
+            return response.json()
+
+        first = ask("What is forcible entry?", alpha)
+        second = ask("What tools are used for forcible entry?", alpha)
+        assert first["snapshot_id"] == second["snapshot_id"]
+        assert first["answer"] == old_rule
+        before = generator.generate_calls
+        assemblies = len(captures["assemble_queries"])
+        recall = ask("Summarize what I learned about forcible entry.")
+        assert recall["memory_recall"] is True
+        assert recall["citations"] == []
+        assert recall["query_trace_id"] is None
+        assert "forcible entry" in recall["answer"]
+        assert generator.generate_calls == before
+        assert len(captures["assemble_queries"]) == assemblies
+
+        concept = next(record for record in memory.recall("forcible entry")["records"] if record["category"] == "semantic")
+        assert concept["provenance"]["citations"][0]["source_display_name"] == "alpha.txt"
+        assert concept["provenance"]["concept_highlights"]
+        originals = [
+            {"name": "ALVESCOUP", "concepts": []},
+            {"name": "WASSPOC", "concepts": []},
+            {"name": "WALLACE WAS HOT", "concepts": []},
+        ]
+        path = f"{base}/knowledge/study-aids"
+        unknown = client.post(f"{path}/preview", json={"title": "Unknown originals", "inputs": originals}).json()
+        assert unknown["missing"] == [row["name"] for row in originals]
+        assert not unknown["complete"] and unknown["coverage"] == [] and unknown["cue"] == ""
+
+        fixture_inputs = [
+            {"name": "Fixture A", "source_record_id": concept["id"], "concepts": [
+                {"term": "Assess", "definition": "Synthetic concept one."},
+                {"term": "Check", "definition": "Synthetic concept two."},
+            ]},
+            {"name": "Fixture B", "concepts": [
+                {"term": "Assess", "definition": "Synthetic concept one."},
+                {"term": "Check", "definition": "A distinct synthetic concept."},
+            ]},
+        ]
+        payload = {"title": "Entry study aid", "inputs": fixture_inputs}
+        preview = client.post(f"{path}/preview", json=payload).json()
+        assert preview["complete"]
+        assert preview["cue"] == "A · C · C"
+        assert [row["cue"] for row in preview["coverage"]] == ["1. A", "2. C", "1. A", "3. C"]
+        headers = {"Idempotency-Key": "entry-fixture-aid"}
+        for _ in range(2):
+            assert client.post(path, json=payload, headers=headers).status_code == 204
+        saved = memory.find_study_aids("Entry study aid")
+        assert len(saved) == 1
+        assert ask("Recall my saved study aid Entry study aid")["answer"] == saved[0]["text"]
+        assert generator.generate_calls == before
+
+        replacement = client.put(
+            f"{base}/sources/{alpha}",
+            headers={"Idempotency-Key": "km03-revision", "If-Match": '"2"'},
+            files={"files": ("updated.txt", f"{ALPHA_SCOPE_MARKER} {new_rule}".encode(), "text/plain")},
+        )
+        assert replacement.status_code == 202, replacement.text
+        assert _wait_op(client, replacement.json()["operation_id"])["status"] == "succeeded"
+        historical = ask("What did I learn about forcible entry?")
+        assert "prior publication" in historical["answer"]
+        assert historical["citations"] == []
+        before_synthesis = generator.generate_calls
+        before_assemblies = len(captures["assemble_queries"])
+        synthesis = ask("Synthesize what I learned about forcible entry.")
+        assert "connected the practice tag" in synthesis["answer"]
+        assert synthesis["memory_recall"] and synthesis["citations"] == []
+        assert len({row["record_id"] for row in synthesis["memory_contributors"]}) == 2
+        assert all(row["prior_publication"] for row in synthesis["memory_contributors"])
+        assert generator.generate_calls == before_synthesis + 1
+        assert len(captures["assemble_queries"]) == before_assemblies
+        updated = ask("What is forcible entry?", alpha)
+        assert updated["answer"] == new_rule
+        assert old_rule not in updated["answer"]
+        assert all(new_rule in row["excerpt"] for row in updated["citations"])
+        assert updated["status"] == "answered"
+        assert updated["snapshot_id"] != first["snapshot_id"]
+        assert {(row["source_id"], row["source_version"]) for row in updated["citations"]} == {(alpha, 2)}
+        assert "Entry study aid" not in str(captures["generator_requests"][-1].messages)
+
+        excluded = ask("What does the manual require for forcible entry?", beta)
+        assert excluded["status"] in {"insufficient_evidence", "model_abstain"}
+        assert excluded["citations"] == []
+        assert excluded["answer"] is None
+        assert "Entry study aid" not in str(captures["generator_requests"][-1].messages)
+
+    restarted = ApplicationRuntime(settings=runtime.settings, factories=runtime.factories)
+    with TestClient(create_app(runtime=restarted)) as client:
+        exact = client.post(f"{base}/conversation/turn", json={"question": "Recall my saved study aid Entry study aid"})
+        assert exact.json()["answer"] == saved[0]["text"]
+        memory.change(concept["id"], 1, None)
+        assert memory.find_study_aids("Entry study aid") == []
+
+
+def test_km03_selected_source_proposal_and_structured_aid_revision(tmp_path: Path) -> None:
+    from offline_rag.app.workspace.memory import WorkspaceMemory
+
+    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+        selected_text = "Fixture A. Assess: Inspect the synthetic marker. Check: Record the synthetic result."
+        wid, alpha, _, _ = _seed_workspace(client, alpha_text=selected_text)
+        memory = WorkspaceMemory(runtime.settings, wid)
+        memory.set_enabled(True)
+        root = f"/v1/workspaces/{wid}/knowledge/study-aids"
+
+        def generate(request):
+            captures["generator_requests"].append(request)
+            if (request.metadata or {}).get("operation") == "mnemonic_phrase":
+                assert json.loads(request.messages[-1].content)["initials"] == ["A", "C"]
+                return "Amber Clouds"
+            prompt = "\n".join(message.content for message in request.messages)
+            assert selected_text in prompt
+            assert BETA_SCOPE_MARKER not in prompt
+            handle = re.findall(r"\[EVIDENCE (E[1-9][0-9]*)\]", prompt)[0]
+            return json.dumps({
+                "abstain": False, "abstention_reason": None,
+                "blocks": [
+                    {"text": "Fixture A | Assess — Inspect the synthetic marker.", "evidence_handles": [handle]},
+                    {"text": "Fixture A | Check — Record the synthetic result.", "evidence_handles": [handle]},
+                    {"text": "Fixture A | Invented — An absent definition.", "evidence_handles": [handle]},
+                    {"text": "ALVESCOUP | Assess — Inspect the synthetic marker.", "evidence_handles": [handle]},
+                ],
+            })
+
+        generator._response_fn = generate
+        before = generator.generate_calls
+        assemblies = len(captures["assemble_queries"])
+        response = client.post(f"{root}/from-sources", json={
+            "names": ["Fixture A", "ALVESCOUP", "WASSPOC"], "source_ids": [alpha],
+        })
+        assert response.status_code == 200, response.text
+        inputs = response.json()["inputs"]
+        assert [len(group["concepts"]) for group in inputs] == [2, 0, 0]
+        assert generator.generate_calls == before + 2
+        assert len(captures["assemble_queries"]) == assemblies + 1
+        payload = {"title": "Alpha aid", "inputs": inputs}
+        aid = client.post(f"{root}/preview", json=payload).json()
+        assert aid["suggested_phrase"] == "Amber Clouds"
+        assert all(row["origin"] == "source_grounded" for row in aid["coverage"])
+        assert {row["citation"]["source_id"] for row in aid["coverage"]} == {alpha}
+        assert not aid["complete"]
+        assert client.post(root, json=payload, headers={"Idempotency-Key": "first-aid"}).status_code == 204
+        record = next(row for row in memory.recall("")["records"] if row["provenance"].get("study_aid"))
+        aid_id = record["id"]
+        generic = client.patch(
+            f"/v1/workspaces/{wid}/knowledge/records/{aid_id}",
+            json={"revision": 1, "text": "Unstructured rewrite"},
+        )
+        assert generic.status_code == 422
+        revised = {
+            **payload, "title": "Revised aid", "revision": 1,
+            "inputs": [{
+                **inputs[0], "concepts": [
+                    {"term": "Assess", "definition": "Learner supplied replacement."},
+                    inputs[0]["concepts"][1],
+                ],
+            }],
+        }
+        for _ in range(2):
+            result = client.put(f"{root}/{aid_id}", json=revised, headers={"Idempotency-Key": "revise-aid"})
+            assert result.status_code == 204, result.text
+        revised_record = next(row for row in memory.recall("replacement")["records"] if row["id"] == aid_id)
+        assert revised_record["revision"] == 2
+        assert revised_record["history"][0]["provenance"]["study_aid"] == aid
+        assert revised_record["provenance"]["study_aid"]["coverage"][0]["origin"] == "user_provided"
+        assert "suggested_phrase" not in revised_record["provenance"]["study_aid"]
+        assert memory.find_study_aids("Alpha aid") == []
+        assert memory.find_study_aids("Revised aid")[0]["text"] == revised_record["text"]
+        assert generator.generate_calls == before + 2

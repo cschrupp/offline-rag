@@ -279,6 +279,7 @@ export function WorkspacePage() {
     useState<string | null>(null);
   const [conflictHint, setConflictHint] = useState<string | null>(null);
   const [settingsHint, setSettingsHint] = useState(false);
+  const [recallPairs, setRecallPairs] = useState<ConversationPair[]>([]);
   const [pairs, setPairs] = useState<ConversationPair[]>(() =>
     workspaceId ? loadConversation(workspaceId) : [],
   );
@@ -441,6 +442,7 @@ export function WorkspacePage() {
     const loaded = workspaceId ? loadConversation(workspaceId) : [];
     setHistoryWorkspaceId(workspaceId);
     setPairs(loaded);
+    setRecallPairs([]);
     setActiveEntryId(loaded[0]?.pairId ?? null);
     setSelectedCitation(loaded[0]?.response.citations[0] ?? null);
     setPreviewTarget(null);
@@ -845,6 +847,13 @@ export function WorkspacePage() {
         selectionMode: submit.mode,
         response,
       };
+      if (response.memory_recall) {
+        setRecallPairs((previous) => [pair, ...previous].slice(0, 6));
+        setActiveEntryId(null);
+        setSelectedCitation(null);
+        setPreviewTarget(null);
+        return;
+      }
       const next = appendConversationPair(workspaceId, pair);
       setPairs(next);
       setActiveEntryId(pair.pairId);
@@ -993,11 +1002,15 @@ export function WorkspacePage() {
     });
   }
 
+  function canAskWithoutSources(value: string) {
+    return !trainingMode && /^(?:synthesize what (?:i|we) learned (?:about|on) |(?:please )?(?:(?:what (?:did|have) (?:i|we) (?:learn|learned|discuss|discussed|study|studied))|(?:(?:summarize|recall|review|tell me) what (?:i|we)(?: have|'ve)? (?:learned|discussed|studied))|(?:(?:recall|show me) (?:my |the )?(?:saved )?(?:study aid|mnemonic) )))/i.test(value.trim());
+  }
+
   function submitAsk() {
     const trimmed = question.trim();
     if (
-      !askSourcesReady ||
-      selectedSourceIds.length === 0 ||
+      ((!askSourcesReady || selectedSourceIds.length === 0) &&
+        !canAskWithoutSources(trimmed)) ||
       trimmed.length === 0 ||
       askMutation.isPending ||
       conversationActionMutation.isPending
@@ -1020,7 +1033,9 @@ export function WorkspacePage() {
       selectedSourceIds: submittedIds,
       selectedSourceNames: submittedNames,
       mode: submittedMode,
-      sourceIds: sourceIdsForQuery(sources, submittedIds, submittedMode),
+      sourceIds: askSourcesReady && submittedIds.length > 0
+        ? sourceIdsForQuery(sources, submittedIds, submittedMode)
+        : [],
       priorTurns,
     };
     setAskError(null);
@@ -1044,6 +1059,7 @@ export function WorkspacePage() {
   function startNewConversation() {
     if (askMutation.isPending || conversationActionMutation.isPending) return;
     clearConversation(workspaceId);
+    setRecallPairs([]);
     setPairs([]);
     setActiveEntryId(null);
     setSelectedCitation(null);
@@ -1157,7 +1173,7 @@ export function WorkspacePage() {
   const existingMutationSubmitDisabled =
     busyForMutations || !existingSourceMutationsAllowed;
 
-  const history: ConversationHistoryEntry[] = pairs.map(toHistoryEntry);
+  const history: ConversationHistoryEntry[] = [...pairs, ...recallPairs].map(toHistoryEntry);
   const conversationActionWindow = buildConversationActionWindow(
     chronologicalPairs(pairs),
   );
@@ -1170,8 +1186,8 @@ export function WorkspacePage() {
     null;
 
   const askDisabled =
-    !askSourcesReady ||
-    selectedSourceIds.length === 0 ||
+    ((!askSourcesReady || selectedSourceIds.length === 0) &&
+      !canAskWithoutSources(question)) ||
     question.trim().length === 0 ||
     askMutation.isPending ||
     conversationActionMutation.isPending;
@@ -1380,7 +1396,13 @@ export function WorkspacePage() {
         </div>
       ) : null}
       {showKnowledge && !trainingMode ? (
-        <KnowledgePanel key={workspaceId} workspaceId={workspaceId} snapshotId={workspace.current_snapshot_id} />
+        <KnowledgePanel
+          key={workspaceId}
+          workspaceId={workspaceId}
+          snapshotId={workspace.current_snapshot_id}
+          sourceIds={askSourcesReady ? selectedSourceIds : []}
+          onMemoryChanged={() => setRecallPairs([])}
+        />
       ) : evidencePanel}
     </>
   );

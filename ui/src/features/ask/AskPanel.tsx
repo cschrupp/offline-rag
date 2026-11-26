@@ -315,7 +315,7 @@ export function AskPanel({
               revision: workspaceRevision,
               current_snapshot_id: currentSnapshotId,
             }}
-            history={history}
+            history={history.filter((entry) => !entry.response.memory_recall)}
             incompleteTurns={incompleteTurns}
             exportedFromView={trainingMode ? "training" : "normal"}
             askPending={askPending}
@@ -564,9 +564,11 @@ export function AskPanel({
                 </div>
                 <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>
                   {statusLabel(String(entry.response.status))} ·{" "}
-                  {isConversationOrigin
-                    ? "From this conversation — not re-checked against your sources"
-                    : sourceScopeLabel(entry)}
+                  {entry.response.memory_recall
+                    ? "From workspace learning history"
+                    : isConversationOrigin
+                      ? "From this conversation — not re-checked against your sources"
+                      : sourceScopeLabel(entry)}
                 </p>
 
                 {trainingMode && isAnswered ? (
@@ -679,6 +681,18 @@ export function AskPanel({
                     canEdit={canEditQuestion}
                     onEdit={editQuestion}
                   />
+                ) : null}
+                {entry.response.memory_contributors?.length ? (
+                  <details>
+                    <summary>Contributing discussions</summary>
+                    <p>Learning history reflects prior discussions. Ask a separate source question for current guidance.</p>
+                    <ul>{entry.response.memory_contributors.map((item) => (
+                      <li key={item.record_id}>
+                        {item.origin === "user_provided" ? "Learner correction" : item.prior_publication ? "Prior publication" : "Saved discussion"}
+                        {" · "}Revision {item.revision} · <code>{item.record_id}</code>
+                      </li>
+                    ))}</ul>
+                  </details>
                 ) : null}
                 {pendingThisAction && pendingActionOperation ? (
                   <p className="muted" role="status" aria-live="polite">

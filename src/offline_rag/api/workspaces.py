@@ -18,6 +18,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from starlette.concurrency import run_in_threadpool
 
 from offline_rag.api.workers import run_owned_worker
 from offline_rag.api.workspace_views import (
@@ -58,6 +59,20 @@ from offline_rag.app.workspace.source_content import (
     load_versioned_source_content,
 )
 from offline_rag.app.workspace.store import WorkspaceStore
+from offline_rag.app.workspace.study import (
+    StudyAidRequest,
+    compose_study_aid,
+    is_learning_history_request,
+    learning_history_response,
+    memory_response,
+)
+from offline_rag.app.workspace.synthesis import (
+    SourceMnemonicRequest,
+    propose_phrase,
+    synthesis_topic,
+    synthesize_discussions,
+    verified_definitions,
+)
 from offline_rag.app.workspace.upload_spool import (
     WorkspaceUploadSpool,
     spool_workspace_multipart,
@@ -680,6 +695,47 @@ async def workspace_conversation_turn(
     validated = validate_conversation_request(
         body.question, [turn.model_dump() for turn in body.prior_turns]
     )
+    topic = synthesis_topic(validated[0])
+    if topic is not None:
+        runtime.require_ready()
+        operation = runtime.operations.start_query_preflight()
+
+        def synthesis_worker() -> JSONResponse:
+            record = WorkspaceStore(runtime.settings).get(workspace_id)
+            records = WorkspaceMemory(runtime.settings, workspace_id).recall(topic)[
+                "records"
+            ]
+            runtime.operations.promote_query_preflight(operation)
+            answer, contributors = synthesize_discussions(
+                runtime,
+                topic=topic,
+                records=records,
+                current_snapshot=record.current_snapshot_id,
+            )
+            operation.checkpoint("post_learning_synthesis")
+            return JSONResponse(
+                {
+                    **memory_response(record, validated[0], answer),
+                    "memory_contributors": contributors,
+                },
+                headers={"Cache-Control": "no-store"},
+            )
+
+        try:
+            return await run_owned_worker(
+                request=request,
+                operation=operation,
+                worker=synthesis_worker,
+                watch_disconnect=True,
+                retain_on_repeated_cancel=True,
+            )
+        finally:
+            runtime.operations.release(operation)
+    if is_learning_history_request(validated[0]):
+        recall = await run_in_threadpool(
+            learning_history_response, runtime.settings, workspace_id, validated[0]
+        )
+        return JSONResponse(recall, headers={"Cache-Control": "no-store"})
     runtime.require_ready()
     operation = runtime.operations.start_query_preflight()
 
@@ -813,3 +869,163 @@ def change_workspace_knowledge(
         record_id, body.revision, body.text
     )
     return Response(status_code=204)
+
+
+@router.post("/v1/workspaces/{workspace_id}/knowledge/study-aids/preview")
+def preview_study_aid(
+    request: Request,
+    workspace_id: str,
+    body: StudyAidRequest,
+) -> JSONResponse:
+    memory = WorkspaceMemory(_runtime(request).settings, workspace_id)
+    aid = memory.preview_study_aid(compose_study_aid(body))
+    return JSONResponse(aid, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/v1/workspaces/{workspace_id}/knowledge/study-aids", status_code=204)
+def save_study_aid(
+    request: Request,
+    workspace_id: str,
+    body: StudyAidRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Response:
+    WorkspaceMemory(_runtime(request).settings, workspace_id).save_study_aid(
+        compose_study_aid(body), _require_idempotency_key(idempotency_key)
+    )
+    return Response(status_code=204)
+
+
+class StudyAidRevision(StudyAidRequest):
+    revision: StrictInt = Field(ge=1)
+
+
+@router.put(
+    "/v1/workspaces/{workspace_id}/knowledge/study-aids/{record_id}", status_code=204
+)
+def revise_study_aid(
+    request: Request,
+    workspace_id: str,
+    record_id: str,
+    body: StudyAidRevision,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> Response:
+    WorkspaceMemory(_runtime(request).settings, workspace_id).save_study_aid(
+        compose_study_aid(body),
+        _require_idempotency_key(idempotency_key),
+        record_id=record_id,
+        expected_revision=body.revision,
+    )
+    return Response(status_code=204)
+
+
+@router.post("/v1/workspaces/{workspace_id}/knowledge/study-aids/from-sources")
+async def propose_source_mnemonics(
+    request: Request,
+    workspace_id: str,
+    body: SourceMnemonicRequest,
+) -> Response:
+    runtime = _runtime(request)
+    runtime.require_ready()
+    question = body.question()
+    operation = runtime.operations.start_query_preflight()
+
+    def worker() -> JSONResponse:
+        memory = WorkspaceMemory(runtime.settings, workspace_id)
+        if not memory.is_enabled():
+            raise AppError(
+                ErrorCode.WORKSPACE_CONFLICT,
+                message="Enable memory to keep source references for the study aid.",
+            )
+        prepared = prepare_conversation_turn(
+            runtime,
+            workspace_id=workspace_id,
+            validated=validate_conversation_request(question, []),
+            source_ids=body.source_ids,
+            control=operation,
+        )
+        runtime.operations.promote_query_preflight(operation)
+        result = execute_prepared_conversation_turn(
+            runtime,
+            prepared,
+            control=operation,
+            owned=True,
+            capture_memory=False,
+        )
+        definitions = verified_definitions(
+            body.names, result.answer_blocks, result.citations
+        )
+        reference = None
+        if definitions:
+            grouped = [
+                {
+                    "name": name,
+                    "concepts": [
+                        {"term": row["term"], "definition": row["definition"]}
+                        for row in definitions
+                        if row["original"] == name
+                    ],
+                }
+                for name in dict.fromkeys(body.names)
+            ]
+            initial_aid = compose_study_aid(
+                StudyAidRequest.model_validate(
+                    {
+                        "title": "Source study aid",
+                        "inputs": grouped,
+                    }
+                )
+            )
+            operation.checkpoint("pre_mnemonic_phrase")
+            try:
+                phrase = propose_phrase(runtime, initial_aid["cue"].split(" · "))
+            except AppError:
+                phrase = None
+            operation.checkpoint("post_mnemonic_phrase")
+            memory.capture(
+                event_id=result.conversation_trace_id,
+                question="Source mnemonic lookup",
+                topic_question="mnemonic " + " ".join(body.names),
+                require_enabled=True,
+                answer="\n".join(
+                    f"{row['term']} — {row['definition']}" for row in definitions
+                ),
+                provenance={
+                    "workspace_revision": result.workspace_revision,
+                    "snapshot_id": result.snapshot_id,
+                    "query_trace_id": result.query_trace_id,
+                    "source_scope": prepared.source_scope.model_dump(mode="json"),
+                    "citations": [row["citation"] for row in definitions],
+                    "verified_definitions": definitions,
+                    "verified_initials": initial_aid["cue"],
+                    "suggested_phrase": phrase,
+                },
+            )
+            reference = f"{result.conversation_trace_id}-concept"
+        inputs = []
+        for name in dict.fromkeys(body.names):
+            concepts = [
+                {"term": row["term"], "definition": row["definition"]}
+                for row in definitions
+                if row["original"] == name
+            ]
+            inputs.append(
+                {
+                    "name": name,
+                    "concepts": concepts,
+                    "source_record_id": reference if concepts else None,
+                    # Verified rows establish those definitions only; total coverage is unknown.
+                    "incomplete": True,
+                }
+            )
+        return JSONResponse({"inputs": inputs}, headers={"Cache-Control": "no-store"})
+
+    try:
+        return await run_owned_worker(
+            request=request,
+            operation=operation,
+            worker=worker,
+            watch_disconnect=True,
+            retain_on_repeated_cancel=True,
+        )
+    finally:
+        runtime.operations.release(operation)

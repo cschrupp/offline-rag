@@ -493,6 +493,13 @@ export type ConversationTurnResponse = {
   citations: WorkspaceCitation[];
   answer_blocks: AnswerBlock[];
   recovery_diagnostics?: ConversationRecoveryDiagnostics;
+  memory_recall?: boolean;
+  memory_contributors?: {
+    record_id: string;
+    revision: number;
+    origin: string;
+    prior_publication: boolean;
+  }[];
   /** Missing in historical session entries; absence means source-origin. */
   answer_origin?: "sources" | "conversation";
 };

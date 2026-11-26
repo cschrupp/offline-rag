@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it } from "vitest";
 import { errorResponse, installFetchMock, jsonResponse, source, workspace } from "./mockApi";
@@ -37,7 +37,7 @@ it("inspects recalled knowledge, corrects it and forgets it through the workspac
     const view = within(panel);
     await user.type(view.getByLabelText("Find a topic"), "inspection");
     await user.click(view.getByRole("button", { name: "Find" }));
-    await user.click(await view.findByText("Concept · inspection"));
+    await user.click(await view.findByText("Concept · inspection", { selector: "summary" }));
     await user.click(view.getByText("Source provenance"));
     expect(view.getByText("Historical publication")).toBeVisible();
     await user.click(view.getByRole("button", { name: "Correct" }));
@@ -50,6 +50,122 @@ it("inspects recalled knowledge, corrects it and forgets it through the workspac
     expect(await view.findByText("No matching knowledge yet.")).toBeVisible();
     expect(mock.calls.some((call) => call.url === knowledge + "?topic=inspection")).toBe(true);
     expect(mock.calls.some((call) => call.url.endsWith("/conversation/turn"))).toBe(false);
+  } finally {
+    mock.restore();
+  }
+});
+
+it("shows learning-history recall in chat without persisting it or using it for factual follow-ups", async () => {
+  const user = userEvent.setup();
+  const memoryQuestion = "What did I learn about forcible entry?";
+  const remembered = "Saved discussion about inspection.";
+  const submitted: { question: string; prior_turns: unknown[] }[] = [];
+  const mock = installFetchMock((call) => {
+    if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+    if (call.url === "/v1/workspaces/ws_1") return jsonResponse(workspace({ workspace_id: "ws_1" }));
+    if (call.url === "/v1/workspaces/ws_1/sources") {
+      return jsonResponse({ workspace_id: "ws_1", revision: 1, sources: [source({ source_id: "src_1" })] });
+    }
+    if (call.url.endsWith("/conversation/turn")) {
+      const input = JSON.parse(String(call.body));
+      submitted.push(input);
+      if (input.question === memoryQuestion) {
+        return jsonResponse({
+          workspace_id: "ws_1", workspace_revision: 1, snapshot_id: "snap_1",
+          product_mode_id: "knowledge_recall_v1", conversation_trace_id: "memory_fixture",
+          status: "answered", answer: remembered, answer_origin: "conversation",
+          memory_recall: true, query_trace_id: null, retrieval_question: null,
+          context_used: false, question: memoryQuestion, abstention_reason: null,
+          answer_blocks: [], citations: [],
+        });
+      }
+      return errorResponse("generation_timeout", "Generation timed out.", 504, true);
+    }
+    return errorResponse("not_found", "x", 404);
+  });
+  try {
+    renderApp("/workspaces/ws_1");
+    const composer = await screen.findByLabelText("Ask a follow-up");
+    await user.type(composer, memoryQuestion);
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText(remembered)).toBeVisible();
+    expect(screen.getByText(/From workspace learning history/)).toBeVisible();
+    expect(Object.values(sessionStorage).join(" ")).not.toContain(remembered);
+    await user.type(composer, "What does the current source say?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Generation timed out.")).toBeVisible();
+    expect(submitted[1].prior_turns).toEqual([]);
+  } finally {
+    mock.restore();
+    sessionStorage.clear();
+  }
+});
+
+it("uses the selected sources for a mnemonic proposal and saves a structured revision", async () => {
+  const user = userEvent.setup();
+  const root = "/v1/workspaces/ws_1/knowledge";
+  const input = {
+    name: "Fixture A", concepts: [{ term: "Assess", definition: "Synthetic definition." }],
+    source_record_id: "concept_ref", incomplete: true,
+  };
+  const aid = {
+    title: "Trial aid", inputs: [input], cue: "A", suggested_phrase: "Amber",
+    complete: false, missing: ["Fixture A"],
+    coverage: [{
+      original: "Fixture A", term: "Assess", definition: "Synthetic definition.",
+      cue: "1. A", origin: "source_grounded",
+      citation: { source_display_name: "Alpha.txt", source_version: 2 },
+    }],
+  };
+  const saves: { method: string; body: unknown; key: string | null }[] = [];
+  const mock = installFetchMock((call) => {
+    if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
+    if (call.url === "/v1/workspaces/ws_1") return jsonResponse(workspace({ workspace_id: "ws_1" }));
+    if (call.url === "/v1/workspaces/ws_1/sources") {
+      return jsonResponse({ workspace_id: "ws_1", revision: 1, sources: [source({ source_id: "src_1" })] });
+    }
+    if (call.url.startsWith(root + "?")) {
+      return jsonResponse({ enabled: true, summaries: [], records: [{
+        id: "aid_1", category: "derived", origin: "generated", topic: "trial aid",
+        text: "Cue: A", revision: 3, parent_id: null, relation: null, history: [],
+        provenance: { study_aid: aid, topic_label: aid.title },
+      }] });
+    }
+    if (call.url === root + "/study-aids/from-sources") {
+      expect(JSON.parse(String(call.body))).toEqual({ names: ["Fixture A"], source_ids: ["src_1"] });
+      return jsonResponse({ inputs: [input] });
+    }
+    if (call.url === root + "/study-aids/preview") return jsonResponse(aid);
+    if (call.url === root + "/study-aids/aid_1") {
+      saves.push({ method: call.method, body: JSON.parse(String(call.body)), key: call.headers.get("Idempotency-Key") });
+      return new Response(null, { status: 204 });
+    }
+    return errorResponse("not_found", "x", 404);
+  });
+
+  try {
+    renderApp("/workspaces/ws_1");
+    await user.click(await screen.findByRole("button", { name: "Knowledge" }));
+    const view = within(screen.getByRole("region", { name: "Workspace knowledge" }));
+    await user.click(await view.findByText("Create a mnemonic study aid"));
+    await user.type(view.getByLabelText("Name", { exact: true }), "Fixture A");
+    await user.click(view.getByRole("button", { name: "Find definitions in selected sources" }));
+    expect(await view.findByText(/Review the definitions found/)).toBeVisible();
+    expect(view.getByLabelText("Concepts (Term — Definition)")).toHaveValue("Assess — Synthetic definition.");
+
+    await user.click(view.getByText("Study aid · Trial aid", { selector: "summary" }));
+    await user.click(view.getByRole("button", { name: "Revise study aid" }));
+    const title = view.getByLabelText("Study aid title");
+    expect(title).toHaveValue("Trial aid");
+    await user.clear(title);
+    await user.type(title, "Updated trial aid");
+    await user.click(view.getByRole("button", { name: "Preview study aid" }));
+    const revisionEditor = within(title.closest("details")!);
+    expect(await revisionEditor.findByText("Alpha.txt · Version 2")).toBeVisible();
+    await user.click(view.getByRole("button", { name: "Save study aid" }));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0]).toMatchObject({ method: "PUT", body: { title: "Updated trial aid", revision: 3, inputs: [input] } });
+    expect(saves[0].key).toBeTruthy();
   } finally {
     mock.restore();
   }
