@@ -407,14 +407,17 @@ def test_generator_uses_external_profile_and_preserves_structured_output() -> No
     assert body["model"] == MODEL
     assert body["response_format"]["type"] == "json_schema"
     assert "chat_template_kwargs" not in body
+    assert "reasoning_effort" not in body
     assert API_KEY not in json.dumps(result.raw)
 
 
-def test_generator_default_keeps_local_reasoning_field() -> None:
+def test_generator_other_endpoint_keeps_local_reasoning_field() -> None:
     settings = AppSettings(
         generation={
             "enabled": True,
             "model": "local-model",
+            "base_url": "http://127.0.0.1:11435/v1",
+            "approved_endpoints": ["http://127.0.0.1:11435/v1"],
             "approved_models": ["local-model"],
         }
     )
