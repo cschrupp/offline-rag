@@ -71,6 +71,7 @@ from offline_rag.app.workspace.publication_journal import (
     PublicationMutationKind,
     SourceVersionRef,
 )
+from offline_rag.app.workspace.published_empty import published_empty_parses
 from offline_rag.app.workspace.store import WorkspaceStore
 from offline_rag.app.workspace.sync_journal import SyncMutationCoordinator
 from offline_rag.app.workspace.vault import RawSourceVault
@@ -1255,6 +1256,21 @@ class WorkspaceLifecycleService:
         )
         enforce_reconstruction_disk_capacity(self.settings, plan.desired)
 
+        empty_parses = published_empty_parses(self.runtime, record, plan.desired)
+        if empty_parses or any(item.non_searchable_reason for item in plan.desired):
+            plan = replace(
+                plan,
+                desired=[
+                    item.model_copy(
+                        update={
+                            "non_searchable_reason": (
+                                "ocr_required" if item.document_id in empty_parses else None
+                            )
+                        }
+                    )
+                    for item in plan.desired
+                ],
+            )
         plan = self._persist_pending_vault_writes(record, plan)
         workspace_id = record.workspace_id
         self.publication.begin(
@@ -1317,6 +1333,7 @@ class WorkspaceLifecycleService:
                     corpus_lease=corpus_lease,
                     authorize_workspace_id=workspace_id,
                     mutation_kind=plan.mutation_kind,
+                    published_empty_parses=empty_parses,
                 )
                 self.publication.mark_publication_observed(
                     workspace_id, ingested.snapshot_id, lease=lease

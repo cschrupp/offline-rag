@@ -51,7 +51,8 @@ def try_load_reusable_chunk_artifact(
     if not path.exists():
         return None
     try:
-        artifact = load_chunk_artifact(path)
+        data = path.read_bytes()
+        artifact = DocumentChunkArtifact.model_validate_json(data)
     except (OSError, ValueError, TypeError, ValidationError):
         return None
     if artifact.chunk_artifact_id != chunk_artifact_id:
@@ -60,7 +61,7 @@ def try_load_reusable_chunk_artifact(
         return None
     if artifact.chunk_config_hash != expected_chunk_config_hash:
         return None
-    digest = artifact_bytes_hash(path.read_bytes())
+    digest = artifact_bytes_hash(data)
     return artifact, digest
 
 

@@ -13,6 +13,7 @@ export type Workspace = {
 };
 
 export type Source = {
+  non_searchable_reason?: "ocr_required" | null;
   source_id: string;
   version: number;
   display_name: string;

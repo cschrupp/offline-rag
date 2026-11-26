@@ -349,7 +349,7 @@ class ProductPublicationRegistry:
         return self.resolve_snapshot(name, snapshot_id)
 
     def resolve_snapshot(
-        self, corpus_name: str, snapshot_id: str
+        self, corpus_name: str, snapshot_id: str, *, require_current_config_match: bool = True
     ) -> CorpusReadSnapshot:
         """Bind one exact immutable snapshot without consulting ``current.json``.
 
@@ -409,7 +409,9 @@ class ProductPublicationRegistry:
                 ),
             )
 
-        self.validate_grounded_identity(identity)
+        self.validate_grounded_identity(
+            identity, require_current_config_match=require_current_config_match
+        )
 
         try:
             corpus_manifest = load_corpus_manifest(

@@ -169,6 +169,15 @@ def load_active_state(
     return state
 
 
+@dataclass(frozen=True)
+class PublishedEmptyParse:
+    """Exact artifact authorized by an unchanged workspace publication."""
+
+    artifact_id: str
+    config_hash: str
+    checksum: str
+
+
 def run_ingestion(
     *,
     settings: AppSettings,
@@ -178,6 +187,7 @@ def run_ingestion(
     root: Path | None = None,
     source_name_by_path: Mapping[str, str] | None = None,
     trusted_identities: Mapping[str, SourceIdentity] | None = None,
+    published_empty_parses: Mapping[str, PublishedEmptyParse] | None = None,
     on_progress: ProgressReporter | None = None,
     on_document_phase: ObservabilityReporter | None = None,
 ) -> IngestionReport:
@@ -310,9 +320,24 @@ def run_ingestion(
                 expected_document_id=doc_id,
                 expected_parse_config_hash=cfg_hash,
             )
+            published_empty = (published_empty_parses or {}).get(doc_id)
+            if published_empty is not None and (
+                reused is None
+                or artifact_id != published_empty.artifact_id
+                or cfg_hash != published_empty.config_hash
+                or reused[1] != published_empty.checksum
+                or reused[0].document.content_hash != content_hash
+                or reused[0].blocks
+                or not any(
+                    warning.category is WarningCategory.OCR_REQUIRED
+                    for warning in reused[0].warnings
+                )
+            ):
+                raise DocumentIngestionError("published non-searchable artifact failed verification")
             if reused is not None:
                 parsed, artifact_hash = reused
-                _reject_empty_ocr_required_pdf(parsed)
+                if published_empty is None:
+                    _reject_empty_ocr_required_pdf(parsed)
                 status = FileIngestionStatus.REUSED
                 reused_count += 1
             else:

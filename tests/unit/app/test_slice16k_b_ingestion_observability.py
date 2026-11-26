@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -400,6 +401,39 @@ def test_successful_add_persists_bounded_metrics_and_worklist(tmp_path: Path) ->
             assert "documents" not in again["progress"]
 
 
+def _patch_empty_pdf(monkeypatch: pytest.MonkeyPatch) -> None:
+    def parse_empty_pdf(
+        self: DoclingPdfParser,
+        path: Path,
+        *,
+        document_id: str,
+        content_hash: str,
+    ) -> ParsedDocument:
+        return ParsedDocument(
+            document=Document(
+                document_id=document_id,
+                source_uri=path.name,
+                title=path.stem,
+                mime_type="application/pdf",
+                content_hash=content_hash,
+                ingested_at=datetime(1970, 1, 1, tzinfo=UTC),
+                parser_version="synthetic",
+            ),
+            parser_name="docling_pdf",
+            parser_version="synthetic",
+            warnings=[
+                ParseWarning(
+                    category=WarningCategory.OCR_REQUIRED,
+                    message="OCR is disabled.",
+                    source_path=path.name,
+                )
+            ],
+        )
+
+    monkeypatch.setattr(DoclingPdfParser, "parse_config_hash", lambda _self: "a" * 64)
+    monkeypatch.setattr(DoclingPdfParser, "parse", parse_empty_pdf)
+
+
 def test_mixed_valid_and_empty_ocr_pdf_add_fails_without_publication_change(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -416,36 +450,7 @@ def test_mixed_valid_and_empty_ocr_pdf_add_fails_without_publication_change(
         before_workspace = client.get(f"/v1/workspaces/{wid}").json()
         before_sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
 
-        def parse_empty_pdf(
-            self: DoclingPdfParser,
-            path: Path,
-            *,
-            document_id: str,
-            content_hash: str,
-        ) -> ParsedDocument:
-            return ParsedDocument(
-                document=Document(
-                    document_id=document_id,
-                    source_uri=path.name,
-                    title=path.stem,
-                    mime_type="application/pdf",
-                    content_hash=content_hash,
-                    ingested_at=datetime(1970, 1, 1, tzinfo=UTC),
-                    parser_version="synthetic",
-                ),
-                parser_name="docling_pdf",
-                parser_version="synthetic",
-                warnings=[
-                    ParseWarning(
-                        category=WarningCategory.OCR_REQUIRED,
-                        message="OCR is disabled.",
-                        source_path=path.name,
-                    )
-                ],
-            )
-
-        monkeypatch.setattr(DoclingPdfParser, "parse_config_hash", lambda _self: "a" * 64)
-        monkeypatch.setattr(DoclingPdfParser, "parse", parse_empty_pdf)
+        _patch_empty_pdf(monkeypatch)
         failed = _add_sources(
             client,
             wid,
@@ -464,10 +469,131 @@ def test_mixed_valid_and_empty_ocr_pdf_add_fails_without_publication_change(
         after_workspace = client.get(f"/v1/workspaces/{wid}").json()
         after_sources = client.get(f"/v1/workspaces/{wid}/sources").json()["sources"]
         assert after_workspace["revision"] == before_workspace["revision"] == 2
-        assert after_workspace["current_snapshot_id"] == before_workspace[
-            "current_snapshot_id"
-        ]
+        assert (
+            after_workspace["current_snapshot_id"]
+            == before_workspace["current_snapshot_id"]
+        )
         assert after_sources == before_sources
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "carry", "new", "replace", "parse_checksum", "chunk_checksum",
+        "parser_drift", "index_failure",
+    ],
+)
+def test_workspace_carries_only_verified_published_empty_pdf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    from offline_rag.ingestion import pipeline
+
+    _patch_empty_pdf(monkeypatch)
+    with _client(tmp_path) as (client, runtime):
+        wid = _create(client)["workspace_id"]
+        # Seed the exact legacy condition through the normal atomic publisher.
+        with monkeypatch.context() as legacy:
+            legacy.setattr(pipeline, "_reject_empty_ocr_required_pdf", lambda _: None)
+            initial = _add_sources(
+                client,
+                wid,
+                files=[
+                    ("existing.txt", b"Existing searchable source content."),
+                    ("legacy.pdf", b"%PDF legacy scanned input"),
+                ],
+                key="legacy-seed",
+                rev=1,
+            )
+            assert _wait(client, initial["operation_id"])["status"] == "succeeded"
+
+        workspace_url = f"/v1/workspaces/{wid}"
+        before = client.get(workspace_url).json()
+        before_sources = client.get(f"{workspace_url}/sources").json()["sources"]
+        legacy_source = next(
+            row for row in before_sources if row["display_name"] == "legacy.pdf"
+        )
+        snapshot = runtime.publication.resolve_snapshot(
+            f"wsc_{wid.removeprefix('ws_')}", before["current_snapshot_id"]
+        )
+        entry = next(
+            row
+            for row in snapshot.corpus_manifest.documents
+            if row.document_id == legacy_source["document_id"]
+        )
+        if case == "parser_drift":
+            monkeypatch.setattr(
+                DoclingPdfParser, "parse_config_hash", lambda _: "b" * 64
+            )
+        if case == "parse_checksum":
+            path = runtime.settings.paths.processed / f"{entry.parsed_artifact_id}.json"
+            path.write_bytes(path.read_bytes() + b"\n")
+        if case == "chunk_checksum":
+            manifest = json.loads(
+                (
+                    runtime.settings.paths.chunk_manifests
+                    / snapshot.identity.chunk_manifest
+                ).read_text()
+            )
+            chunk = next(
+                row
+                for row in manifest["documents"]
+                if row["document_id"] == entry.document_id
+            )
+            path = runtime.settings.paths.chunks / f"{chunk['chunk_artifact_id']}.json"
+            path.write_bytes(path.read_bytes() + b"\n")
+
+        if case == "index_failure":
+            from offline_rag.app import ingest
+
+            def fail_indexing(**_kwargs):
+                raise AppError(ErrorCode.INGEST_FAILED)
+
+            monkeypatch.setattr(ingest, "run_indexing", fail_indexing)
+
+        if case == "replace":
+            response = client.put(
+                f"{workspace_url}/sources/{legacy_source['source_id']}",
+                headers={"If-Match": '"2"', "Idempotency-Key": "replace-legacy"},
+                files={
+                    "files": (
+                        "legacy.pdf",
+                        b"%PDF different scanned input",
+                        "application/pdf",
+                    )
+                },
+            )
+            assert response.status_code == 202, response.text
+            operation = response.json()
+        else:
+            files = [("new.txt", b"An additional searchable source.")]
+            if case == "new":
+                files.append(("new-scan.pdf", b"%PDF new scanned input"))
+            operation = _add_sources(client, wid, files=files, key=f"add-{case}", rev=2)
+
+        terminal = _wait(client, operation["operation_id"])
+        after = client.get(workspace_url).json()
+        after_sources = client.get(f"{workspace_url}/sources").json()["sources"]
+        if case == "carry":
+            assert terminal["status"] == "succeeded", terminal["error"]
+            assert after["revision"] == 3
+            assert after["current_snapshot_id"] != before["current_snapshot_id"]
+            assert len(after_sources) == 3
+            carried = next(
+                row
+                for row in after_sources
+                if row["source_id"] == legacy_source["source_id"]
+            )
+            assert carried == {**legacy_source, "non_searchable_reason": "ocr_required"}
+        else:
+            assert terminal["status"] == "failed"
+            if case in {"new", "replace"}:
+                assert terminal["error"]["details"]["reason"] == "ocr_required"
+            assert after == before
+            assert after_sources == before_sources
+            assert (
+                runtime.publication.published_snapshot_id(snapshot.corpus_name)
+                == before["current_snapshot_id"]
+            )
 
 
 def test_dense_active_documents_follow_exact_batch_membership(tmp_path: Path) -> None:

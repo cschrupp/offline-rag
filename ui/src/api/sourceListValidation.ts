@@ -82,6 +82,9 @@ function validateSourceEntry(raw: unknown, index: number): Source {
     );
   }
   return {
+    ...(row.non_searchable_reason === "ocr_required"
+      ? { non_searchable_reason: "ocr_required" }
+      : {}),
     source_id: row.source_id,
     version: row.version,
     display_name: row.display_name,
