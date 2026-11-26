@@ -299,14 +299,18 @@ def _apply_reasoning_contract(
     body: dict[str, Any], *, deployment_profile: str, base_url: str
 ) -> None:
     """Request direct output using the configured endpoint's request format."""
-    if deployment_profile == PORTFOLIO_OPENROUTER_PROFILE or REASONING_CONTRACT != DIRECT_OUTPUT_V1:
+    if (
+        deployment_profile == PORTFOLIO_OPENROUTER_PROFILE
+        or REASONING_CONTRACT != DIRECT_OUTPUT_V1
+    ):
         return
 
     endpoint = urlparse(base_url)
     # The workstation and Docker runbooks use Ollama's standard local endpoint.
     if (
         endpoint.scheme == "http"
-        and endpoint.hostname in {"127.0.0.1", "localhost", "::1", "host.docker.internal"}
+        and endpoint.hostname
+        in {"127.0.0.1", "localhost", "::1", "host.docker.internal"}
         and endpoint.port == 11434
         and endpoint.path == "/v1"
     ):

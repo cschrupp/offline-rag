@@ -275,7 +275,8 @@ def test_direct_output_v1_disables_thinking_in_request_body() -> None:
     )
     response = generator.generate(request)
     body = client.post.call_args.kwargs.get("json") or {}
-    assert body.get("chat_template_kwargs") == {"enable_thinking": False}
+    assert body["reasoning_effort"] == "none"
+    assert "chat_template_kwargs" not in body
     assert REASONING_CONTRACT == "direct-output-v1"
     # Adapter still extracts only message.content
     assert response.content == '{"abstain":true,"answer":null,"citation_ids":[]}'
