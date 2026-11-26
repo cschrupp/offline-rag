@@ -216,6 +216,7 @@ class OpenAICompatibleGenerator:
         _apply_reasoning_contract(
             body,
             deployment_profile=self.settings.deployment.profile,
+            base_url=self.base_url,
         )
         try:
             response = self._client.post(
@@ -294,16 +295,23 @@ def _auth_headers(api_key: str | None) -> dict[str, str]:
     return {"Authorization": f"Bearer {api_key}"}
 
 
-def _apply_reasoning_contract(body: dict[str, Any], *, deployment_profile: str) -> None:
-    """Map code-owned reasoning_contract onto provider request fields.
+def _apply_reasoning_contract(
+    body: dict[str, Any], *, deployment_profile: str, base_url: str
+) -> None:
+    """Request direct output using the configured endpoint's request format."""
+    if deployment_profile == PORTFOLIO_OPENROUTER_PROFILE or REASONING_CONTRACT != DIRECT_OUTPUT_V1:
+        return
 
-    Baseline ``direct-output-v1`` requests final/direct output with thinking
-    disabled for adapters that expose chat_template_kwargs.enable_thinking.
-    """
+    endpoint = urlparse(base_url)
+    # The workstation and Docker runbooks use Ollama's standard local endpoint.
     if (
-        deployment_profile != PORTFOLIO_OPENROUTER_PROFILE
-        and REASONING_CONTRACT == DIRECT_OUTPUT_V1
+        endpoint.scheme == "http"
+        and endpoint.hostname in {"127.0.0.1", "localhost", "::1", "host.docker.internal"}
+        and endpoint.port == 11434
+        and endpoint.path == "/v1"
     ):
+        body["reasoning_effort"] = "none"
+    else:
         body["chat_template_kwargs"] = {"enable_thinking": False}
 
 
