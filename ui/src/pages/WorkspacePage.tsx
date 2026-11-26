@@ -1010,10 +1010,18 @@ export function WorkspacePage() {
     return !trainingMode && /^(?:synthesize what (?:i|we) learned (?:about|on) |(?:please )?(?:(?:what (?:did|have) (?:i|we) (?:learn|learned|discuss|discussed|study|studied))|(?:(?:summarize|recall|review|tell me) what (?:i|we)(?: have|'ve)? (?:learned|discussed|studied))|(?:(?:recall|show me) (?:my |the )?(?:saved )?(?:study aid|mnemonic) )))/i.test(value.trim());
   }
 
-  function submitAsk() {
-    const trimmed = question.trim();
+  function canRetryQuestion(turn: IncompleteUserTurn) {
+    return !trainingMode && askSourcesReady && !askMutation.isPending &&
+      !conversationActionMutation.isPending && Boolean(turn.failure?.retryable ||
+        turn.failure?.code === "response_parse_error") &&
+      turn.selectedSourceIds.every((id) => sources.some((source) => source.source_id === id));
+  }
+
+  function submitAsk(retry?: IncompleteUserTurn) {
+    if (retry && !canRetryQuestion(retry)) return;
+    const trimmed = (retry?.question ?? question).trim();
     if (
-      ((!askSourcesReady || selectedSourceIds.length === 0) &&
+      ((!askSourcesReady || (retry?.selectedSourceIds ?? selectedSourceIds).length === 0) &&
         !canAskWithoutSources(trimmed)) ||
       trimmed.length === 0 ||
       askMutation.isPending ||
@@ -1021,11 +1029,11 @@ export function WorkspacePage() {
     ) {
       return;
     }
-    const submittedIds = selectedSourceIds.slice();
+    const submittedIds = (retry?.selectedSourceIds ?? selectedSourceIds).slice();
     const submittedNames = sources
       .filter((source) => submittedIds.includes(source.source_id))
       .map((source) => source.display_name);
-    const submittedMode = selectionMode;
+    const submittedMode = retry ? "subset" : selectionMode;
     const pairId = newPairId();
     const askedAt = new Date().toISOString();
     // Only completed pairs enter resolver context — never failed/incomplete.
@@ -1037,14 +1045,14 @@ export function WorkspacePage() {
       selectedSourceIds: submittedIds,
       selectedSourceNames: submittedNames,
       mode: submittedMode,
-      sourceIds: askSourcesReady && submittedIds.length > 0
+      sourceIds: retry ? submittedIds : askSourcesReady && submittedIds.length > 0
         ? sourceIdsForQuery(sources, submittedIds, submittedMode)
         : [],
       priorTurns,
     };
     setAskError(null);
     setConflictHint(null);
-    setQuestion("");
+    if (!retry) setQuestion("");
     setIncompleteTurns((prev) => [
       ...prev,
       {
@@ -1576,6 +1584,8 @@ export function WorkspacePage() {
             <AskPanel
               question={question}
               onQuestionChange={setQuestion}
+              onRetryQuestion={submitAsk}
+              canRetryQuestion={canRetryQuestion}
               onAsk={() => {
                 if (askDisabled) return;
                 submitAsk();
