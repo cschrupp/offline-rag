@@ -99,21 +99,6 @@ export function AbstentionRecovery({
   );
 }
 
-export function technicalFailureMessage(code: string | undefined): string | null {
-  switch (code) {
-    case "response_parse_error":
-      return "Seneca could not turn the model’s response into a reliable answer.";
-    case "generation_timeout":
-      return "The model did not finish in time.";
-    case "generation_unavailable":
-      return "Seneca could not use the configured generation service.";
-    case "generation_failed":
-      return "The generation service could not complete this question.";
-    default:
-      return null;
-  }
-}
-
 export function FailedTurnRecovery({
   turn,
   canEdit,

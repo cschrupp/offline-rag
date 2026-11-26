@@ -24,9 +24,8 @@ import { ClaimAnswer } from "./ClaimAnswer";
 import {
   AbstentionRecovery,
   FailedTurnRecovery,
-  technicalFailureMessage,
 } from "./ConversationRecovery";
-import { assistantPresentationText } from "./assistantPresentation";
+import { assistantPresentationText, technicalFailureMessage } from "./assistantPresentation";
 import {
   buildConversationTimeline,
   snapshotBadge,

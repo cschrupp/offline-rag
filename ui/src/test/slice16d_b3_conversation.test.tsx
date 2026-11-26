@@ -358,12 +358,15 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
     ["no_evidence", "Try using a term or title", "Evidence units in the assembled context: 0"],
     ["conflicting_evidence", "Name the source or version", "Answer generation was attempted."],
     ["ambiguous_request", "with the specific term", "The search did not run."],
-    ["generation_timeout", "Check the configured generation service", "Error code: generation_timeout"],
+    ["generation_timeout", "The model did not finish in time", "Error code: generation_timeout"],
+    ["response_parse_error", "could not turn the model’s response into a reliable answer", "Error code: response_parse_error"],
+    ["generation_unavailable", "could not use the configured generation service", "Error code: generation_unavailable"],
     ["insufficient_support", "Ask about one concept", "Detailed retrieval counts are unavailable"],
   ])("explains %s and lets the learner edit without sending", async (reason, guidance, diagnostic) => {
     const user = userEvent.setup();
     const question = "What does the manual say?";
     let posts = 0;
+    let submitted: Record<string, unknown> | null = null;
     const mock = installFetchMock((call) => {
       if (call.url === "/health/ready") return jsonResponse({ status: "ready" });
       if (call.url === "/v1/workspaces/ws_1") {
@@ -377,8 +380,9 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       }
       if (call.url === "/v1/workspaces/ws_1/conversation/turn" && call.method === "POST") {
         posts += 1;
-        if (reason === "generation_timeout") {
-          return errorResponse(reason, "Generation timed out.", 504, true);
+        submitted = JSON.parse(String(call.body));
+        if (reason.startsWith("generation_") || reason === "response_parse_error") {
+          return errorResponse(reason, "Provider processing failed", reason === "generation_timeout" ? 504 : 502, true);
         }
         const clarification = reason === "ambiguous_request";
         return jsonResponse(turnResponse({
@@ -417,6 +421,12 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       expect(composer).toHaveValue(question);
       expect(composer).toHaveFocus();
       expect(posts).toBe(1);
+      if (reason.startsWith("generation_") || reason === "response_parse_error") {
+        await user.click(screen.getByRole("button", { name: "Retry question" }));
+        expect(await screen.findAllByText(new RegExp(guidance))).toHaveLength(2);
+        expect(posts).toBe(2);
+        expect(submitted).toMatchObject({ question, source_ids: ["src_1"] });
+      }
     } finally {
       mock.restore();
     }
