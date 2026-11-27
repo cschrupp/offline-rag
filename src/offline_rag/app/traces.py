@@ -179,6 +179,7 @@ class ProductTraceDiagnosticSummary(BaseModel):
     evidence_unit_count: int | None = Field(default=None, ge=0)
     stage_latency_ms: dict[str, int] = Field(default_factory=dict)
     rejected_response_excerpt: str | None = Field(default=None, max_length=2048)
+    provider_response_excerpt: str | None = Field(default=None, max_length=2048)
 
     @field_validator(
         "stage_latency_ms",
