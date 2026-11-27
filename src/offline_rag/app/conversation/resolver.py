@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -11,7 +12,12 @@ from offline_rag.app.conversation.prior_turns import PriorTurn
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V2
-from offline_rag.generation.openai_compatible import OpenAICompatibleGeneratorError
+from offline_rag.generation.contracts import REASONING_CONTRACT
+from offline_rag.generation.openai_compatible import (
+    OpenAICompatibleGeneratorError,
+    bounded_rejected_response_excerpt,
+    reasoning_request_mode,
+)
 from offline_rag.generation.protocol import ChatMessage, GeneratorRequest
 
 RESOLVER_PROMPT_CONTRACT_ID = CONVERSATION_CONTEXT_RESOLVER_V2
@@ -93,7 +99,9 @@ _CONTEXT_REFERENCE_RE = re.compile(
     r"(?:discussed|said|learned|decided|agreed|concluded|covered)\b|"
     r"\b(?:what|which|how|where|when|why)\s+(?:did|have)\s+"
     r"(?:you|we|i)\s+(?:just\s+)?(?:say|said|mention|mentioned|discuss|"
-    r"discussed|decide|decided|learn|learned|cover|covered|agree|agreed)\b",
+    r"discussed|decide|decided|learn|learned|cover|covered|agree|agreed)\b|"
+    r"\b(?:the\s+)?(?:another|other|first|second|third|next|previous|former|latter)\s+"
+    r"(?:one|method|approach|option|technique|way|procedure|process|strategy|step)\b",
     re.IGNORECASE,
 )
 _NON_TOPIC_TAILS = frozenset(
@@ -145,6 +153,7 @@ class ResolverResult:
     retrieval_question: str | None
     context_used: bool
     resolver_invoked: bool
+    diagnostics: dict[str, Any] | None = None
 
 
 def _escape_delimited(text: str) -> str:
@@ -225,36 +234,37 @@ def parse_resolver_content(content: str) -> ResolverResult:
     output is a technical parse failure, never user ambiguity.
     """
 
-    def invalid_output() -> ResolverResult:
+    def invalid_output(detail: str) -> ResolverResult:
         return ResolverResult(
             outcome="invalid_output",
             retrieval_question=None,
             context_used=True,
             resolver_invoked=True,
+            diagnostics={"validation_failure_detail": detail},
         )
 
     text = (content or "").strip()
     if not text:
-        return invalid_output()
+        return invalid_output("empty_response")
     try:
         payload: Any = json.loads(text)
     except json.JSONDecodeError:
-        return invalid_output()
+        return invalid_output("invalid_json")
     if not isinstance(payload, dict):
-        return invalid_output()
+        return invalid_output("top_level_not_object")
     # Reject schema/policy injection extras — only frozen keys allowed.
     if set(payload.keys()) - {"retrieval_question", "context_used"}:
-        return invalid_output()
+        return invalid_output("unexpected_or_missing_top_level_keys")
     if "retrieval_question" not in payload or "context_used" not in payload:
-        return invalid_output()
+        return invalid_output("retrieval_question_not_string")
     rq = payload.get("retrieval_question")
     context_used = payload.get("context_used")
     if not isinstance(rq, str) or not isinstance(context_used, bool):
-        return invalid_output()
+        return invalid_output("resolver_field_type_invalid")
     trimmed = rq.strip()
     if not trimmed:
         if not context_used:
-            return invalid_output()
+            return invalid_output("empty_target_without_context")
         return ResolverResult(
             outcome="clarification_required",
             retrieval_question=None,
@@ -369,28 +379,143 @@ def resolve_conversation_context(
         temperature=0.0,
         max_output_tokens=min(512, int(gen.max_output_tokens)),
     )
+    request_started = time.perf_counter()
     try:
         response = resources.generator_client.generate(request)
     except OpenAICompatibleGeneratorError as exc:
+        resolver_ms = int((time.perf_counter() - request_started) * 1000)
         if exc.failure_reason == "timeout":
-            raise AppError(ErrorCode.GENERATION_TIMEOUT) from exc
-        if exc.failure_reason in {"transport_error", "unavailable"}:
-            raise AppError(ErrorCode.GENERATION_UNAVAILABLE) from exc
-        raise AppError(ErrorCode.GENERATION_FAILED) from exc
+            error = AppError(ErrorCode.GENERATION_TIMEOUT)
+        elif exc.failure_reason in {"transport_error", "unavailable"}:
+            error = AppError(
+                ErrorCode.GENERATION_UNAVAILABLE,
+                retryable_override=exc.http_status not in {401, 403},
+            )
+        else:
+            retryable = exc.http_status in {408, 429} or (
+                type(exc.http_status) is int and exc.http_status >= 500
+            )
+            error = AppError(ErrorCode.GENERATION_FAILED, retryable_override=retryable)
+        error.trace_diagnostics = {
+            "phase": "conversation_resolution",
+            "provider": gen.provider,
+            "model": request.model,
+            "reasoning_contract_id": REASONING_CONTRACT,
+            "reasoning_mode": reasoning_request_mode(
+                settings.deployment.profile, gen.base_url
+            ),
+            "output_contract_id": RESOLVER_PROMPT_CONTRACT_ID,
+            "provider_http_status": exc.http_status,
+            "provider_failure_class": exc.failure_reason,
+            "provider_error_type": exc.provider_error_type,
+            "provider_error_code": exc.provider_error_code,
+            "provider_safe_detail": exc.safe_detail,
+            "prompt_message_count": len(request.messages),
+            "prompt_character_count": sum(
+                len(message.content) for message in request.messages
+            ),
+            "max_output_tokens": request.max_output_tokens,
+            "stage_latency_ms": {"resolver": resolver_ms},
+        }
+        raise error from exc
     except AppError:
         raise
     except Exception as exc:
-        raise AppError(ErrorCode.GENERATION_FAILED) from exc
+        resolver_ms = int((time.perf_counter() - request_started) * 1000)
+        error = AppError(ErrorCode.GENERATION_FAILED, retryable_override=False)
+        error.trace_diagnostics = {
+            "phase": "conversation_resolution",
+            "provider": gen.provider,
+            "model": request.model,
+            "reasoning_contract_id": REASONING_CONTRACT,
+            "reasoning_mode": reasoning_request_mode(
+                settings.deployment.profile, gen.base_url
+            ),
+            "output_contract_id": RESOLVER_PROMPT_CONTRACT_ID,
+            "provider_failure_class": "unexpected_provider_exception",
+            "provider_error_type": type(exc).__name__,
+            "prompt_message_count": len(request.messages),
+            "prompt_character_count": sum(
+                len(message.content) for message in request.messages
+            ),
+            "max_output_tokens": request.max_output_tokens,
+            "stage_latency_ms": {"resolver": resolver_ms},
+        }
+        raise error from exc
 
+    resolver_ms = int((time.perf_counter() - request_started) * 1000)
     parsed = parse_resolver_content(response.content)
+    trace_diagnostics: dict[str, Any] = {
+        "phase": "conversation_resolution",
+        "provider": gen.provider,
+        "model": request.model,
+        "reasoning_contract_id": REASONING_CONTRACT,
+        "reasoning_mode": reasoning_request_mode(
+            settings.deployment.profile, gen.base_url
+        ),
+        "output_contract_id": RESOLVER_PROMPT_CONTRACT_ID,
+        "provider_http_status": response.http_status,
+        "prompt_message_count": len(request.messages),
+        "prompt_character_count": sum(
+            len(message.content) for message in request.messages
+        ),
+        "max_output_tokens": request.max_output_tokens,
+        "prompt_tokens": _token_count(response.usage, "prompt_tokens", "input_tokens"),
+        "completion_tokens": _token_count(
+            response.usage, "completion_tokens", "output_tokens"
+        ),
+        "total_tokens": _token_count(response.usage, "total_tokens"),
+        "finish_reason": response.finish_reason,
+        "validation_failure_detail": (
+            parsed.diagnostics.get("validation_failure_detail")
+            if parsed.diagnostics
+            else None
+        ),
+        "stage_latency_ms": {"resolver": resolver_ms},
+    }
+    if (
+        parsed.outcome == "invalid_output"
+        and settings.diagnostics.capture_rejected_generation_output
+    ):
+        trace_diagnostics["rejected_response_excerpt"] = (
+            bounded_rejected_response_excerpt(response.content, gen.api_key)
+        )
     if parsed.outcome == "resolved":
-        return parsed
+        return ResolverResult(
+            outcome=parsed.outcome,
+            retrieval_question=parsed.retrieval_question,
+            context_used=parsed.context_used,
+            resolver_invoked=True,
+            diagnostics=trace_diagnostics,
+        )
     fallback = try_deterministic_followup_resolve(
         prior_turns=prior_turns,
         current_question=current_question,
     )
     if fallback is not None:
-        return fallback
+        return ResolverResult(
+            outcome=fallback.outcome,
+            retrieval_question=fallback.retrieval_question,
+            context_used=fallback.context_used,
+            resolver_invoked=True,
+            diagnostics=trace_diagnostics,
+        )
     if parsed.outcome == "invalid_output":
-        raise AppError(ErrorCode.RESPONSE_PARSE_ERROR)
-    return parsed
+        error = AppError(ErrorCode.RESPONSE_PARSE_ERROR)
+        error.trace_diagnostics = trace_diagnostics
+        raise error
+    return ResolverResult(
+        outcome=parsed.outcome,
+        retrieval_question=parsed.retrieval_question,
+        context_used=parsed.context_used,
+        resolver_invoked=True,
+        diagnostics=trace_diagnostics,
+    )
+
+
+def _token_count(usage: dict[str, Any], *keys: str) -> int | None:
+    for key in keys:
+        value = usage.get(key)
+        if type(value) is int and value >= 0:
+            return value
+    return None

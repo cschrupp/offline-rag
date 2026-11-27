@@ -177,6 +177,17 @@ class HybridRerankContextAssembler:
             "input_pool_chunk_ids": upstream.metadata.get("input_pool_chunk_ids")
             if upstream.metadata
             else None,
+            "reranked_candidate_chunk_ids": [
+                candidate.chunk_id for candidate in upstream.candidates
+            ],
+            "reranked_candidate_scores": [
+                {
+                    "chunk_id": candidate.chunk_id,
+                    "rank": candidate.rank,
+                    "score": float(candidate.score),
+                }
+                for candidate in upstream.candidates
+            ],
         }
 
         if execution := upstream.metadata.get("reranker_execution"):

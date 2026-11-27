@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
@@ -26,9 +27,22 @@ from offline_rag.generation.protocol import (
 
 
 class OpenAICompatibleGeneratorError(RuntimeError):
-    def __init__(self, message: str, *, failure_reason: str = "provider_error") -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        failure_reason: str = "provider_error",
+        http_status: int | None = None,
+        provider_error_type: str | None = None,
+        provider_error_code: str | None = None,
+        safe_detail: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.failure_reason = failure_reason
+        self.http_status = http_status
+        self.provider_error_type = provider_error_type
+        self.provider_error_code = provider_error_code
+        self.safe_detail = safe_detail
 
 
 def normalize_endpoint(base_url: str) -> str:
@@ -231,6 +245,7 @@ class OpenAICompatibleGenerator:
                     self.settings.generation.api_key,
                 ),
                 failure_reason="timeout",
+                safe_detail="request_timeout",
             ) from None
         except httpx.HTTPError as exc:
             raise OpenAICompatibleGeneratorError(
@@ -239,6 +254,7 @@ class OpenAICompatibleGenerator:
                     self.settings.generation.api_key,
                 ),
                 failure_reason="transport_error",
+                safe_detail=type(exc).__name__,
             ) from None
         if response.status_code >= 400:
             if response.status_code in {401, 403}:
@@ -250,12 +266,19 @@ class OpenAICompatibleGenerator:
                     "length" in text or "window" in text or "too long" in text
                 ):
                     reason = "context_window_exceeded"
+            provider_type, provider_code = _provider_error_identity(response)
             raise OpenAICompatibleGeneratorError(
                 _redact_secret(
-                    f"generator HTTP {response.status_code}: {response.text[:300]}",
+                    f"generator HTTP {response.status_code}",
                     self.settings.generation.api_key,
                 ),
                 failure_reason=reason,
+                http_status=response.status_code,
+                provider_error_type=provider_type,
+                provider_error_code=provider_code,
+                safe_detail=_safe_provider_error_detail(
+                    response, self.settings.generation.api_key
+                ),
             )
         try:
             payload = response.json()
@@ -263,6 +286,8 @@ class OpenAICompatibleGenerator:
             raise OpenAICompatibleGeneratorError(
                 "generator returned non-JSON",
                 failure_reason="provider_error",
+                http_status=response.status_code,
+                safe_detail="response_not_json",
             ) from None
         content = _extract_message_content(payload)
         api_key = self.settings.generation.api_key
@@ -270,6 +295,8 @@ class OpenAICompatibleGenerator:
             raise OpenAICompatibleGeneratorError(
                 "provider response contained configured credential",
                 failure_reason="provider_error",
+                http_status=response.status_code,
+                safe_detail="credential_in_response",
             )
         usage = payload.get("usage") if isinstance(payload.get("usage"), dict) else {}
         choices = payload.get("choices")
@@ -286,7 +313,59 @@ class OpenAICompatibleGenerator:
                 if finish_reason is not None
                 else None
             ),
+            http_status=response.status_code,
         )
+
+
+_SAFE_PROVIDER_TOKEN = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
+
+
+def _provider_error_identity(response: httpx.Response) -> tuple[str | None, str | None]:
+    try:
+        payload = response.json()
+    except ValueError:
+        return None, None
+    if not isinstance(payload, dict):
+        return None, None
+    error = payload.get("error")
+    if not isinstance(error, dict):
+        return None, None
+    error_type = error.get("type")
+    error_code = error.get("code")
+    safe_type = (
+        error_type
+        if isinstance(error_type, str) and _SAFE_PROVIDER_TOKEN.fullmatch(error_type)
+        else None
+    )
+    safe_code = (
+        error_code
+        if isinstance(error_code, str) and _SAFE_PROVIDER_TOKEN.fullmatch(error_code)
+        else None
+    )
+    return safe_type, safe_code
+
+
+def _safe_provider_error_detail(
+    response: httpx.Response,
+    api_key: str | None,
+) -> str:
+    """Return only bounded machine identifiers, never provider prose/body text."""
+    provider_type, provider_code = _provider_error_identity(response)
+    parts = ["provider_rejected_request"]
+    if provider_type:
+        parts.append(f"type={provider_type}")
+    if provider_code:
+        parts.append(f"code={provider_code}")
+    return _redact_secret(" ".join(parts)[:256], api_key)
+
+
+def bounded_rejected_response_excerpt(content: str, api_key: str | None) -> str:
+    """Sanitize and cap an explicitly opted-in rejected model response."""
+    text = re.sub(r"(?i)\bbearer\s+[^\s\"']+", "Bearer [redacted]", content)
+    text = re.sub(r"\bsk-[A-Za-z0-9_-]{12,}\b", "[redacted]", text)
+    if api_key:
+        text = text.replace(api_key, "[redacted]")
+    return text[:2048]
 
 
 def _auth_headers(api_key: str | None) -> dict[str, str]:
@@ -299,14 +378,23 @@ def _apply_reasoning_contract(
     body: dict[str, Any], *, deployment_profile: str, base_url: str
 ) -> None:
     """Request direct output using the configured endpoint's request format."""
+    mode = reasoning_request_mode(deployment_profile, base_url)
+    if mode == "provider_default":
+        return
+    if mode == "reasoning_effort_none":
+        body["reasoning_effort"] = "none"
+    else:
+        body["chat_template_kwargs"] = {"enable_thinking": False}
+
+
+def reasoning_request_mode(deployment_profile: str, base_url: str) -> str:
+    """Describe the actual provider reasoning request shape, without secrets."""
     if (
         deployment_profile == PORTFOLIO_OPENROUTER_PROFILE
         or REASONING_CONTRACT != DIRECT_OUTPUT_V1
     ):
-        return
-
+        return "provider_default"
     endpoint = urlparse(base_url)
-    # The workstation and Docker runbooks use Ollama's standard local endpoint.
     if (
         endpoint.scheme == "http"
         and endpoint.hostname
@@ -314,9 +402,8 @@ def _apply_reasoning_contract(
         and endpoint.port == 11434
         and endpoint.path == "/v1"
     ):
-        body["reasoning_effort"] = "none"
-    else:
-        body["chat_template_kwargs"] = {"enable_thinking": False}
+        return "reasoning_effort_none"
+    return "chat_template_thinking_disabled"
 
 
 def _redact_secret(message: str, api_key: str | None) -> str:

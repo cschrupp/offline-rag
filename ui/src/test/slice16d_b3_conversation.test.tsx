@@ -355,15 +355,16 @@ describe("Slice 16D-B3 conversation state helpers", () => {
 
 describe("Slice 16D-B3 conversation workspace UI", () => {
   it.each([
-    ["no_evidence", "Try using a term or title", "Evidence units in the assembled context: 0"],
-    ["conflicting_evidence", "Name the source or version", "Answer generation was attempted."],
-    ["ambiguous_request", "with the specific term", "The search did not run."],
-    ["generation_timeout", "The model did not finish in time", "Error code: generation_timeout"],
-    ["response_parse_error", "model response did not match Seneca’s required format", "Error code: response_parse_error"],
-    ["generation_unavailable", "could not use the configured generation service", "Error code: generation_unavailable"],
-    ["generation_failed", "generation service could not complete this request", "Error code: generation_failed"],
-    ["insufficient_support", "Ask about one concept", "Detailed retrieval counts are unavailable"],
-  ])("explains %s and lets the learner edit without sending", async (reason, guidance, diagnostic) => {
+    ["no_evidence", "Try using a term or title", "Evidence units in the assembled context: 0", false],
+    ["conflicting_evidence", "Name the source or version", "Answer generation was attempted.", false],
+    ["ambiguous_request", "with the specific term", "The search did not run.", false],
+    ["generation_timeout", "generation service did not finish", "Error code: generation_timeout", true],
+    ["response_parse_error", "model response did not match Seneca’s required format", "Error code: response_parse_error", false],
+    ["generation_unavailable", "could not use the configured generation service", "Error code: generation_unavailable", true],
+    ["generation_failed", "generation service could not complete this request", "Error code: generation_failed", false],
+    ["generation_failed", "generation service could not complete this request", "Error code: generation_failed", true],
+    ["insufficient_support", "Ask about one concept", "Detailed retrieval counts are unavailable", false],
+  ])("explains %s according to failure retryability", async (reason, guidance, diagnostic, retryable) => {
     const user = userEvent.setup();
     const question = "What does the manual say?";
     let posts = 0;
@@ -383,7 +384,8 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
         posts += 1;
         submitted = JSON.parse(String(call.body));
         if (reason.startsWith("generation_") || reason === "response_parse_error") {
-          return errorResponse(reason, "Provider processing failed", reason === "generation_timeout" ? 504 : 502, true);
+          const status = reason === "generation_timeout" ? 504 : retryable ? 503 : 502;
+          return errorResponse(reason, "Provider processing failed", status, retryable);
         }
         const clarification = reason === "ambiguous_request";
         return jsonResponse(turnResponse({
@@ -422,11 +424,13 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
       expect(composer).toHaveValue(question);
       expect(composer).toHaveFocus();
       expect(posts).toBe(1);
-      if (reason.startsWith("generation_") || reason === "response_parse_error") {
+      if (retryable) {
         await user.click(screen.getByRole("button", { name: "Retry question" }));
         expect(await screen.findAllByText(new RegExp(guidance))).toHaveLength(2);
         expect(posts).toBe(2);
         expect(submitted).toMatchObject({ question, source_ids: ["src_1"] });
+      } else if (reason.startsWith("generation_") || reason === "response_parse_error") {
+        expect(screen.queryByRole("button", { name: "Retry question" })).toBeNull();
       }
     } finally {
       mock.restore();

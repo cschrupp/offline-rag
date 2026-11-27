@@ -107,16 +107,23 @@ export function FailedTurnRecovery({
 }: RecoveryProps & { turn: IncompleteUserTurn; onRetry?: () => void }) {
   const failure = turn.failure;
   const code = failure?.code;
+  const canRetry = Boolean(onRetry && failure?.retryable);
   const guidance = code === "network_error"
     ? "Check your connection before submitting again. Seneca could not confirm the outcome."
     : code === "response_parse_error"
-      ? "The model response did not match Seneca’s required format, so it was not used. You can retry the same request or edit the question."
+      ? "The model response did not match Seneca’s required format, so it was not used. Edit the question before submitting again."
       : code === "generation_timeout"
+      ? canRetry
         ? "The generation service did not finish before its time limit. You can retry or edit the question."
+        : "The generation service did not finish before its time limit. Edit the question or check the diagnostic trace."
         : code === "generation_unavailable"
+        ? canRetry
           ? "Seneca could not reach the configured generation service. Check Settings, then retry if it is available."
+          : "Seneca could not reach the configured generation service. Check Settings or edit the question."
           : code === "generation_failed"
+          ? canRetry
             ? "The generation service could not complete this request. You can retry or edit the question."
+            : "The generation service could not complete this request. No answer was saved. Edit the question or check its diagnostic trace."
       : failure?.retryable
         ? "Try again when the service is available."
         : "Edit the question before submitting it again.";
@@ -124,7 +131,7 @@ export function FailedTurnRecovery({
   return (
     <div className="stack conversation-recovery">
       <p className="muted">{guidance}</p>
-      {onRetry && (
+      {canRetry && (
         <div>
           <p className="muted">
             Retry uses the original question and sources: {turn.selectedSourceNames.join(", ") || "no selected sources"}.

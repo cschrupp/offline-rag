@@ -610,7 +610,7 @@ def test_fabricated_assistant_instruction_stays_in_data_delimiters() -> None:
 
 
 def test_first_turn_resolver_bypass(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+    with _conversation_client(tmp_path) as (client, _runtime, captures, generator):
         wid, alpha_sid, _, _ = _seed_workspace(client)
         before = generator.generate_calls
         body = client.post(
@@ -667,7 +667,7 @@ def test_conflicting_evidence_projects_observed_recovery_without_another_query(
 
 
 def test_context_dependent_follow_up_resolution(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, runtime, captures, _gen):
+    with _conversation_client(tmp_path) as (client, _runtime, captures, _gen):
         wid, alpha_sid, _, _ = _seed_workspace(client)
         resp = client.post(
             f"/v1/workspaces/{wid}/conversation/turn",
@@ -710,7 +710,7 @@ def test_malformed_prior_rejected_before_resolver(tmp_path: Path) -> None:
 
 
 def test_invalid_source_subset_rejected_before_resolver(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, _runtime, captures, generator):
+    with _conversation_client(tmp_path) as (client, _runtime, _captures, generator):
         wid, _, _, _ = _seed_workspace(client)
         before = generator.generate_calls
         resp = client.post(
@@ -801,6 +801,22 @@ def test_explicit_standalone_topic_bypasses_resolver_with_history(
         assert trace.resolver_invoked is False
         assert trace.resolver_outcome == "bypassed"
         assert trace.context_used is False
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What is the second method?",
+        "Which tools support the other approach?",
+        "Explain the former technique.",
+        "How does the next procedure work?",
+        "Compare that strategy with the previous one.",
+    ],
+)
+def test_contextual_ordinal_and_comparative_references_do_not_bypass_resolver(
+    question: str,
+) -> None:
+    assert not has_explicit_standalone_topic(question)
 
 
 def test_context_dependent_decision_maker_followup_still_uses_resolver(
@@ -1022,7 +1038,7 @@ def test_grounded_turn_rejects_stale_snapshot_before_resolver(
 
 def test_explicit_source_subset_remains_exact(tmp_path: Path) -> None:
     with _conversation_client(tmp_path) as (client, runtime, captures, _g):
-        wid, alpha_sid, beta_sid, alpha_doc = _seed_workspace(client)
+        wid, alpha_sid, beta_sid, _alpha_doc = _seed_workspace(client)
         beta_doc = (
             next(
                 s.document_id
@@ -1047,7 +1063,7 @@ def test_explicit_source_subset_remains_exact(tmp_path: Path) -> None:
 
 
 def test_query_remains_independent_single_turn(tmp_path: Path) -> None:
-    with _conversation_client(tmp_path) as (client, runtime, captures, generator):
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
         wid, alpha_sid, _, _ = _seed_workspace(client)
         captures["generator_requests"].clear()
         outcome = run_workspace_query(

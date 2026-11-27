@@ -26,6 +26,11 @@ from offline_rag.generation.config_hash import (
     build_product_v2_generation_config_hash,
     build_product_v2_generation_semantic_payload,
 )
+from offline_rag.generation.contracts import (
+    OUTPUT_CONTRACT,
+    OUTPUT_CONTRACT_V2,
+    REASONING_CONTRACT,
+)
 from offline_rag.generation.evidence_handles import (
     assign_evidence_handles,
     resolve_handles_to_evidence_ids,
@@ -33,6 +38,8 @@ from offline_rag.generation.evidence_handles import (
 from offline_rag.generation.openai_compatible import (
     OpenAICompatibleGenerator,
     OpenAICompatibleGeneratorError,
+    bounded_rejected_response_excerpt,
+    reasoning_request_mode,
 )
 from offline_rag.generation.projection_v2 import project_plain_answer
 from offline_rag.generation.prompt import (
@@ -95,6 +102,9 @@ class GenerationContextProvenance:
     context_latency_ms: int = 0
     context_breakdown: dict[str, Any] | None = None
     reranker_execution: dict[str, Any] | None = None
+    candidate_chunk_ids: list[str] | None = None
+    reranked_candidate_chunk_ids: list[str] | None = None
+    reranked_candidate_scores: list[dict[str, Any]] | None = None
 
 
 class GroundedGenerationExecutor:
@@ -270,6 +280,7 @@ class GroundedGenerationExecutor:
                 },
             )
         prompt_ms = int((time.perf_counter() - prompt_t0) * 1000)
+        request_diagnostics = self._request_diagnostics(request, units, provenance)
 
         gen_t0 = time.perf_counter()
         try:
@@ -293,6 +304,19 @@ class GroundedGenerationExecutor:
                     "validation": 0,
                     "total": context_ms + prompt_ms + gen_ms,
                 },
+                extra_diagnostics={
+                    "trace_diagnostics": {
+                        **request_diagnostics,
+                        "provider_failure_class": exc.failure_reason,
+                        "provider_http_status": exc.http_status,
+                        "provider_error_type": exc.provider_error_type,
+                        "provider_error_code": exc.provider_error_code,
+                        "provider_safe_detail": exc.safe_detail,
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance, prompt_ms=prompt_ms, generation_ms=gen_ms
+                        ),
+                    }
+                },
             )
         except Exception as exc:  # noqa: BLE001 - map unexpected generator errors
             gen_ms = int((time.perf_counter() - gen_t0) * 1000)
@@ -312,7 +336,16 @@ class GroundedGenerationExecutor:
                     "validation": 0,
                     "total": context_ms + prompt_ms + gen_ms,
                 },
-                extra_diagnostics={"error": str(exc)},
+                extra_diagnostics={
+                    "trace_diagnostics": {
+                        **request_diagnostics,
+                        "provider_failure_class": "unexpected_provider_exception",
+                        "provider_error_type": type(exc).__name__,
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance, prompt_ms=prompt_ms, generation_ms=gen_ms
+                        ),
+                    }
+                },
             )
 
         val_t0 = time.perf_counter()
@@ -336,8 +369,29 @@ class GroundedGenerationExecutor:
                     "validation": val_ms,
                     "total": total_ms,
                 },
-                raw_model_output=response.content,
                 usage=response.usage,
+                extra_diagnostics={
+                    "trace_diagnostics": {
+                        **request_diagnostics,
+                        **self._response_diagnostics(response),
+                        "validation_failure_detail": getattr(
+                            parsed, "failure_detail", None
+                        ),
+                        "evidence_unit_ids": [unit.evidence_unit_id for unit in units],
+                        "evidence_document_ids": list(
+                            dict.fromkeys(unit.document_id for unit in units)
+                        ),
+                        "candidate_chunk_ids": provenance.candidate_chunk_ids or [],
+                        "candidate_count": len(provenance.candidate_chunk_ids or []),
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance,
+                            prompt_ms=prompt_ms,
+                            generation_ms=gen_ms,
+                            validation_ms=val_ms,
+                        ),
+                        **self._optional_rejected_excerpt(response.content),
+                    }
+                },
             )
 
         output = parsed.output
@@ -366,6 +420,23 @@ class GroundedGenerationExecutor:
                     "attempt_count": 1,
                     **decision_diagnostics(sufficiency),
                     "usage": response.usage,
+                    "trace_diagnostics": {
+                        **request_diagnostics,
+                        **self._response_diagnostics(response),
+                        "abstention_reason": "model_abstain",
+                        "evidence_unit_ids": [unit.evidence_unit_id for unit in units],
+                        "evidence_document_ids": list(
+                            dict.fromkeys(unit.document_id for unit in units)
+                        ),
+                        "candidate_chunk_ids": provenance.candidate_chunk_ids or [],
+                        "candidate_count": len(provenance.candidate_chunk_ids or []),
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance,
+                            prompt_ms=prompt_ms,
+                            generation_ms=gen_ms,
+                            validation_ms=val_ms,
+                        ),
+                    },
                     "latency_ms": {
                         "context": int(provenance.context_latency_ms),
                         "prompt_assembly": prompt_ms,
@@ -407,9 +478,26 @@ class GroundedGenerationExecutor:
                     "validation": val_ms,
                     "total": total_ms,
                 },
-                raw_model_output=response.content,
                 usage=response.usage,
-                extra_diagnostics={"invalid_citation_ids": invalid},
+                extra_diagnostics={
+                    "invalid_citation_ids": invalid,
+                    "trace_diagnostics": {
+                        **request_diagnostics,
+                        **self._response_diagnostics(response),
+                        "validation_failure_detail": "citation_membership_invalid",
+                        "evidence_unit_ids": [unit.evidence_unit_id for unit in units],
+                        "evidence_document_ids": list(
+                            dict.fromkeys(unit.document_id for unit in units)
+                        ),
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance,
+                            prompt_ms=prompt_ms,
+                            generation_ms=gen_ms,
+                            validation_ms=val_ms,
+                        ),
+                        **self._optional_rejected_excerpt(response.content),
+                    },
+                },
             )
 
         citations = resolve_citations(output.citation_ids, units)
@@ -433,6 +521,22 @@ class GroundedGenerationExecutor:
                 "attempt_count": 1,
                 **decision_diagnostics(sufficiency),
                 "usage": response.usage,
+                "trace_diagnostics": {
+                    **request_diagnostics,
+                    **self._response_diagnostics(response),
+                    "evidence_unit_ids": [unit.evidence_unit_id for unit in units],
+                    "evidence_document_ids": list(
+                        dict.fromkeys(unit.document_id for unit in units)
+                    ),
+                    "candidate_chunk_ids": provenance.candidate_chunk_ids or [],
+                    "candidate_count": len(provenance.candidate_chunk_ids or []),
+                    "stage_latency_ms": self._diagnostic_stage_timings(
+                        provenance,
+                        prompt_ms=prompt_ms,
+                        generation_ms=gen_ms,
+                        validation_ms=val_ms,
+                    ),
+                },
                 "latency_ms": {
                     "context": int(provenance.context_latency_ms),
                     "prompt_assembly": prompt_ms,
@@ -456,6 +560,132 @@ class GroundedGenerationExecutor:
 
     def _prompt_contract(self) -> str:
         return self.settings.generation.prompt.contract_version
+
+    def _request_diagnostics(
+        self,
+        request: GeneratorRequest,
+        evidence_units: list[EvidenceUnit],
+        provenance: GenerationContextProvenance,
+    ) -> dict[str, Any]:
+        return {
+            "phase": "grounded_generation",
+            "provider": self.settings.generation.provider,
+            "model": request.model,
+            "reasoning_contract_id": REASONING_CONTRACT,
+            "reasoning_mode": reasoning_request_mode(
+                self.settings.deployment.profile,
+                self.settings.generation.base_url,
+            ),
+            "output_contract_id": str(
+                (request.metadata or {}).get("output_contract")
+                or (request.metadata or {}).get("prompt_contract")
+                or OUTPUT_CONTRACT_V2
+            ),
+            "prompt_message_count": len(request.messages),
+            "prompt_character_count": sum(
+                len(message.content) for message in request.messages
+            ),
+            "max_output_tokens": int(request.max_output_tokens),
+            "evidence_unit_ids": [unit.evidence_unit_id for unit in evidence_units],
+            "evidence_document_ids": list(
+                dict.fromkeys(unit.document_id for unit in evidence_units)
+            ),
+            "candidate_chunk_ids": provenance.candidate_chunk_ids or [],
+            "reranked_candidate_chunk_ids": (
+                provenance.reranked_candidate_chunk_ids or []
+            ),
+            "reranked_candidate_scores": provenance.reranked_candidate_scores or [],
+            "candidate_count": len(provenance.candidate_chunk_ids or []),
+            "evidence_unit_count": len(evidence_units),
+        }
+
+    @staticmethod
+    def _response_diagnostics(response: Any) -> dict[str, Any]:
+        usage = response.usage if isinstance(response.usage, dict) else {}
+
+        def token_count(*keys: str) -> int | None:
+            for key in keys:
+                value = usage.get(key)
+                if type(value) is int and value >= 0:
+                    return value
+            return None
+
+        prompt_tokens = token_count(
+            "prompt_tokens", "input_tokens", "prompt_eval_count"
+        )
+        completion_tokens = token_count(
+            "completion_tokens", "output_tokens", "eval_count"
+        )
+        total_tokens = token_count("total_tokens")
+        if (
+            total_tokens is None
+            and prompt_tokens is not None
+            and completion_tokens is not None
+        ):
+            total_tokens = prompt_tokens + completion_tokens
+        return {
+            "provider_http_status": response.http_status,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "finish_reason": response.finish_reason,
+        }
+
+    def _optional_rejected_excerpt(self, content: str) -> dict[str, str]:
+        if not self.settings.diagnostics.capture_rejected_generation_output:
+            return {}
+        return {
+            "rejected_response_excerpt": bounded_rejected_response_excerpt(
+                content, self.settings.generation.api_key
+            )
+        }
+
+    @staticmethod
+    def _diagnostic_stage_timings(
+        provenance: GenerationContextProvenance,
+        *,
+        prompt_ms: int,
+        generation_ms: int,
+        validation_ms: int = 0,
+    ) -> dict[str, int]:
+        timings: dict[str, int] = {}
+        breakdown = provenance.context_breakdown or {}
+        hybrid = breakdown.get("hybrid_rerank_breakdown", {})
+        hybrid_parts = (
+            hybrid.get("hybrid_breakdown", {}) if isinstance(hybrid, dict) else {}
+        )
+        rerank_parts = hybrid
+        for target, source in (
+            ("query_embedding", "query_embedding"),
+            ("dense_vector_search", "vector_search"),
+            ("dense_retrieval", "dense"),
+            ("lexical_retrieval", "lexical"),
+            ("fusion", "fusion"),
+        ):
+            value = hybrid_parts.get(source) if isinstance(hybrid_parts, dict) else None
+            if type(value) is int and value >= 0:
+                timings[target] = value
+        for target, source in (
+            ("reranker_pair_build", "pair_build"),
+            ("reranker_inference", "rerank_infer"),
+            ("reranker_sort", "sort"),
+        ):
+            value = rerank_parts.get(source) if isinstance(rerank_parts, dict) else None
+            if type(value) is int and value >= 0:
+                timings[target] = value
+        context_expand = breakdown.get("context_expand")
+        context_total = breakdown.get("total")
+        if type(context_expand) is int and context_expand >= 0:
+            timings["context_expansion"] = context_expand
+        if type(context_total) is int and context_total >= 0:
+            timings["context_assembly_total"] = context_total
+        timings["prompt_assembly"] = prompt_ms
+        timings["generation"] = generation_ms
+        timings["output_validation"] = validation_ms
+        timings["end_to_end"] = (
+            provenance.context_latency_ms + prompt_ms + generation_ms + validation_ms
+        )
+        return timings
 
     def _execute_product_v2(
         self,
@@ -552,9 +782,31 @@ class GroundedGenerationExecutor:
                     "failed_evidence_unit_id": exc.failed_evidence_unit_id,
                     "failed_document_id": exc.failed_document_id,
                     "error": str(exc),
+                    "trace_diagnostics": {
+                        "phase": "grounded_generation",
+                        "provider": gen.provider,
+                        "model": gen.model,
+                        "reasoning_contract_id": REASONING_CONTRACT,
+                        "reasoning_mode": reasoning_request_mode(
+                            self.settings.deployment.profile, gen.base_url
+                        ),
+                        "output_contract_id": OUTPUT_CONTRACT_V2,
+                        "evidence_unit_ids": [unit.evidence_unit_id for unit in units],
+                        "evidence_document_ids": list(
+                            dict.fromkeys(unit.document_id for unit in units)
+                        ),
+                        "candidate_chunk_ids": provenance.candidate_chunk_ids or [],
+                        "candidate_count": len(provenance.candidate_chunk_ids or []),
+                        "evidence_unit_count": len(units),
+                        "validation_failure_detail": "prompt_provenance_unavailable",
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance, prompt_ms=prompt_ms, generation_ms=0
+                        ),
+                    },
                 },
             )
         prompt_ms = int((time.perf_counter() - prompt_t0) * 1000)
+        request_diagnostics = self._request_diagnostics(request, units, provenance)
 
         gen_t0 = time.perf_counter()
         try:
@@ -578,6 +830,19 @@ class GroundedGenerationExecutor:
                     "validation": 0,
                     "total": context_ms + prompt_ms + gen_ms,
                 },
+                extra_diagnostics={
+                    "trace_diagnostics": {
+                        **request_diagnostics,
+                        "provider_failure_class": exc.failure_reason,
+                        "provider_http_status": exc.http_status,
+                        "provider_error_type": exc.provider_error_type,
+                        "provider_error_code": exc.provider_error_code,
+                        "provider_safe_detail": exc.safe_detail,
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance, prompt_ms=prompt_ms, generation_ms=gen_ms
+                        ),
+                    }
+                },
             )
         except Exception as exc:  # noqa: BLE001
             gen_ms = int((time.perf_counter() - gen_t0) * 1000)
@@ -597,7 +862,16 @@ class GroundedGenerationExecutor:
                     "validation": 0,
                     "total": context_ms + prompt_ms + gen_ms,
                 },
-                extra_diagnostics={"error": str(exc)},
+                extra_diagnostics={
+                    "trace_diagnostics": {
+                        **request_diagnostics,
+                        "provider_failure_class": "unexpected_provider_exception",
+                        "provider_error_type": type(exc).__name__,
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance, prompt_ms=prompt_ms, generation_ms=gen_ms
+                        ),
+                    }
+                },
             )
 
         val_t0 = time.perf_counter()
@@ -629,8 +903,21 @@ class GroundedGenerationExecutor:
                     "validation": val_ms,
                     "total": total_ms,
                 },
-                raw_model_output=response.content,
                 usage=response.usage,
+                extra_diagnostics={
+                    "trace_diagnostics": {
+                        **request_diagnostics,
+                        **self._response_diagnostics(response),
+                        "validation_failure_detail": parsed.failure_detail,
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance,
+                            prompt_ms=prompt_ms,
+                            generation_ms=gen_ms,
+                            validation_ms=val_ms,
+                        ),
+                        **self._optional_rejected_excerpt(response.content),
+                    }
+                },
             )
 
         output = parsed.output
@@ -663,6 +950,17 @@ class GroundedGenerationExecutor:
                     "attempt_count": 1,
                     **decision_diagnostics(sufficiency),
                     "usage": response.usage,
+                    "trace_diagnostics": {
+                        **request_diagnostics,
+                        **self._response_diagnostics(response),
+                        "abstention_reason": reason,
+                        "stage_latency_ms": self._diagnostic_stage_timings(
+                            provenance,
+                            prompt_ms=prompt_ms,
+                            generation_ms=gen_ms,
+                            validation_ms=val_ms,
+                        ),
+                    },
                     "latency_ms": {
                         "context": context_ms,
                         "prompt_assembly": prompt_ms,
@@ -725,6 +1023,16 @@ class GroundedGenerationExecutor:
                 "attempt_count": 1,
                 **decision_diagnostics(sufficiency),
                 "usage": response.usage,
+                "trace_diagnostics": {
+                    **request_diagnostics,
+                    **self._response_diagnostics(response),
+                    "stage_latency_ms": self._diagnostic_stage_timings(
+                        provenance,
+                        prompt_ms=prompt_ms,
+                        generation_ms=gen_ms,
+                        validation_ms=val_ms,
+                    ),
+                },
                 "latency_ms": {
                     "context": context_ms,
                     "prompt_assembly": prompt_ms,
@@ -915,6 +1223,31 @@ class GroundedGenerationExecutor:
                 "generator_invoked": False,
                 "attempt_count": 0,
                 **decision_diagnostics(sufficiency),
+                "trace_diagnostics": {
+                    "phase": "grounded_generation",
+                    "provider": gen.provider,
+                    "model": gen.model,
+                    "reasoning_contract_id": REASONING_CONTRACT,
+                    "reasoning_mode": reasoning_request_mode(
+                        self.settings.deployment.profile, gen.base_url
+                    ),
+                    "output_contract_id": (
+                        OUTPUT_CONTRACT_V2 if product_v2 else OUTPUT_CONTRACT
+                    ),
+                    "abstention_reason": product_reason,
+                    "evidence_unit_ids": [],
+                    "evidence_document_ids": [],
+                    "candidate_chunk_ids": provenance.candidate_chunk_ids or [],
+                    "reranked_candidate_chunk_ids": provenance.reranked_candidate_chunk_ids
+                    or [],
+                    "reranked_candidate_scores": provenance.reranked_candidate_scores
+                    or [],
+                    "candidate_count": len(provenance.candidate_chunk_ids or []),
+                    "evidence_unit_count": 0,
+                    "stage_latency_ms": self._diagnostic_stage_timings(
+                        provenance, prompt_ms=0, generation_ms=0
+                    ),
+                },
                 "latency_ms": {
                     "context": int(provenance.context_latency_ms),
                     "prompt_assembly": 0,
@@ -947,7 +1280,6 @@ class GroundedGenerationExecutor:
         provenance: GenerationContextProvenance,
         attempt_count: int,
         latency: dict[str, Any],
-        raw_model_output: str | None = None,
         usage: dict[str, Any] | None = None,
         extra_diagnostics: dict[str, Any] | None = None,
         sufficiency: SufficiencyPolicyDecisionV1 | None = None,
@@ -971,8 +1303,6 @@ class GroundedGenerationExecutor:
             diagnostics["generation_failure_reason"] = failure_reason
         if usage:
             diagnostics["usage"] = usage
-        if raw_model_output is not None:
-            diagnostics["raw_model_output"] = raw_model_output
         if extra_diagnostics:
             diagnostics.update(extra_diagnostics)
         return GroundedAnswerResult(

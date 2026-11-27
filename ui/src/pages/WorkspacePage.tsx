@@ -1012,8 +1012,7 @@ export function WorkspacePage() {
 
   function canRetryQuestion(turn: IncompleteUserTurn) {
     return !trainingMode && askSourcesReady && !askMutation.isPending &&
-      !conversationActionMutation.isPending && Boolean(turn.failure?.retryable ||
-        turn.failure?.code === "response_parse_error") &&
+      !conversationActionMutation.isPending && Boolean(turn.failure?.retryable) &&
       turn.selectedSourceIds.every((id) => sources.some((source) => source.source_id === id));
   }
 

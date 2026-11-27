@@ -28,6 +28,7 @@ class GeneratorResponse:
     usage: dict[str, Any] = field(default_factory=dict)
     raw: dict[str, Any] = field(default_factory=dict)
     finish_reason: str | None = None
+    http_status: int | None = None
 
 
 @dataclass(frozen=True)

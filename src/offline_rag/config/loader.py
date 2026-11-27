@@ -106,6 +106,10 @@ _ENV_FIELD_MAP: dict[str, tuple[str, ...]] = {
     "EVAL_RESULTS": ("paths", "eval_results"),
     "LOG_LEVEL": ("logging", "level"),
     "LOG_STRUCTURED": ("logging", "structured"),
+    "DIAGNOSTICS_CAPTURE_REJECTED_GENERATION_OUTPUT": (
+        "diagnostics",
+        "capture_rejected_generation_output",
+    ),
     "PDF_OCR_ENABLED": ("parsing", "pdf", "ocr_enabled"),
     "HTTP_HOST": ("api", "http_host"),
     "HTTP_PORT": ("api", "http_port"),

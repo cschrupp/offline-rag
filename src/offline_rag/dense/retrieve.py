@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from offline_rag.chunking.persistence import chunk_state_path, load_chunk_state
@@ -71,8 +72,12 @@ class DenseRetriever:
                 f"Run:\noffline-rag index --corpus {corpus_name}"
             )
         if status in {"INDEX_STALE", "INDEX_CONFIG_STALE"}:
-            index_state = load_index_state(index_state_path(self.settings.paths.corpora, corpus_name))
-            chunk_state = load_chunk_state(chunk_state_path(self.settings.paths.corpora, corpus_name))
+            index_state = load_index_state(
+                index_state_path(self.settings.paths.corpora, corpus_name)
+            )
+            chunk_state = load_chunk_state(
+                chunk_state_path(self.settings.paths.corpora, corpus_name)
+            )
             raise DenseRetrievalError(
                 "Dense index is stale.\n"
                 f"Active chunk set:  {chunk_state.current_chunk_set_id}\n"
@@ -81,13 +86,22 @@ class DenseRetriever:
                 f"Run:\noffline-rag index --corpus {corpus_name}"
             )
         if status != "CURRENT":
-            raise DenseRetrievalError(f"Dense index is not searchable (status={status})")
+            raise DenseRetrievalError(
+                f"Dense index is not searchable (status={status})"
+            )
 
-        index_state = load_index_state(index_state_path(self.settings.paths.corpora, corpus_name))
-        manifest = load_index_manifest(
-            self.settings.paths.index_manifests / Path(index_state.current_index_manifest).name
+        index_state = load_index_state(
+            index_state_path(self.settings.paths.corpora, corpus_name)
         )
-        return index_state.current_index_id, manifest.collection_name, index_state.source_chunk_set_id
+        manifest = load_index_manifest(
+            self.settings.paths.index_manifests
+            / Path(index_state.current_index_manifest).name
+        )
+        return (
+            index_state.current_index_id,
+            manifest.collection_name,
+            index_state.source_chunk_set_id,
+        )
 
     def retrieve(
         self,
@@ -137,14 +151,18 @@ class DenseRetriever:
 
         # Live dense execution boundary: preserve DenseRetrievalError stage for
         # raw embedder/backend faults while keeping original exception as cause.
+        embed_started = time.perf_counter()
         try:
             query_vector = embedder.embed_query(query.strip())
+            embed_ms = int((time.perf_counter() - embed_started) * 1000)
+            search_started = time.perf_counter()
             hits = self._backend.search(
                 resolved_collection_name,
                 query_vector=query_vector,
                 top_k=k,
                 document_ids=document_ids,
             )
+            search_ms = int((time.perf_counter() - search_started) * 1000)
         except DenseRetrievalError:
             raise
         except Exception as exc:
@@ -153,7 +171,10 @@ class DenseRetriever:
             hits,
             key=lambda hit: (-hit.score, str(hit.payload.get("chunk_id") or "")),
         )
-        candidates = [self._hit_to_candidate(hit, rank=rank) for rank, hit in enumerate(hits, start=1)]
+        candidates = [
+            self._hit_to_candidate(hit, rank=rank)
+            for rank, hit in enumerate(hits, start=1)
+        ]
         assert_document_scope(
             candidates,
             document_ids,
@@ -175,6 +196,11 @@ class DenseRetriever:
                 "dense_retrieval_config_hash": build_dense_retrieval_config_hash(
                     self.settings
                 ),
+                "latency_ms": {
+                    "query_embedding": embed_ms,
+                    "vector_search": search_ms,
+                    "total": embed_ms + search_ms,
+                },
             },
         )
 

@@ -145,6 +145,7 @@ class HybridRetriever:
             )
         dense_s = time.perf_counter() - t0
         dense_ms = int(dense_s * 1000)
+        dense_latency = dense_result.metadata.get("latency_ms", {})
 
         t1 = time.perf_counter()
         try:
@@ -225,7 +226,11 @@ class HybridRetriever:
         )
 
         dense_chunk_set = str(dense_result.metadata.get("chunk_set_id") or "")
-        if lexical_chunk_set and dense_chunk_set and lexical_chunk_set != dense_chunk_set:
+        if (
+            lexical_chunk_set
+            and dense_chunk_set
+            and lexical_chunk_set != dense_chunk_set
+        ):
             raise HybridRetrievalError(
                 "dense and lexical retrieval targeted different chunk sets: "
                 f"{dense_chunk_set} != {lexical_chunk_set}"
@@ -243,7 +248,9 @@ class HybridRetriever:
             lexical_c = lexical_by_id.get(hit.chunk_id)
             source = dense_c or lexical_c
             if source is None:
-                raise HybridRetrievalError(f"missing canonical candidate for {hit.chunk_id}")
+                raise HybridRetrievalError(
+                    f"missing canonical candidate for {hit.chunk_id}"
+                )
             candidates.append(
                 HybridCandidate(
                     rank=rank,
@@ -296,6 +303,8 @@ class HybridRetriever:
                 "fusion_contract": fusion_cfg.contract_version,
                 "latency_ms": {
                     "dense": dense_ms,
+                    "query_embedding": dense_latency.get("query_embedding"),
+                    "vector_search": dense_latency.get("vector_search"),
                     "lexical": lexical_ms,
                     "fusion": fusion_ms,
                     "total": total_ms,
