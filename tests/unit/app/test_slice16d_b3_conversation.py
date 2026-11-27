@@ -898,7 +898,14 @@ def test_resolver_provider_failures_keep_technical_classification(
                 "prompt_contract"
             ) == RESOLVER_PROMPT_CONTRACT_ID:
                 raise OpenAICompatibleGeneratorError(
-                    "sanitized provider failure", failure_reason=failure_reason
+                    "sanitized provider failure",
+                    failure_reason=failure_reason,
+                    http_status=502 if failure_reason == "provider_error" else None,
+                    provider_response_excerpt=(
+                        '{"error":"bounded resolver diagnostic"}'
+                        if failure_reason == "provider_error"
+                        else None
+                    ),
                 )
             raise AssertionError("grounded retrieval must not run")
 
@@ -918,6 +925,16 @@ def test_resolver_provider_failures_keep_technical_classification(
         assert response.status_code == http_status
         assert response.json()["error"]["code"] == error_code
         assert captures["assemble_queries"] == []
+        if failure_reason == "provider_error":
+            conversation_trace_id = response.json()["trace_id"]
+            trace = ConversationTraceStore(runtime.settings).get(
+                conversation_trace_id
+            )
+            assert trace is not None
+            assert trace.internal_diagnostics is not None
+            assert trace.internal_diagnostics.provider_response_excerpt == (
+                '{"error":"bounded resolver diagnostic"}'
+            )
 
 
 def test_mutation_during_resolver_retains_admitted_snapshot(tmp_path: Path) -> None:
