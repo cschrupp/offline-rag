@@ -119,6 +119,14 @@ class LoggingSettings(BaseModel):
     structured: bool = True
 
 
+class LocalDiagnosticSettings(BaseModel):
+    """Optional bounded diagnostic retention for local troubleshooting."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    capture_rejected_generation_output: bool = False
+
+
 class DeploymentSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -798,6 +806,9 @@ class AppSettings(BaseModel):
     reranker: RerankerSettings = Field(default_factory=RerankerSettings)
     context: ContextSettings = Field(default_factory=ContextSettings)
     generation: GenerationSettings = Field(default_factory=GenerationSettings)
+    diagnostics: LocalDiagnosticSettings = Field(
+        default_factory=LocalDiagnosticSettings
+    )
     authoring: AuthoringSettings = Field(default_factory=AuthoringSettings)
     evaluation: EvaluationSettings = Field(default_factory=EvaluationSettings)
     retrieval_recovery: RetrievalRecoverySettings = Field(
@@ -816,4 +827,5 @@ class AppSettings(BaseModel):
         """
         data = self.model_dump(mode="json")
         data.pop("api", None)
+        data.pop("diagnostics", None)
         return data

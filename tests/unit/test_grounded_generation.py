@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 
 from offline_rag.config.models import AppSettings
@@ -204,9 +205,9 @@ def test_unauthorized_endpoint_not_probed() -> None:
     generator = OpenAICompatibleGenerator(settings, client=client)
     probe = generator.probe()
     assert not probe.ok
-    assert "not approved" in probe.reason
+    assert "rejected by network policy" in probe.reason
     client.get.assert_not_called()
-    with pytest.raises(OpenAICompatibleGeneratorError, match="not approved"):
+    with pytest.raises(OpenAICompatibleGeneratorError, match="rejected by network policy"):
         generator.generate(
             build_prompt_grounded_v1(
                 query="q",
@@ -217,6 +218,49 @@ def test_unauthorized_endpoint_not_probed() -> None:
             )
         )
     client.post.assert_not_called()
+
+
+def test_provider_http_failure_retains_only_safe_machine_diagnostics() -> None:
+    settings = _settings().model_copy(
+        update={
+            "generation": _settings().generation.model_copy(
+                update={"api_key": "sk-test-credential"}
+            )
+        }
+    )
+    request = httpx.Request("POST", "http://127.0.0.1:11434/v1/chat/completions")
+    client = MagicMock()
+    client.post.return_value = httpx.Response(
+        429,
+        json={
+            "error": {
+                "type": "rate_limit_error",
+                "code": "rate_limited",
+                "message": "secret body text sk-test-credential",
+            }
+        },
+        request=request,
+    )
+    generator = OpenAICompatibleGenerator(settings, client=client)
+    with pytest.raises(OpenAICompatibleGeneratorError) as caught:
+        generator.generate(
+            build_prompt_grounded_v1(
+                query="q",
+                evidence_units=[_unit("ev_A", "source text")],
+                model="test-model",
+                temperature=0,
+                max_output_tokens=32,
+            )
+        )
+    error = caught.value
+    assert error.http_status == 429
+    assert error.provider_error_type == "rate_limit_error"
+    assert error.provider_error_code == "rate_limited"
+    assert error.safe_detail == (
+        "provider_rejected_request type=rate_limit_error code=rate_limited"
+    )
+    assert "secret body text" not in str(error)
+    assert "sk-test-credential" not in str(error.safe_detail)
 
 
 def test_api_key_sent_as_bearer_header() -> None:
@@ -449,13 +493,34 @@ def test_citation_invalid_no_retry() -> None:
     assert fake.generate_calls == 1
 
 
-def test_schema_failure_no_retry() -> None:
-    fake = FakeGenerator(default_response="not-json")
+def test_schema_failure_no_retry_or_raw_output_retention() -> None:
+    rejected = "not-json" + "x" * 3000
+    fake = FakeGenerator(default_response=rejected)
     orch, _ = _orchestrator(_settings(), fake=fake)
     result = orch.answer(query="pressure?", corpus_name="default")
     assert result.status == "generation_failed"
     assert result.answer_text is None
     assert fake.generate_calls == 1
+    assert "raw_model_output" not in result.diagnostics
+    trace = result.diagnostics["trace_diagnostics"]
+    assert "rejected_response_excerpt" not in trace
+
+    settings = _settings()
+    opted_settings = settings.model_copy(
+        update={
+            "diagnostics": settings.diagnostics.model_copy(
+                update={"capture_rejected_generation_output": True}
+            )
+        }
+    )
+    opted_fake = FakeGenerator(default_response=rejected)
+    opted_orch, _ = _orchestrator(opted_settings, fake=opted_fake)
+    opted_result = opted_orch.answer(query="pressure?", corpus_name="default")
+    excerpt = opted_result.diagnostics["trace_diagnostics"][
+        "rejected_response_excerpt"
+    ]
+    assert excerpt == rejected[:2048]
+    assert len(excerpt) <= 2048
 
 
 def test_generation_failed_on_transport() -> None:

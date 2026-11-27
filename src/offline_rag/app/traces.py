@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 import threading
 import uuid
@@ -125,6 +126,73 @@ class ProductTraceExecutionSummary(BaseModel):
     total_latency_ms: int | None = None
 
 
+class ProductTraceCandidateScore(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    chunk_id: str = Field(min_length=1, max_length=256)
+    rank: int = Field(ge=1)
+    score: float
+
+    @field_validator("score")
+    @classmethod
+    def _finite_score(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("candidate score must be finite")
+        return value
+
+
+class ProductTraceDiagnosticSummary(BaseModel):
+    """Bounded local-only diagnostics; excluded from the public trace API."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    phase: Literal["conversation_resolution", "grounded_generation"]
+    provider: str | None = Field(default=None, max_length=80)
+    model: str | None = Field(default=None, max_length=256)
+    reasoning_contract_id: str | None = Field(default=None, max_length=128)
+    reasoning_mode: str | None = Field(default=None, max_length=80)
+    output_contract_id: str | None = Field(default=None, max_length=128)
+    provider_http_status: int | None = Field(default=None, ge=100, le=599)
+    provider_failure_class: str | None = Field(default=None, max_length=80)
+    provider_error_type: str | None = Field(default=None, max_length=80)
+    provider_error_code: str | None = Field(default=None, max_length=80)
+    provider_safe_detail: str | None = Field(default=None, max_length=256)
+    prompt_message_count: int | None = Field(default=None, ge=0)
+    prompt_character_count: int | None = Field(default=None, ge=0)
+    max_output_tokens: int | None = Field(default=None, ge=0)
+    prompt_tokens: int | None = Field(default=None, ge=0)
+    completion_tokens: int | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
+    finish_reason: str | None = Field(default=None, max_length=80)
+    validation_failure_detail: str | None = Field(default=None, max_length=80)
+    abstention_reason: str | None = Field(default=None, max_length=80)
+    evidence_unit_ids: list[str] = Field(default_factory=list, max_length=256)
+    evidence_document_ids: list[str] = Field(default_factory=list, max_length=256)
+    candidate_chunk_ids: list[str] = Field(default_factory=list, max_length=256)
+    reranked_candidate_chunk_ids: list[str] = Field(
+        default_factory=list, max_length=256
+    )
+    reranked_candidate_scores: list[ProductTraceCandidateScore] = Field(
+        default_factory=list, max_length=256
+    )
+    candidate_count: int | None = Field(default=None, ge=0)
+    evidence_unit_count: int | None = Field(default=None, ge=0)
+    stage_latency_ms: dict[str, int] = Field(default_factory=dict)
+    rejected_response_excerpt: str | None = Field(default=None, max_length=2048)
+
+    @field_validator(
+        "stage_latency_ms",
+        mode="after",
+    )
+    @classmethod
+    def _validate_stage_latency(cls, value: dict[str, int]) -> dict[str, int]:
+        if len(value) > 32:
+            raise ValueError("stage_latency_ms exceeds the diagnostic limit")
+        if any(not key.replace("_", "").isalnum() for key in value):
+            raise ValueError("stage_latency_ms keys must be simple identifiers")
+        return value
+
+
 _EXCEPTION_TYPE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,127}$")
 
 
@@ -197,6 +265,7 @@ class ProductQueryTrace(BaseModel):
         default_factory=ProductTraceExecutionSummary
     )
     internal_failure: ProductTraceInternalFailure | None = None
+    internal_diagnostics: ProductTraceDiagnosticSummary | None = None
 
     @field_validator("trace_id")
     @classmethod
@@ -260,7 +329,7 @@ class ProductTraceStore:
                 record = ProductQueryTrace.model_validate_json(
                     path.read_text(encoding="utf-8")
                 )
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 return None
             if not self._is_retained(record, now=datetime.now(tz=UTC)):
                 return None
@@ -288,7 +357,7 @@ class ProductTraceStore:
                 record = ProductQueryTrace.model_validate_json(
                     path.read_text(encoding="utf-8")
                 )
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 path.unlink(missing_ok=True)
                 continue
             created = record.created_at

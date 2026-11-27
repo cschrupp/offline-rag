@@ -25,6 +25,7 @@ from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.snapshot import PRODUCT_MODE_GROUNDED_V1, CorpusReadSnapshot
 from offline_rag.app.traces import (
     ProductQueryTrace,
+    ProductTraceDiagnosticSummary,
     ProductTraceExecutionSummary,
     ProductTraceIdentitySummary,
     ProductTraceInternalFailure,
@@ -236,13 +237,26 @@ def _map_generation_failure(result: GroundedAnswerResult) -> AppError:
     if result.status == "citation_invalid":
         return AppError(ErrorCode.CITATION_INVALID)
     reason = result.generation_failure_reason or ""
+    diagnostics = result.diagnostics if isinstance(result.diagnostics, dict) else {}
+    trace_diagnostics = diagnostics.get("trace_diagnostics")
+    provider_status = (
+        trace_diagnostics.get("provider_http_status")
+        if isinstance(trace_diagnostics, dict)
+        else None
+    )
     if reason == "timeout":
         return AppError(ErrorCode.GENERATION_TIMEOUT)
     if reason in {"transport_error", "unavailable"}:
-        return AppError(ErrorCode.GENERATION_UNAVAILABLE)
+        return AppError(
+            ErrorCode.GENERATION_UNAVAILABLE,
+            retryable_override=provider_status not in {401, 403},
+        )
     if reason in {"response_parse_error", "output_schema_invalid"}:
         return AppError(ErrorCode.RESPONSE_PARSE_ERROR)
-    return AppError(ErrorCode.GENERATION_FAILED)
+    retryable = provider_status in {408, 429} or (
+        type(provider_status) is int and provider_status >= 500
+    )
+    return AppError(ErrorCode.GENERATION_FAILED, retryable_override=retryable)
 
 
 def _project_success(
@@ -349,6 +363,23 @@ def _execution_summary(
         generation_latency_ms=_latency_int(diagnostics, "generation"),
         total_latency_ms=_latency_int(diagnostics, "total"),
     )
+
+
+def _internal_trace_diagnostics(
+    result: GroundedAnswerResult | None,
+) -> ProductTraceDiagnosticSummary | None:
+    if result is None or not isinstance(result.diagnostics, dict):
+        return None
+    raw = result.diagnostics.get("trace_diagnostics")
+    if not isinstance(raw, dict):
+        return None
+    allowed = set(ProductTraceDiagnosticSummary.model_fields)
+    payload = {key: value for key, value in raw.items() if key in allowed}
+    try:
+        return ProductTraceDiagnosticSummary.model_validate(payload)
+    except TypeError, ValueError:
+        # Diagnostic projection must never change a query's scientific outcome.
+        return None
 
 
 def _identity_summary(
@@ -541,12 +572,14 @@ def run_bound_snapshot_query(
                 error_code=str(mapped_error.code),
                 execution=_execution_summary(result),
                 internal_failure=internal_failure,
+                internal_diagnostics=_internal_trace_diagnostics(result),
             )
             _commit_terminal_trace(store, record, stage_breadcrumb=stage_breadcrumb)
             raise AppError(
                 mapped_error.code,
                 message=mapped_error.message,
                 trace_id=trace_id,
+                retryable_override=mapped_error.retryable,
             ) from mapped_error
 
         assert status is not None
@@ -562,6 +595,7 @@ def run_bound_snapshot_query(
             error_code=None,
             execution=_execution_summary(result),
             internal_failure=None,
+            internal_diagnostics=_internal_trace_diagnostics(result),
         )
         _commit_terminal_trace(store, record, stage_breadcrumb=stage_breadcrumb)
         return BoundSnapshotQueryOutcome(

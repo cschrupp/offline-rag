@@ -29,7 +29,10 @@ from offline_rag.app.query import (
 )
 from offline_rag.app.runtime import ApplicationRuntime
 from offline_rag.app.snapshot import PRODUCT_MODE_GROUNDED_V1, CorpusReadSnapshot
-from offline_rag.app.traces import ProductTraceSourceScope
+from offline_rag.app.traces import (
+    ProductTraceDiagnosticSummary,
+    ProductTraceSourceScope,
+)
 from offline_rag.app.workspace.memory import WorkspaceMemory
 from offline_rag.app.workspace.models import (
     WorkspaceRecord,
@@ -50,6 +53,19 @@ ConversationSuccessStatus = Literal[
 
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _resolver_diagnostic_summary(
+    diagnostics: dict[str, Any] | None,
+) -> ProductTraceDiagnosticSummary | None:
+    if not diagnostics:
+        return None
+    try:
+        return ProductTraceDiagnosticSummary.model_validate(
+            {"phase": "conversation_resolution", **diagnostics}
+        )
+    except TypeError, ValueError:
+        return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,11 +223,51 @@ def execute_prepared_conversation_turn(
     # 11. Resolver (after scientific state is bound).
     if control is not None:
         control.checkpoint("pre_resolver")
-    resolver = resolve_conversation_context(
-        runtime,
-        prior_turns=validated_prior,
-        current_question=normalized_question,
-    )
+    try:
+        resolver = resolve_conversation_context(
+            runtime,
+            prior_turns=validated_prior,
+            current_question=normalized_question,
+        )
+    except AppError as exc:
+        raw_diagnostics = getattr(exc, "trace_diagnostics", None)
+        diagnostic_summary = None
+        if isinstance(raw_diagnostics, dict):
+            try:
+                diagnostic_summary = ProductTraceDiagnosticSummary.model_validate(
+                    raw_diagnostics
+                )
+            except TypeError, ValueError:
+                diagnostic_summary = None
+        _commit_conversation_trace(
+            cstore,
+            ConversationTraceRecord(
+                conversation_trace_id=conversation_trace_id,
+                created_at=created_at,
+                workspace_id=workspace_id,
+                workspace_revision=int(admitted_revision),
+                snapshot_id=admitted_snapshot_id,
+                product_mode_id=PRODUCT_MODE_GROUNDED_V1,
+                source_scope=source_scope,
+                question_sha256=_sha256(normalized_question),
+                question_char_count=len(normalized_question),
+                prior_turn_count=len(validated_prior),
+                resolver_invoked=True,
+                resolver_prompt_contract_id=RESOLVER_PROMPT_CONTRACT_ID,
+                resolver_outcome="failed",
+                context_used=False,
+                status="failed",
+                query_trace_id=None,
+                failure_code=str(exc.code),
+                internal_diagnostics=diagnostic_summary,
+            ),
+        )
+        raise AppError(
+            exc.code,
+            message=exc.message,
+            trace_id=conversation_trace_id,
+            retryable_override=exc.retryable,
+        ) from exc
 
     if control is not None:
         control.checkpoint("post_resolver")
@@ -240,6 +296,7 @@ def execute_prepared_conversation_turn(
                 context_used=resolver.context_used,
                 status="clarification_required",
                 query_trace_id=None,
+                internal_diagnostics=_resolver_diagnostic_summary(resolver.diagnostics),
             ),
         )
         return ConversationTurnResponse(
@@ -268,16 +325,54 @@ def execute_prepared_conversation_turn(
     if control is not None:
         control.checkpoint("pre_grounded")
     grounded_started = perf_counter()
-    outcome = run_bound_snapshot_query(
-        runtime,
-        snapshot=snapshot,
-        retrieval_question=retrieval_question,
-        answer_intent=answer_intent,
-        control=control,
-        document_ids=document_scope,
-        source_scope=source_scope,
-        claim_terminal=owned,
-    )
+    try:
+        outcome = run_bound_snapshot_query(
+            runtime,
+            snapshot=snapshot,
+            retrieval_question=retrieval_question,
+            answer_intent=answer_intent,
+            control=control,
+            document_ids=document_scope,
+            source_scope=source_scope,
+            claim_terminal=owned,
+        )
+    except AppError as exc:
+        resolver_diagnostics = None
+        if resolver.diagnostics:
+            try:
+                resolver_diagnostics = ProductTraceDiagnosticSummary.model_validate(
+                    {"phase": "conversation_resolution", **resolver.diagnostics}
+                )
+            except TypeError, ValueError:
+                resolver_diagnostics = None
+        _commit_conversation_trace(
+            cstore,
+            ConversationTraceRecord(
+                conversation_trace_id=conversation_trace_id,
+                created_at=created_at,
+                workspace_id=workspace_id,
+                workspace_revision=int(admitted_revision),
+                snapshot_id=admitted_snapshot_id,
+                product_mode_id=PRODUCT_MODE_GROUNDED_V1,
+                source_scope=source_scope,
+                question_sha256=_sha256(normalized_question),
+                question_char_count=len(normalized_question),
+                prior_turn_count=len(validated_prior),
+                resolver_invoked=resolver.resolver_invoked,
+                resolver_prompt_contract_id=RESOLVER_PROMPT_CONTRACT_ID,
+                resolver_outcome=(
+                    "bypassed" if not resolver.resolver_invoked else "resolved"
+                ),
+                retrieval_question_sha256=_sha256(retrieval_question),
+                retrieval_question_char_count=len(retrieval_question),
+                context_used=resolver.context_used,
+                status="failed",
+                query_trace_id=exc.trace_id,
+                failure_code=str(exc.code),
+                internal_diagnostics=resolver_diagnostics,
+            ),
+        )
+        raise
     grounded_ended = perf_counter()
     try:
         citations = _enrich_workspace_citations(
@@ -318,6 +413,7 @@ def execute_prepared_conversation_turn(
             context_used=resolver.context_used,
             status=outcome.status,
             query_trace_id=outcome.trace_id,
+            internal_diagnostics=_resolver_diagnostic_summary(resolver.diagnostics),
         ),
     )
 

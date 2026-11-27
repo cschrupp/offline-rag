@@ -826,7 +826,7 @@ def test_query_reuses_process_scoped_resources(
             lexical_index_id=snap.identity.lexical_index_id,
         )
 
-    monkeypatch.setattr(GroundedAnswerOrchestrator, "answer", fake_answer)
+    monkeypatch.setattr(GroundedAnswerOrchestrator, "run_grounded_query_core", fake_answer)
 
     snap = runtime.publication.resolve("engineering")
     key = (snap.corpus_name, snap.snapshot_id)

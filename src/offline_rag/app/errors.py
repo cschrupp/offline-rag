@@ -341,6 +341,7 @@ class AppError(Exception):
         *,
         details: SafeErrorDetails | Mapping[str, Any] | None = None,
         trace_id: str | None = None,
+        retryable_override: bool | None = None,
     ) -> None:
         spec = ERROR_CATALOG[code]
         self.code = code
@@ -349,7 +350,9 @@ class AppError(Exception):
         # downgraded when projecting to the envelope.
         self._details_input: SafeErrorDetails | Mapping[str, Any] | None = details
         self.trace_id = trace_id
-        self.retryable = spec.retryable
+        self.retryable = (
+            spec.retryable if retryable_override is None else retryable_override
+        )
         self.http_status = spec.http_status
         super().__init__(self.message)
 

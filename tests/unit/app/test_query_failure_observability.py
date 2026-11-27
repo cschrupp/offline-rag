@@ -9,21 +9,6 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from offline_rag.api.app import create_app
-from offline_rag.app.errors import AppError, ErrorCode
-from offline_rag.app.query_failure import classify_grounded_query_failure
-from offline_rag.app.traces import (
-    ProductQueryTrace,
-    ProductTraceInternalFailure,
-    ProductTraceStore,
-)
-from offline_rag.context.assemble import HybridRerankContextError
-from offline_rag.dense.retrieve import DenseRetrievalError
-from offline_rag.generation.executor import GroundedGenerationError
-from offline_rag.generation.orchestrate import GroundedAnswerError
-from offline_rag.rerank.cross_encoder import CrossEncoderRerankerError
-from offline_rag.rerank.retrieve import HybridRerankRetrievalError
-
 # Reuse 15E harness without duplicating the scientific stack.
 from test_slice15e_product_query_traces import (  # type: ignore[import-not-found]
     _canned,
@@ -35,6 +20,24 @@ from test_slice15e_product_query_traces import (  # type: ignore[import-not-foun
     _settings,
     _trace_path,
 )
+
+from offline_rag.api.app import create_app
+from offline_rag.app.errors import AppError, ErrorCode
+from offline_rag.app.query import _map_generation_failure
+from offline_rag.app.query_failure import classify_grounded_query_failure
+from offline_rag.app.traces import (
+    ProductQueryTrace,
+    ProductTraceDiagnosticSummary,
+    ProductTraceInternalFailure,
+    ProductTraceStore,
+)
+from offline_rag.context.assemble import HybridRerankContextError
+from offline_rag.dense.retrieve import DenseRetrievalError
+from offline_rag.domain.generation import GroundedAnswerResult
+from offline_rag.generation.executor import GroundedGenerationError
+from offline_rag.generation.orchestrate import GroundedAnswerError
+from offline_rag.rerank.cross_encoder import CrossEncoderRerankerError
+from offline_rag.rerank.retrieve import HybridRerankRetrievalError
 
 
 def test_classify_nested_rerank_chain_preserves_inner_stage() -> None:
@@ -162,6 +165,62 @@ def test_store_omits_null_internal_failure_and_public_projection_excludes_it(
         "error_code",
         "execution",
     }
+
+
+@pytest.mark.parametrize(
+    ("failure_reason", "provider_status", "expected_retryable"),
+    [
+        ("provider_error", 400, False),
+        ("provider_error", 429, True),
+        ("provider_error", 503, True),
+        ("timeout", None, True),
+        ("response_parse_error", 502, False),
+    ],
+)
+def test_generation_retryability_follows_failure_classification(
+    failure_reason: str,
+    provider_status: int | None,
+    expected_retryable: bool,
+) -> None:
+    result = GroundedAnswerResult(
+        query="test",
+        status="generation_failed",
+        generation_failure_reason=failure_reason,
+        generation_config_hash="gencfg_test",
+        diagnostics={"trace_diagnostics": {"provider_http_status": provider_status}},
+    )
+    assert _map_generation_failure(result).retryable is expected_retryable
+
+
+def test_internal_generation_diagnostics_are_bounded_and_not_public(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    store = ProductTraceStore(settings)
+    record = _make_trace_record(settings, status="answered", error_code=None)
+    record = record.model_copy(
+        update={
+            "internal_diagnostics": ProductTraceDiagnosticSummary(
+                phase="grounded_generation",
+                provider="openai_compatible",
+                model="test-model",
+                provider_http_status=200,
+                prompt_character_count=1200,
+                max_output_tokens=768,
+                prompt_tokens=300,
+                completion_tokens=20,
+                finish_reason="stop",
+                evidence_unit_ids=["eu_1"],
+                candidate_count=30,
+                stage_latency_ms={"generation": 12, "context_assembly_total": 34},
+            )
+        }
+    )
+    store.commit(record)
+    raw = json.loads(_trace_path(settings, record.trace_id).read_text(encoding="utf-8"))
+    assert raw["internal_diagnostics"]["model"] == "test-model"
+    assert raw["internal_diagnostics"]["evidence_unit_ids"] == ["eu_1"]
+    assert "internal_diagnostics" not in store.public_projection(record)
 
 
 @pytest.mark.parametrize(
@@ -366,8 +425,11 @@ def test_conversation_turn_shared_core_failure_uses_product_trace(
         assert tid and tid.startswith("trace_")
         stored = json.loads(_trace_path(runtime.settings, tid).read_text(encoding="utf-8"))
         assert stored["internal_failure"]["stage"] == "dense_query"
-        # No requirement to create a conversation diagnostic schema/object.
         after = list(
             (runtime.settings.paths.traces / "conversation").glob("trace_*.json")
         ) if (runtime.settings.paths.traces / "conversation").exists() else []
-        assert len(after) == len(before_conversation)
+        assert len(after) == len(before_conversation) + 1
+        conversation_record = json.loads(after[-1].read_text(encoding="utf-8"))
+        assert conversation_record["status"] == "failed"
+        assert conversation_record["query_trace_id"] == tid
+        assert conversation_record["resolver_outcome"] == "bypassed"

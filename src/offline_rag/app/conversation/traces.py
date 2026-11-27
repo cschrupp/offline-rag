@@ -11,12 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.traces import (
+    ProductTraceDiagnosticSummary,
     ProductTraceSourceScope,
     allocate_trace_id,
     is_valid_trace_id,
 )
 from offline_rag.config.models import AppSettings
-from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V1
+from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V2
 from offline_rag.ingestion.io import atomic_write_text
 
 CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v1"
@@ -27,12 +28,14 @@ ResolverOutcomeStatus = Literal[
     "resolved",
     "clarification_required",
     "bypassed",
+    "failed",
 ]
 ConversationTerminalStatus = Literal[
     "answered",
     "insufficient_evidence",
     "model_abstain",
     "clarification_required",
+    "failed",
 ]
 ConversationAnswerOrigin = Literal["sources", "conversation"]
 
@@ -59,7 +62,7 @@ class ConversationTraceRecord(BaseModel):
     question_char_count: int = Field(ge=0)
     prior_turn_count: int = Field(ge=0)
     resolver_invoked: bool
-    resolver_prompt_contract_id: str = CONVERSATION_CONTEXT_RESOLVER_V1
+    resolver_prompt_contract_id: str = CONVERSATION_CONTEXT_RESOLVER_V2
     resolver_outcome: ResolverOutcomeStatus
     retrieval_question_sha256: str | None = None
     retrieval_question_char_count: int | None = None
@@ -68,6 +71,8 @@ class ConversationTraceRecord(BaseModel):
     query_trace_id: str | None = None
     answer_origin: ConversationAnswerOrigin = "sources"
     executor_prompt_contract_id: str | None = None
+    failure_code: str | None = Field(default=None, max_length=80)
+    internal_diagnostics: ProductTraceDiagnosticSummary | None = None
 
     @field_validator("conversation_trace_id")
     @classmethod
@@ -120,7 +125,7 @@ class ConversationTraceStore:
                 record = ConversationTraceRecord.model_validate_json(
                     path.read_text(encoding="utf-8")
                 )
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 return None
             created = record.created_at
             if created.tzinfo is None:
@@ -130,7 +135,7 @@ class ConversationTraceStore:
             return record
 
     def public_projection(self, record: ConversationTraceRecord) -> dict[str, Any]:
-        return record.model_dump(mode="json")
+        return record.model_dump(mode="json", exclude={"internal_diagnostics"})
 
     def _enforce_retention_unlocked(self) -> None:
         now = datetime.now(tz=UTC)
@@ -143,7 +148,7 @@ class ConversationTraceStore:
                 record = ConversationTraceRecord.model_validate_json(
                     path.read_text(encoding="utf-8")
                 )
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 path.unlink(missing_ok=True)
                 continue
             created = record.created_at

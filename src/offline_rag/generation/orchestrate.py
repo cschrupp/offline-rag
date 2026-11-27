@@ -261,6 +261,15 @@ class GroundedAnswerOrchestrator:
             reranker_execution=(active_context.metadata or {}).get(
                 "reranker_execution"
             ),
+            candidate_chunk_ids=(active_context.metadata or {}).get(
+                "input_pool_chunk_ids"
+            ),
+            reranked_candidate_chunk_ids=(active_context.metadata or {}).get(
+                "reranked_candidate_chunk_ids"
+            ),
+            reranked_candidate_scores=(active_context.metadata or {}).get(
+                "reranked_candidate_scores"
+            ),
         )
         _cp("before_generation")
         scoped_names = source_name_by_document_id
