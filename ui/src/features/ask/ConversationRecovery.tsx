@@ -109,8 +109,14 @@ export function FailedTurnRecovery({
   const code = failure?.code;
   const guidance = code === "network_error"
     ? "Check your connection before submitting again. Seneca could not confirm the outcome."
-    : code?.startsWith("generation_")
-      ? "Check the generation service in Settings, or try the question again."
+    : code === "response_parse_error"
+      ? "The model response did not match Seneca’s required format, so it was not used. You can retry the same request or edit the question."
+      : code === "generation_timeout"
+        ? "The generation service did not finish before its time limit. You can retry or edit the question."
+        : code === "generation_unavailable"
+          ? "Seneca could not reach the configured generation service. Check Settings, then retry if it is available."
+          : code === "generation_failed"
+            ? "The generation service could not complete this request. You can retry or edit the question."
       : failure?.retryable
         ? "Try again when the service is available."
         : "Edit the question before submitting it again.";

@@ -359,8 +359,9 @@ describe("Slice 16D-B3 conversation workspace UI", () => {
     ["conflicting_evidence", "Name the source or version", "Answer generation was attempted."],
     ["ambiguous_request", "with the specific term", "The search did not run."],
     ["generation_timeout", "The model did not finish in time", "Error code: generation_timeout"],
-    ["response_parse_error", "could not turn the model’s response into a reliable answer", "Error code: response_parse_error"],
+    ["response_parse_error", "model response did not match Seneca’s required format", "Error code: response_parse_error"],
     ["generation_unavailable", "could not use the configured generation service", "Error code: generation_unavailable"],
+    ["generation_failed", "generation service could not complete this request", "Error code: generation_failed"],
     ["insufficient_support", "Ask about one concept", "Detailed retrieval counts are unavailable"],
   ])("explains %s and lets the learner edit without sending", async (reason, guidance, diagnostic) => {
     const user = userEvent.setup();

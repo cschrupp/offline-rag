@@ -25,6 +25,7 @@ from offline_rag.app.conversation.prior_turns import (
 from offline_rag.app.conversation.resolver import (
     RESOLVER_PROMPT_CONTRACT_ID,
     build_resolver_user_payload,
+    has_explicit_standalone_topic,
     parse_resolver_content,
     resolve_conversation_context,
     try_deterministic_followup_resolve,
@@ -45,13 +46,14 @@ from offline_rag.config.models import AppSettings
 from offline_rag.context.assemble import HybridRerankContextAssembler
 from offline_rag.core.ids import (
     CONVERSATION_ACTION_EXECUTOR_V1,
-    CONVERSATION_CONTEXT_RESOLVER_V1,
+    CONVERSATION_CONTEXT_RESOLVER_V2,
     GROUNDED_ANSWER_V2,
 )
 from offline_rag.dense.embedder import FakeEmbedder
 from offline_rag.dense.qdrant_local import QdrantLocalBackend
 from offline_rag.dense.retrieve import DenseRetriever
 from offline_rag.generation.fake import FakeGenerator
+from offline_rag.generation.openai_compatible import OpenAICompatibleGeneratorError
 from offline_rag.generation.protocol import GeneratorResponse
 from offline_rag.ingestion.docling_artifacts import write_provisioning_manifest
 from offline_rag.rerank.fake import FakeReranker
@@ -142,7 +144,10 @@ def _conversation_client(
         blob = "\n".join(message.content for message in request.messages)
         if contract == CONVERSATION_ACTION_EXECUTOR_V1:
             return "Transformed answer."
-        if contract == CONVERSATION_CONTEXT_RESOLVER_V1 or "conversation-context resolver" in blob:
+        if (
+            contract == CONVERSATION_CONTEXT_RESOLVER_V2
+            or "conversation-context resolver" in blob
+        ):
             # Default: resolve to a clear standalone retrieval question.
             return json.dumps(
                 {
@@ -290,7 +295,7 @@ def test_12k_prior_turns_rejected() -> None:
 
 
 def test_resolver_injection_cannot_change_schema() -> None:
-    # Extra keys → clarification (fail closed), not policy change.
+    # Extra keys are a technical output-contract failure, not user ambiguity.
     result = parse_resolver_content(
         json.dumps(
             {
@@ -301,7 +306,7 @@ def test_resolver_injection_cannot_change_schema() -> None:
             }
         )
     )
-    assert result.outcome == "clarification_required"
+    assert result.outcome == "invalid_output"
 
 
 def test_resolver_exact_json_only_fail_closed() -> None:
@@ -316,11 +321,47 @@ def test_resolver_exact_json_only_fail_closed() -> None:
         f"prefix {valid}",
         f"```json\n{valid}\n```",
         '[{"retrieval_question":"x","context_used":true}]',
-        '{"retrieval_question":"","context_used":true}',
     ):
         result = parse_resolver_content(malformed)
-        assert result.outcome == "clarification_required", malformed
+        assert result.outcome == "invalid_output", malformed
         assert result.retrieval_question is None
+
+    ambiguous = json.dumps({"retrieval_question": "", "context_used": True})
+    assert parse_resolver_content(ambiguous).outcome == "clarification_required"
+    inconsistent = json.dumps({"retrieval_question": "", "context_used": False})
+    assert parse_resolver_content(inconsistent).outcome == "invalid_output"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What do the selected documents say about forcible entry?",
+        "What tools are used for forcible entry?",
+        "What is the purpose of forcible entry in firefighting?",
+        "Explain the main principles of forcible entry.",
+    ],
+)
+def test_explicit_topic_questions_are_eligible_for_history_bypass(
+    question: str,
+) -> None:
+    assert has_explicit_standalone_topic(question)
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What cues does the decision maker use?",
+        "What cues does the decision maker use in this situation?",
+        "What did we decide about forcible entry?",
+        "Explain this in simple terms.",
+        "Summarize that.",
+        "What do they say about forcible entry?",
+    ],
+)
+def test_contextual_or_deictic_questions_do_not_use_history_bypass(
+    question: str,
+) -> None:
+    assert not has_explicit_standalone_topic(question)
 
 
 def test_deterministic_summary_followup_resolves_single_topic() -> None:
@@ -423,7 +464,7 @@ def test_summary_followup_model_empty_uses_deterministic_fallback(
         def _empty_resolver(request):
             contract = (request.metadata or {}).get("prompt_contract")
             blob = "\n".join(message.content for message in request.messages)
-            if contract == CONVERSATION_CONTEXT_RESOLVER_V1:
+            if contract == CONVERSATION_CONTEXT_RESOLVER_V2:
                 return json.dumps({"retrieval_question": "", "context_used": True})
             handles = re.findall(r"\[EVIDENCE (E[1-9][0-9]*)\]", blob)
             unique = list(dict.fromkeys(handles))
@@ -468,7 +509,7 @@ def test_ambiguous_summarize_that_still_clarifies(tmp_path: Path) -> None:
 
         def _empty_resolver(request):
             contract = (request.metadata or {}).get("prompt_contract")
-            if contract == CONVERSATION_CONTEXT_RESOLVER_V1:
+            if contract == CONVERSATION_CONTEXT_RESOLVER_V2:
                 return json.dumps({"retrieval_question": "", "context_used": True})
             raise AssertionError("grounded generator must not run")
 
@@ -587,7 +628,7 @@ def test_first_turn_resolver_bypass(tmp_path: Path) -> None:
         resolver_calls = [
             r
             for r in captures["generator_requests"]
-            if (r.metadata or {}).get("prompt_contract") == CONVERSATION_CONTEXT_RESOLVER_V1
+            if (r.metadata or {}).get("prompt_contract") == CONVERSATION_CONTEXT_RESOLVER_V2
         ]
         assert resolver_calls == []
         assert generator.generate_calls >= before  # grounded may run
@@ -689,7 +730,7 @@ def test_clarification_required_no_query_trace(tmp_path: Path) -> None:
 
         def _clarifying(request):
             contract = (request.metadata or {}).get("prompt_contract")
-            if contract == CONVERSATION_CONTEXT_RESOLVER_V1:
+            if contract == CONVERSATION_CONTEXT_RESOLVER_V2:
                 return json.dumps({"retrieval_question": "", "context_used": True})
             raise AssertionError("grounded generator must not run")
 
@@ -721,6 +762,146 @@ def test_clarification_required_no_query_trace(tmp_path: Path) -> None:
         assert ctrace is not None
         assert ctrace.query_trace_id is None
         assert ctrace.status == "clarification_required"
+
+
+def test_explicit_standalone_topic_bypasses_resolver_with_history(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+        captures["generator_requests"].clear()
+        question = "What do the selected documents say about forcible entry?"
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={
+                "question": question,
+                "source_ids": [alpha_sid],
+                "prior_turns": [
+                    {"role": "user", "text": "What is NDM?"},
+                    {"role": "assistant", "text": "A decision approach."},
+                ],
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["status"] == "answered"
+        assert body["retrieval_question"] == question
+        assert captures["assemble_queries"][-1] == question
+        assert len(captures["generator_requests"]) == 1
+        assert (
+            captures["generator_requests"][0].metadata.get("prompt_contract")
+            != RESOLVER_PROMPT_CONTRACT_ID
+        )
+        trace = ConversationTraceStore(runtime.settings).get(
+            body["conversation_trace_id"]
+        )
+        assert trace is not None
+        assert trace.prior_turn_count == 2
+        assert trace.resolver_invoked is False
+        assert trace.resolver_outcome == "bypassed"
+        assert trace.context_used is False
+
+
+def test_context_dependent_decision_maker_followup_still_uses_resolver(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, _runtime, captures, _generator):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+        captures["generator_requests"].clear()
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={
+                "question": "What cues does the decision maker use?",
+                "source_ids": [alpha_sid],
+                "prior_turns": [
+                    {"role": "user", "text": "Explain naturalistic decision making."},
+                    {"role": "assistant", "text": "A grounded discussion."},
+                ],
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert any(
+            request.metadata.get("prompt_contract") == RESOLVER_PROMPT_CONTRACT_ID
+            for request in captures["generator_requests"]
+        )
+        assert captures["assemble_queries"]
+
+
+def test_invalid_resolver_output_is_technical_parse_failure(
+    tmp_path: Path,
+) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+
+        def invalid_resolver(request):
+            if (request.metadata or {}).get(
+                "prompt_contract"
+            ) == RESOLVER_PROMPT_CONTRACT_ID:
+                return '{"retrieval_question": "Which topic?", "context_used": "yes"}'
+            raise AssertionError("grounded retrieval must not run")
+
+        runtime.resources.generator_client._response_fn = invalid_resolver  # type: ignore[attr-defined]
+        captures["assemble_queries"].clear()
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={
+                "question": "Which of those?",
+                "source_ids": [alpha_sid],
+                "prior_turns": [
+                    {"role": "user", "text": "What methods?"},
+                    {"role": "assistant", "text": "Several."},
+                ],
+            },
+        )
+        assert response.status_code == 502
+        assert response.json()["error"]["code"] == "response_parse_error"
+        assert captures["assemble_queries"] == []
+
+
+@pytest.mark.parametrize(
+    ("failure_reason", "http_status", "error_code"),
+    [
+        ("timeout", 504, "generation_timeout"),
+        ("transport_error", 502, "generation_unavailable"),
+        ("provider_error", 502, "generation_failed"),
+    ],
+)
+def test_resolver_provider_failures_keep_technical_classification(
+    tmp_path: Path,
+    failure_reason: str,
+    http_status: int,
+    error_code: str,
+) -> None:
+    with _conversation_client(tmp_path) as (client, runtime, captures, _generator):
+        wid, alpha_sid, _, _ = _seed_workspace(client)
+
+        def fail_resolver(request):
+            if (request.metadata or {}).get(
+                "prompt_contract"
+            ) == RESOLVER_PROMPT_CONTRACT_ID:
+                raise OpenAICompatibleGeneratorError(
+                    "sanitized provider failure", failure_reason=failure_reason
+                )
+            raise AssertionError("grounded retrieval must not run")
+
+        runtime.resources.generator_client._response_fn = fail_resolver  # type: ignore[attr-defined]
+        captures["assemble_queries"].clear()
+        response = client.post(
+            f"/v1/workspaces/{wid}/conversation/turn",
+            json={
+                "question": "Which of those?",
+                "source_ids": [alpha_sid],
+                "prior_turns": [
+                    {"role": "user", "text": "What methods?"},
+                    {"role": "assistant", "text": "Several."},
+                ],
+            },
+        )
+        assert response.status_code == http_status
+        assert response.json()["error"]["code"] == error_code
+        assert captures["assemble_queries"] == []
 
 
 def test_mutation_during_resolver_retains_admitted_snapshot(tmp_path: Path) -> None:
@@ -878,7 +1059,7 @@ def test_query_remains_independent_single_turn(tmp_path: Path) -> None:
         assert outcome.trace_id
         # No conversation resolver on /query.
         for req in captures["generator_requests"]:
-            assert (req.metadata or {}).get("prompt_contract") != CONVERSATION_CONTEXT_RESOLVER_V1
+            assert (req.metadata or {}).get("prompt_contract") != CONVERSATION_CONTEXT_RESOLVER_V2
             blob = "\n".join(m.content for m in req.messages)
             assert "<CONVERSATION_DATA>" not in blob
         # Dual args equal for /query path via single question.
@@ -909,7 +1090,7 @@ def test_conversation_trace_has_no_transcript(tmp_path: Path) -> None:
         assert secret not in dumped
         assert "What methods" not in dumped
         assert ctrace.resolver_prompt_contract_id == RESOLVER_PROMPT_CONTRACT_ID
-        assert ctrace.resolver_prompt_contract_id == CONVERSATION_CONTEXT_RESOLVER_V1
+        assert ctrace.resolver_prompt_contract_id == CONVERSATION_CONTEXT_RESOLVER_V2
 
 
 def test_query_trace_scientific_authority(tmp_path: Path) -> None:

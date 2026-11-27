@@ -16,7 +16,7 @@ from offline_rag.app.traces import (
     is_valid_trace_id,
 )
 from offline_rag.config.models import AppSettings
-from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V1
+from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V2
 from offline_rag.ingestion.io import atomic_write_text
 
 CONVERSATION_TRACE_SCHEMA_VERSION = "offline-rag-conversation-trace-v1"
@@ -59,7 +59,7 @@ class ConversationTraceRecord(BaseModel):
     question_char_count: int = Field(ge=0)
     prior_turn_count: int = Field(ge=0)
     resolver_invoked: bool
-    resolver_prompt_contract_id: str = CONVERSATION_CONTEXT_RESOLVER_V1
+    resolver_prompt_contract_id: str = CONVERSATION_CONTEXT_RESOLVER_V2
     resolver_outcome: ResolverOutcomeStatus
     retrieval_question_sha256: str | None = None
     retrieval_question_char_count: int | None = None

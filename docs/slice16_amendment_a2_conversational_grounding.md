@@ -1621,3 +1621,22 @@ NO 16D-B2
 NO 16D-B3
 NO 16D-C
 ```
+
+## UAT implementation amendment — 2026-11-27
+
+This append-only amendment records the Human-directed resolver and recovery
+correction. It preserves the historical A2-D06 behavior above as provenance
+and supersedes only its clarification handling and resolver-bypass boundary.
+
+- With prior turns present, a narrow deterministic rule may bypass resolver
+  inference when the current question states an explicit topic and contains no
+  contextual reference. Questions without an explicit topical target, including
+  “What cues does the decision maker use?”, continue through the resolver.
+- A valid resolver object with an empty `retrieval_question` and
+  `context_used: true` remains `clarification_required`.
+- Malformed JSON, schema-invalid output, or an empty target paired with
+  `context_used: false` is a technical `response_parse_error`, not a user
+  ambiguity. Provider exceptions retain their technical timeout, unavailable,
+  or failed classifications.
+- The amended resolver prompt/behavior identity is
+  `conversation_context_resolver_v2`. Historical v1 traces remain unchanged.

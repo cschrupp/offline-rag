@@ -1,4 +1,4 @@
-"""conversation_context_resolver_v1 — linguistic contextualization only (A2-D06)."""
+"""conversation_context_resolver_v2 — linguistic contextualization only."""
 
 from __future__ import annotations
 
@@ -10,10 +10,11 @@ from typing import Any, Literal
 from offline_rag.app.conversation.prior_turns import PriorTurn
 from offline_rag.app.errors import AppError, ErrorCode
 from offline_rag.app.runtime import ApplicationRuntime
-from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V1
+from offline_rag.core.ids import CONVERSATION_CONTEXT_RESOLVER_V2
+from offline_rag.generation.openai_compatible import OpenAICompatibleGeneratorError
 from offline_rag.generation.protocol import ChatMessage, GeneratorRequest
 
-RESOLVER_PROMPT_CONTRACT_ID = CONVERSATION_CONTEXT_RESOLVER_V1
+RESOLVER_PROMPT_CONTRACT_ID = CONVERSATION_CONTEXT_RESOLVER_V2
 
 _RESOLVER_SYSTEM = """\
 You are OfflineRAG's conversation-context resolver.
@@ -36,9 +37,16 @@ Prior ASSISTANT: <conversation wording>
 Current: Can you summarize this talk?
 → {"retrieval_question":"Summarize the firefighting tactics and procedures discussed in the previous turn.","context_used":true}
 
+When the current question already names its topic and does not refer to prior
+conversation, preserve it as the retrieval question with context_used false.
+Use an empty retrieval_question only when the intended conversational
+referent is genuinely missing or ambiguous.
+
 If the current user turn cannot be safely resolved into a standalone retrieval
 question—especially when multiple unrelated prior topics make the referent
 ambiguous—set retrieval_question to an empty string and context_used to true.
+Emit exactly the required JSON schema. Malformed or schema-invalid output is a
+technical resolver failure, not a user ambiguity.
 """
 
 # Low-risk *anaphoric/deictic* operators only. Explicit new topical objects
@@ -67,6 +75,59 @@ _SIMPLIFY_FOLLOWUP_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A bounded bypass for questions that explicitly name their retrieval topic.
+# This deliberately does not try to infer a missing subject from loose prose.
+_EXPLICIT_TOPIC_TAIL_RE = re.compile(
+    r"\b(?:about|for|of|in|on|regarding|concerning)\s+"
+    r"(?P<topic>[a-z0-9][\w'’/-]*(?:\s+[\w'’/-]+)*)\s*[?.!]*$",
+    re.IGNORECASE,
+)
+_QUESTION_OR_COMMAND_RE = re.compile(
+    r"^\s*(?:what|who|where|when|why|how|describe|explain|define|list|"
+    r"compare|identify|outline|summarize)\b",
+    re.IGNORECASE,
+)
+_CONTEXT_REFERENCE_RE = re.compile(
+    r"\b(?:it|they|them|their|those|these|this|that|same|former|latter|"
+    r"above|previous|earlier|here|there)\b|\bwhat\s+we\s+(?:just\s+)?"
+    r"(?:discussed|said|learned|decided|agreed|concluded|covered)\b|"
+    r"\b(?:what|which|how|where|when|why)\s+(?:did|have)\s+"
+    r"(?:you|we|i)\s+(?:just\s+)?(?:say|said|mention|mentioned|discuss|"
+    r"discussed|decide|decided|learn|learned|cover|covered|agree|agreed)\b",
+    re.IGNORECASE,
+)
+_NON_TOPIC_TAILS = frozenset(
+    {
+        "simple terms",
+        "plain language",
+        "more detail",
+        "more simply",
+        "a list",
+        "bullet points",
+        "three bullets",
+        "two sentences",
+        "one sentence",
+    }
+)
+_TOPIC_STOP_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "for",
+        "in",
+        "of",
+        "on",
+        "or",
+        "the",
+        "to",
+        "what",
+        "which",
+        "with",
+    }
+)
+
 _RESOLVER_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -80,7 +141,7 @@ _RESOLVER_SCHEMA: dict[str, Any] = {
 
 @dataclass(frozen=True, slots=True)
 class ResolverResult:
-    outcome: Literal["resolved", "clarification_required"]
+    outcome: Literal["resolved", "clarification_required", "invalid_output"]
     retrieval_question: str | None
     context_used: bool
     resolver_invoked: bool
@@ -157,61 +218,43 @@ def build_resolver_request(
 
 
 def parse_resolver_content(content: str) -> ResolverResult:
-    """Parse resolver model output; invalid → clarification_required.
+    """Parse resolver output, distinguishing ambiguity from malformed output.
 
-    Accept only an exact top-level JSON object for the frozen schema. Do not
-    salvage prose-wrapped, fenced, or embedded JSON (A2-D06 / Rework 1 R4).
+    Accept only an exact top-level JSON object for the current schema. A valid
+    empty target is the resolver's ambiguity signal. Malformed or inconsistent
+    output is a technical parse failure, never user ambiguity.
     """
-    text = (content or "").strip()
-    if not text:
+
+    def invalid_output() -> ResolverResult:
         return ResolverResult(
-            outcome="clarification_required",
+            outcome="invalid_output",
             retrieval_question=None,
             context_used=True,
             resolver_invoked=True,
         )
+
+    text = (content or "").strip()
+    if not text:
+        return invalid_output()
     try:
         payload: Any = json.loads(text)
     except json.JSONDecodeError:
-        return ResolverResult(
-            outcome="clarification_required",
-            retrieval_question=None,
-            context_used=True,
-            resolver_invoked=True,
-        )
+        return invalid_output()
     if not isinstance(payload, dict):
-        return ResolverResult(
-            outcome="clarification_required",
-            retrieval_question=None,
-            context_used=True,
-            resolver_invoked=True,
-        )
+        return invalid_output()
     # Reject schema/policy injection extras — only frozen keys allowed.
     if set(payload.keys()) - {"retrieval_question", "context_used"}:
-        return ResolverResult(
-            outcome="clarification_required",
-            retrieval_question=None,
-            context_used=True,
-            resolver_invoked=True,
-        )
+        return invalid_output()
     if "retrieval_question" not in payload or "context_used" not in payload:
-        return ResolverResult(
-            outcome="clarification_required",
-            retrieval_question=None,
-            context_used=True,
-            resolver_invoked=True,
-        )
+        return invalid_output()
     rq = payload.get("retrieval_question")
     context_used = payload.get("context_used")
     if not isinstance(rq, str) or not isinstance(context_used, bool):
-        return ResolverResult(
-            outcome="clarification_required",
-            retrieval_question=None,
-            context_used=True,
-            resolver_invoked=True,
-        )
+        return invalid_output()
     trimmed = rq.strip()
     if not trimmed:
+        if not context_used:
+            return invalid_output()
         return ResolverResult(
             outcome="clarification_required",
             retrieval_question=None,
@@ -254,7 +297,7 @@ def try_deterministic_followup_resolve(
         )
     else:
         retrieval_question = (
-            "Summarize the topic of the previous user question: " f"{topic}"
+            f"Summarize the topic of the previous user question: {topic}"
         )
     return ResolverResult(
         outcome="resolved",
@@ -262,6 +305,32 @@ def try_deterministic_followup_resolve(
         context_used=True,
         resolver_invoked=True,
     )
+
+
+def has_explicit_standalone_topic(question: str) -> bool:
+    """Return true only for a direct question with an explicit topic phrase.
+
+    The rule is intentionally conservative: contextual references and bare
+    follow-ups remain with the conversation resolver. A failed match is not a
+    claim that a question is ambiguous; it only means history may be needed.
+    """
+    normalized = (question or "").strip()
+    if not normalized or not _QUESTION_OR_COMMAND_RE.match(normalized):
+        return False
+    if _CONTEXT_REFERENCE_RE.search(normalized):
+        return False
+    match = _EXPLICIT_TOPIC_TAIL_RE.search(normalized)
+    if match is None:
+        return False
+    topic = " ".join(match.group("topic").casefold().split())
+    if topic in _NON_TOPIC_TAILS:
+        return False
+    meaningful = [
+        token
+        for token in re.findall(r"[a-z0-9]+", topic)
+        if token not in _TOPIC_STOP_WORDS
+    ]
+    return bool(meaningful)
 
 
 def resolve_conversation_context(
@@ -272,6 +341,14 @@ def resolve_conversation_context(
 ) -> ResolverResult:
     """Resolve follow-up into retrieval_question, or bypass on first turn."""
     if not prior_turns:
+        return ResolverResult(
+            outcome="resolved",
+            retrieval_question=current_question,
+            context_used=False,
+            resolver_invoked=False,
+        )
+
+    if has_explicit_standalone_topic(current_question):
         return ResolverResult(
             outcome="resolved",
             retrieval_question=current_question,
@@ -294,6 +371,12 @@ def resolve_conversation_context(
     )
     try:
         response = resources.generator_client.generate(request)
+    except OpenAICompatibleGeneratorError as exc:
+        if exc.failure_reason == "timeout":
+            raise AppError(ErrorCode.GENERATION_TIMEOUT) from exc
+        if exc.failure_reason in {"transport_error", "unavailable"}:
+            raise AppError(ErrorCode.GENERATION_UNAVAILABLE) from exc
+        raise AppError(ErrorCode.GENERATION_FAILED) from exc
     except AppError:
         raise
     except Exception as exc:
@@ -308,4 +391,6 @@ def resolve_conversation_context(
     )
     if fallback is not None:
         return fallback
+    if parsed.outcome == "invalid_output":
+        raise AppError(ErrorCode.RESPONSE_PARSE_ERROR)
     return parsed
