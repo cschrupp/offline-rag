@@ -36,6 +36,7 @@ class OpenAICompatibleGeneratorError(RuntimeError):
         provider_error_type: str | None = None,
         provider_error_code: str | None = None,
         safe_detail: str | None = None,
+        provider_response_excerpt: str | None = None,
     ) -> None:
         super().__init__(message)
         self.failure_reason = failure_reason
@@ -43,6 +44,7 @@ class OpenAICompatibleGeneratorError(RuntimeError):
         self.provider_error_type = provider_error_type
         self.provider_error_code = provider_error_code
         self.safe_detail = safe_detail
+        self.provider_response_excerpt = provider_response_excerpt
 
 
 def normalize_endpoint(base_url: str) -> str:
@@ -278,6 +280,13 @@ class OpenAICompatibleGenerator:
                 provider_error_code=provider_code,
                 safe_detail=_safe_provider_error_detail(
                     response, self.settings.generation.api_key
+                ),
+                provider_response_excerpt=(
+                    bounded_rejected_response_excerpt(
+                        response.text, self.settings.generation.api_key
+                    )
+                    if self.settings.diagnostics.capture_rejected_generation_output
+                    else None
                 ),
             )
         try:

@@ -120,7 +120,7 @@ class LoggingSettings(BaseModel):
 
 
 class LocalDiagnosticSettings(BaseModel):
-    """Optional bounded diagnostic retention for local troubleshooting."""
+    """Optional bounded response capture for local troubleshooting."""
 
     model_config = ConfigDict(extra="forbid")
 

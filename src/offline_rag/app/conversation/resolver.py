@@ -410,6 +410,7 @@ def resolve_conversation_context(
             "provider_error_type": exc.provider_error_type,
             "provider_error_code": exc.provider_error_code,
             "provider_safe_detail": exc.safe_detail,
+            "provider_response_excerpt": exc.provider_response_excerpt,
             "prompt_message_count": len(request.messages),
             "prompt_character_count": sum(
                 len(message.content) for message in request.messages

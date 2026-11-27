@@ -259,8 +259,51 @@ def test_provider_http_failure_retains_only_safe_machine_diagnostics() -> None:
     assert error.safe_detail == (
         "provider_rejected_request type=rate_limit_error code=rate_limited"
     )
+    assert error.provider_response_excerpt is None
     assert "secret body text" not in str(error)
     assert "sk-test-credential" not in str(error.safe_detail)
+
+
+def test_provider_error_excerpt_requires_opt_in_and_is_sanitized_and_bounded() -> None:
+    api_key = "sk-test-credential"
+    settings = _settings().model_copy(
+        update={
+            "generation": _settings().generation.model_copy(
+                update={"api_key": api_key}
+            ),
+            "diagnostics": _settings().diagnostics.model_copy(
+                update={"capture_rejected_generation_output": True}
+            ),
+        }
+    )
+    request = httpx.Request("POST", "http://127.0.0.1:11434/v1/chat/completions")
+    body = (
+        '{"error":{"message":"provider detail Authorization: Bearer '
+        f'{api_key}"}}' + "x" * 3000
+    )
+    client = MagicMock()
+    client.post.return_value = httpx.Response(
+        500, content=body.encode(), request=request
+    )
+    generator = OpenAICompatibleGenerator(settings, client=client)
+
+    with pytest.raises(OpenAICompatibleGeneratorError) as caught:
+        generator.generate(
+            build_prompt_grounded_v1(
+                query="q",
+                evidence_units=[_unit("ev_A", "source text")],
+                model="test-model",
+                temperature=0,
+                max_output_tokens=32,
+            )
+        )
+
+    excerpt = caught.value.provider_response_excerpt
+    assert excerpt is not None
+    assert len(excerpt) <= 2048
+    assert "Bearer [redacted]" in excerpt
+    assert api_key not in excerpt
+    assert "provider detail" in excerpt
 
 
 def test_api_key_sent_as_bearer_header() -> None:
@@ -533,6 +576,31 @@ def test_generation_failed_on_transport() -> None:
     result = orch.answer(query="pressure?", corpus_name="default")
     assert result.status == "generation_failed"
     assert result.generation_failure_reason == "timeout"
+
+
+def test_opted_in_provider_error_excerpt_is_retained_in_internal_diagnostics() -> None:
+    settings = _settings()
+    settings = settings.model_copy(
+        update={
+            "diagnostics": settings.diagnostics.model_copy(
+                update={"capture_rejected_generation_output": True}
+            )
+        }
+    )
+    error = OpenAICompatibleGeneratorError(
+        "generator HTTP 500",
+        failure_reason="provider_error",
+        http_status=500,
+        provider_response_excerpt='{"error":"sanitized diagnostic"}',
+    )
+    fake = FakeGenerator(raise_on_generate=error)
+    orch, _ = _orchestrator(settings, fake=fake)
+
+    result = orch.answer(query="pressure?", corpus_name="default")
+
+    assert result.status == "generation_failed"
+    trace = result.diagnostics["trace_diagnostics"]
+    assert trace["provider_response_excerpt"] == '{"error":"sanitized diagnostic"}'
     assert fake.generate_calls == 1
 
 

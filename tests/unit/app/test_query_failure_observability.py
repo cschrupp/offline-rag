@@ -211,6 +211,7 @@ def test_internal_generation_diagnostics_are_bounded_and_not_public(
                 completion_tokens=20,
                 finish_reason="stop",
                 evidence_unit_ids=["eu_1"],
+                provider_response_excerpt='{"error":"bounded"}',
                 candidate_count=30,
                 stage_latency_ms={"generation": 12, "context_assembly_total": 34},
             )
@@ -220,6 +221,9 @@ def test_internal_generation_diagnostics_are_bounded_and_not_public(
     raw = json.loads(_trace_path(settings, record.trace_id).read_text(encoding="utf-8"))
     assert raw["internal_diagnostics"]["model"] == "test-model"
     assert raw["internal_diagnostics"]["evidence_unit_ids"] == ["eu_1"]
+    assert raw["internal_diagnostics"]["provider_response_excerpt"] == (
+        '{"error":"bounded"}'
+    )
     assert "internal_diagnostics" not in store.public_projection(record)
 
 

@@ -312,6 +312,7 @@ class GroundedGenerationExecutor:
                         "provider_error_type": exc.provider_error_type,
                         "provider_error_code": exc.provider_error_code,
                         "provider_safe_detail": exc.safe_detail,
+                        "provider_response_excerpt": exc.provider_response_excerpt,
                         "stage_latency_ms": self._diagnostic_stage_timings(
                             provenance, prompt_ms=prompt_ms, generation_ms=gen_ms
                         ),
@@ -838,6 +839,7 @@ class GroundedGenerationExecutor:
                         "provider_error_type": exc.provider_error_type,
                         "provider_error_code": exc.provider_error_code,
                         "provider_safe_detail": exc.safe_detail,
+                        "provider_response_excerpt": exc.provider_response_excerpt,
                         "stage_latency_ms": self._diagnostic_stage_timings(
                             provenance, prompt_ms=prompt_ms, generation_ms=gen_ms
                         ),
