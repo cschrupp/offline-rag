@@ -28,7 +28,7 @@ from offline_rag.generation.config_hash import (
 )
 from offline_rag.generation.contracts import (
     OUTPUT_CONTRACT,
-    OUTPUT_CONTRACT_V2,
+    OUTPUT_CONTRACT_V2_SCHEMA_R2,
     REASONING_CONTRACT,
 )
 from offline_rag.generation.evidence_handles import (
@@ -580,7 +580,7 @@ class GroundedGenerationExecutor:
             "output_contract_id": str(
                 (request.metadata or {}).get("output_contract")
                 or (request.metadata or {}).get("prompt_contract")
-                or OUTPUT_CONTRACT_V2
+                or OUTPUT_CONTRACT_V2_SCHEMA_R2
             ),
             "prompt_message_count": len(request.messages),
             "prompt_character_count": sum(
@@ -791,7 +791,7 @@ class GroundedGenerationExecutor:
                         "reasoning_mode": reasoning_request_mode(
                             self.settings.deployment.profile, gen.base_url
                         ),
-                        "output_contract_id": OUTPUT_CONTRACT_V2,
+                        "output_contract_id": OUTPUT_CONTRACT_V2_SCHEMA_R2,
                         "evidence_unit_ids": [unit.evidence_unit_id for unit in units],
                         "evidence_document_ids": list(
                             dict.fromkeys(unit.document_id for unit in units)
@@ -1234,7 +1234,7 @@ class GroundedGenerationExecutor:
                         self.settings.deployment.profile, gen.base_url
                     ),
                     "output_contract_id": (
-                        OUTPUT_CONTRACT_V2 if product_v2 else OUTPUT_CONTRACT
+                        OUTPUT_CONTRACT_V2_SCHEMA_R2 if product_v2 else OUTPUT_CONTRACT
                     ),
                     "abstention_reason": product_reason,
                     "evidence_unit_ids": [],

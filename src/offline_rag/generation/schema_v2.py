@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from offline_rag.core.ids import GROUNDED_ANSWER_V2
+from offline_rag.generation.contracts import OUTPUT_CONTRACT_V2_SCHEMA_R2
 from offline_rag.generation.evidence_handles import is_valid_handle_syntax
 
 MODEL_ABSTENTION_REASONS = frozenset(
@@ -138,4 +138,4 @@ def parse_grounded_answer_v2(
 
 
 def grounded_answer_v2_schema_metadata() -> dict[str, Any]:
-    return {"output_contract": GROUNDED_ANSWER_V2}
+    return {"output_contract": OUTPUT_CONTRACT_V2_SCHEMA_R2}
