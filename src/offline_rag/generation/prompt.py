@@ -11,7 +11,11 @@ from offline_rag.core.ids import (
     PROMPT_GROUNDED_V1,
 )
 from offline_rag.domain.indexing import EvidenceUnit
-from offline_rag.generation.contracts import EVIDENCE_BEGIN, EVIDENCE_END
+from offline_rag.generation.contracts import (
+    EVIDENCE_BEGIN,
+    EVIDENCE_END,
+    OUTPUT_CONTRACT_V2_SCHEMA_R2,
+)
 from offline_rag.generation.prompt_evidence import PromptEvidence
 from offline_rag.generation.protocol import ChatMessage, GeneratorRequest
 
@@ -188,7 +192,10 @@ def _response_format_v2() -> dict:
         "type": "json_schema",
         "json_schema": {
             "name": "grounded_answer_v2",
-            "strict": True,
+            # Root-level discriminated unions are outside OpenAI strict-mode's
+            # supported subset. Keep this a full JSON Schema for compatible
+            # providers; application parsing remains strict and authoritative.
+            "strict": False,
             "schema": {
                 "type": "object",
                 "additionalProperties": False,
@@ -220,6 +227,39 @@ def _response_format_v2() -> dict:
                         ],
                     },
                 },
+                "anyOf": [
+                    {
+                        "properties": {
+                            "abstain": {"enum": [False]},
+                            "blocks": {"type": "array", "minItems": 1},
+                            "abstention_reason": {"type": "null"},
+                        },
+                        "required": [
+                            "abstain",
+                            "blocks",
+                            "abstention_reason",
+                        ],
+                    },
+                    {
+                        "properties": {
+                            "abstain": {"enum": [True]},
+                            "blocks": {"type": "array", "maxItems": 0},
+                            "abstention_reason": {
+                                "type": "string",
+                                "enum": [
+                                    "insufficient_support",
+                                    "conflicting_evidence",
+                                    "model_declined",
+                                ],
+                            },
+                        },
+                        "required": [
+                            "abstain",
+                            "blocks",
+                            "abstention_reason",
+                        ],
+                    },
+                ],
             },
         },
     }
@@ -272,5 +312,8 @@ def build_prompt_grounded_answer_v2(
         temperature=temperature,
         max_output_tokens=max_output_tokens,
         response_format=_response_format_v2(),
-        metadata={"prompt_contract": GROUNDED_ANSWER_V2},
+        metadata={
+            "prompt_contract": GROUNDED_ANSWER_V2,
+            "output_contract": OUTPUT_CONTRACT_V2_SCHEMA_R2,
+        },
     )

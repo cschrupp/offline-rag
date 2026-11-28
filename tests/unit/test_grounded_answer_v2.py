@@ -20,19 +20,22 @@ from offline_rag.generation.config_hash import (
     build_product_v2_generation_config_hash,
     build_product_v2_generation_semantic_payload,
 )
+from offline_rag.generation.contracts import (
+    OUTPUT_CONTRACT_V2_SCHEMA_R2,
+)
 from offline_rag.generation.evidence_handles import assign_evidence_handles
 from offline_rag.generation.excerpts import EXCERPT_MAX_CHARS, build_citation_excerpt
 from offline_rag.generation.fake import FakeGenerator
 from offline_rag.generation.orchestrate import GroundedAnswerOrchestrator
+from offline_rag.generation.projection_v2 import (
+    assign_public_citation_refs,
+    project_plain_answer,
+)
 from offline_rag.generation.prompt import (
     SYSTEM_PROMPT_GROUNDED_ANSWER_V2,
     build_prompt_grounded_answer_v2,
 )
 from offline_rag.generation.prompt_evidence import PromptEvidence
-from offline_rag.generation.projection_v2 import (
-    assign_public_citation_refs,
-    project_plain_answer,
-)
 from offline_rag.generation.schema_v2 import parse_grounded_answer_v2
 
 
@@ -131,9 +134,7 @@ def test_v2_parse_multiple_blocks_and_repeated_handle_across_blocks() -> None:
     ["insufficient_support", "conflicting_evidence", "model_declined"],
 )
 def test_v2_parse_model_abstention_reasons(reason: str) -> None:
-    raw = json.dumps(
-        {"abstain": True, "blocks": [], "abstention_reason": reason}
-    )
+    raw = json.dumps({"abstain": True, "blocks": [], "abstention_reason": reason})
     out = parse_grounded_answer_v2(raw, allowed_handles={"E1"})
     assert out.ok and out.output is not None
     assert out.output.abstention_reason == reason
@@ -196,9 +197,7 @@ def test_v2_parse_model_abstention_reasons(reason: str) -> None:
             }
         ),
         json.dumps({"abstain": True, "blocks": [], "abstention_reason": None}),
-        json.dumps(
-            {"abstain": True, "blocks": [], "abstention_reason": "no_evidence"}
-        ),
+        json.dumps({"abstain": True, "blocks": [], "abstention_reason": "no_evidence"}),
         json.dumps(
             {"abstain": True, "blocks": [], "abstention_reason": "ambiguous_request"}
         ),
@@ -208,6 +207,48 @@ def test_v2_parse_model_abstention_reasons(reason: str) -> None:
 def test_v2_parse_failures(raw: str) -> None:
     out = parse_grounded_answer_v2(raw, allowed_handles={"E1"})
     assert not out.ok
+
+
+def test_model_facing_schema_requires_mutually_exclusive_response_shapes() -> None:
+    units = [_unit("ev_A", "supported claim")]
+    request = build_prompt_grounded_answer_v2(
+        user_question="Q?",
+        resolved_question="Q?",
+        evidence=[
+            PromptEvidence(
+                evidence_unit_id=units[0].evidence_unit_id,
+                document_title="Doc",
+                section_path=tuple(units[0].section_path),
+                text=units[0].text,
+            )
+        ],
+        handle_by_evidence_unit_id={"ev_A": "E1"},
+        model="test-model",
+        temperature=0.0,
+        max_output_tokens=128,
+    )
+    schema = request.response_format["json_schema"]["schema"]
+    assert request.response_format["json_schema"]["strict"] is False
+    assert schema["required"] == ["abstain", "blocks", "abstention_reason"]
+    assert schema["additionalProperties"] is False
+    assert len(schema["anyOf"]) == 2
+
+    answered, abstained = schema["anyOf"]
+    assert answered["properties"] == {
+        "abstain": {"enum": [False]},
+        "blocks": {"type": "array", "minItems": 1},
+        "abstention_reason": {"type": "null"},
+    }
+    assert abstained["properties"] == {
+        "abstain": {"enum": [True]},
+        "blocks": {"type": "array", "maxItems": 0},
+        "abstention_reason": {
+            "type": "string",
+            "enum": ["insufficient_support", "conflicting_evidence", "model_declined"],
+        },
+    }
+    assert request.metadata["output_contract"] == OUTPUT_CONTRACT_V2_SCHEMA_R2
+    assert request.metadata["prompt_contract"] == GROUNDED_ANSWER_V2
 
 
 def test_v2_nonexistent_handle_is_citation_invalid() -> None:
@@ -319,7 +360,7 @@ def test_product_v2_hash_differs_from_legacy_and_marks_v2() -> None:
     assert legacy != product
     payload = build_product_v2_generation_semantic_payload(settings)
     assert payload["prompt_contract"] == GROUNDED_ANSWER_V2
-    assert payload["output_contract"] == GROUNDED_ANSWER_V2
+    assert payload["output_contract"] == OUTPUT_CONTRACT_V2_SCHEMA_R2
 
 
 def test_product_v2_answered_path_and_empty_evidence(tmp_path, monkeypatch) -> None:
@@ -376,7 +417,10 @@ def test_product_v2_answered_path_and_empty_evidence(tmp_path, monkeypatch) -> N
         ["ev_A", "ev_C"],
     ]
     assert [c.evidence_unit_id for c in result.citations] == ["ev_B", "ev_A", "ev_C"]
-    assert result.effective_generation_semantics["output_contract"] == GROUNDED_ANSWER_V2
+    assert (
+        result.effective_generation_semantics["output_contract"]
+        == OUTPUT_CONTRACT_V2_SCHEMA_R2
+    )
     assert result.generation_config_hash == build_product_v2_generation_config_hash(
         settings
     )
@@ -413,7 +457,6 @@ def test_product_v2_model_abstain_reason() -> None:
     )
     assembler = MagicMock()
     assembler.assemble.return_value = _context(units)
-    from offline_rag.generation import executor as executor_mod
     import offline_rag.generation.executor as ex
 
     # Use monkeypatch via setattr on instance method through class
